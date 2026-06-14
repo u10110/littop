@@ -1,28 +1,5 @@
 <template>
-<!doctype html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Форум — Литопотам</title>
-  
-</head>
-<body>
-  <header>
-    <div class="navwrap">
-      <div class="logo">Литопотам</div>
-      <nav class="nav" aria-label="Основное меню">
-        <a href="/">Главная</a>
-        <a href="/works">Произведения</a>
-        <a href="/authors">Авторы</a>
-        <a href="/contest">Конкурсы</a>
-        <a href="/radio">Радио</a>
-        <a href="/forum">Форум</a>
-      </nav>
-    </div>
-  </header>
 
-  <main>
     <div>
       <h1>Форум</h1>
       <p class="muted">Свежие темы и авторские обсуждения. Макет в едином стиле с другими страницами.</p>
@@ -82,10 +59,6 @@
         <div class="card"><div class="title">Отзывы</div><div class="meta">/board/</div></div>
       </div>
     </section>
-  </main>
-</body>
-</html>
-
 
 </template> 
 

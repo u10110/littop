@@ -1,29 +1,6 @@
 <template>
-<!doctype html>
-  <html lang="ru">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Авторы — Литопотам</title>
-    <link rel="stylesheet" href="../styles.css" />
-   
-  </head>
-  <body>
-    <header>
-      <div class="navwrap">
-        <div class="logo">Литопотам</div>
-        <nav class="nav" aria-label="Основное меню">
-            <a href="/">Главная</a>
-            <a href="/works">Произведения</a>
-            <a href="/authors">Авторы</a>
-            <a href="/contest">Конкурсы</a>
-            <a href="/radio">Радио</a>
-            <a href="/forum">Форум</a>
-        </nav>
-      </div>
-    </header>
-  
-    <main id="authors">
+
+
       <div>
         <h1>Авторы</h1>
         <p class="muted">Секция «Авторы» по схеме lit-top.ucoz.site: фильтры, блок с классиками и витрина первых страниц списка авторов с chitalnya.ru/authors.php.</p>
@@ -87,10 +64,6 @@
       <div id="poetry"></div>
       <div id="contests"></div>
       <div id="radio"></div>
-    </main>
-  </body>
-  </html>
-
 
 </template>
 

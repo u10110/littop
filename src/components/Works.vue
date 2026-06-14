@@ -1,35 +1,5 @@
 <template>
-    <!doctype html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Литопотам — литературная соцсеть</title>
-  <link rel="stylesheet" href="./styles.css" />
-</head>
-<body id="top">
-  <header>
-    <div class="navbar">
-      <div class="logo">Литопотам</div>
-      <nav class="nav" aria-label="Основное меню">
-        <a href="/">Главная</a>
-        <a href="/works">Произведения</a>
-        <a href="/authors">Авторы</a>
-        <a href="/contest">Конкурсы</a>
-        <a href="/radio">Радио</a>
-        <a href="/forum">Форум</a>
-      </nav>
-      <div class="actions">
-        <a class="btn-outline" href="#authors">Войти</a>
-        <a class="btn-primary" href="#authors">Регистрация</a>
-      </div>
-    </div>
-  </header>
-  <main>
-  <section class="hero">
-    <h1>Литопотам — писать, читать, оценивать</h1>
-    <p>Регистрация для авторов, публикация стихов, прозы и проектов. Оценки и комментарии от читателей. Форум для живого общения.</p>
-  </section>
+ 
 
   <div id="links"></div>
 
@@ -225,11 +195,5 @@
     </div>
   </section>
 
-  <footer class="footer">
-    Литопотам — статичный макет на основе контента Избы-Читальни. Разделы, форум, конкурсы и радио — ссылки ведут на локально сохранённые копии источника.
-  </footer>
-  </main>
-</body>
-</html>
 
     </template>

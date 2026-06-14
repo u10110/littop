@@ -1,28 +1,5 @@
 <template>
-    <!doctype html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Радио — Литопотам</title>
-  
-</head>
-<body>
-  <header>
-    <div class="navwrap">
-      <div class="logo">Литопотам</div>
-      <nav class="nav" aria-label="Основное меню">
-        <a href="/">Главная</a>
-        <a href="/works">Произведения</a>
-        <a href="/authors">Авторы</a>
-        <a href="/contest">Конкурсы</a>
-        <a href="/radio">Радио</a>
-        <a href="/forum">Форум</a>
-      </nav>
-    </div>
-  </header>
 
-  <main>
     <div>
       <h1>Радио</h1>
       <p class="muted">Онлайн-поток, плейлист последних произведений и быстрая оценка.</p>
@@ -78,9 +55,7 @@
         </div>
       </div>
     </section>
-  </main>
-</body>
-</html>
+
 
 </template>
 <style>

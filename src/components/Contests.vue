@@ -1,28 +1,5 @@
 <template>
-<!doctype html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Конкурсы — Литопотам</title>
- 
-</head>
-<body>
-  <header>
-    <div class="navwrap">
-      <div class="logo">Литопотам</div>
-      <nav class="nav" aria-label="Меню">
-        <a href="../index.html">Главная</a>
-        <a href="../stihi/index.html">Произведения</a>
-        <a href="../authors/index.html">Авторы</a>
-        <a href="./index.html">Конкурсы</a>
-        <a href="../radio/index.html">Радио</a>
-        <a href="../forum/index.html">Форум</a>
-      </nav>
-    </div>
-  </header>
 
-  <main>
     <div>
       <h1>Конкурсы</h1>
       <p class="muted">Подборка текущих конкурсов с litprichal.ru/contest.php и краткие итоги завершённых.</p>
@@ -65,11 +42,9 @@
         <div class="rowline"><strong>«История. События» (Проза)</strong>: 1 место — «Трагедия 1969 года» (Сергей НикулинЪ); 2 место — «Точка невозврата» (Даре Мачавариани); 3 место — «Не трогай мою игрушку!» (Сергей Кабских).</div>
       </div>
     </section>
-  </main>
-</body>
-</html>
 
 </template>
+
  <style>
     :root { --bg:#fff; --text:#111; --muted:#666; --border:#e0e0e0; }
     *{box-sizing:border-box;}
