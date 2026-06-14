@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Произведения — Литопотам</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    :root { --bg:#ffffff; --text:#000000; --muted:#555; --border:#e0e0e0; --space:12px; }
+    *{box-sizing:border-box;} body{margin:0;font-family:"Inter","Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;}
+    a{color:inherit;text-decoration:none;} a:hover{text-decoration:underline;}
+    header{border-bottom:1px solid var(--border);background:#fff;position:sticky;top:0;z-index:5;}
+    .navwrap{max-width:1180px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;gap:12px;}
+    .logo{font-weight:800;letter-spacing:0.02em;} .nav{display:flex;gap:10px;flex-wrap:wrap;font-weight:600;color:var(--muted);} .nav a{color:inherit;padding:0 10px;} .nav a + a{border-left:1px solid var(--border);padding-left:14px;margin-left:6px;}
+    .wrap{max-width:1180px;margin:0 auto;padding:20px 16px 40px;}
+    h1{margin:16px 0 8px;font-size:1.8rem;} .muted{color:var(--muted);margin:0 0 16px;}
+    .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));}
+    .card{background:transparent;border:1px solid var(--border);border-radius:0;padding:14px;box-shadow:none;}
+    .card h2,.card h3{margin:0 0 8px;font-size:1.05rem;}
+    .chips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 0;} .chip{padding:6px 10px;border:1px solid var(--border);border-radius:0;background:transparent;color:var(--muted);}
+    .links-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;}
+    .link-chip{display:inline-flex;align-items:center;padding:6px 10px;border:1px solid var(--border);border-radius:0;background:transparent;color:var(--muted);text-decoration:none;}
+    .link-chip:hover{border-color:var(--accent);color:var(--accent);}
+    /* Рубрикатор в три колонки */
+    .rubric-grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));align-items:flex-start;}
+    .rubric-title{display:block;margin-bottom:8px;font-size:16px;font-weight:700;color:var(--accent);text-decoration:none;}
+    .rubric-list{list-style:none;margin:0;padding:0;}
+    .rubric-list li{padding:6px 0;border-bottom:1px solid var(--border);line-height:1.4;}
+    .rubric-list li:last-child{border-bottom:0;}
+    .rubric-list a{color:inherit;text-decoration:none;}
+    .rubric-list a:hover{text-decoration:underline;}
+    .count{color:var(--muted);margin-left:6px;}
+    .footer-links{display:flex;gap:12px;margin-top:12px;font-size:14px;}
+    @media (max-width:600px){body{padding:24px 16px 40px;} h1{font-size:1.6rem;margin-bottom:12px;}}
+    .list{display:flex;flex-direction:column;gap:8px;} .item{padding:10px;border-left:3px solid #d8d8d8;border-bottom:1px solid var(--border);} .item:last-child{border-bottom:0;} .item .title{font-weight:700;color:var(--text);} .item .meta{color:var(--muted);font-size:0.92rem;}
+    .section{margin:22px 0 0;} .section h2{margin:0 0 10px;font-size:1.2rem;}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="navwrap">
+      <div class="logo">Литопотам</div>
+      <nav class="nav" aria-label="Меню">
+        <a href="../index.html">Главная</a>
+        <a href="./index.html">Произведения</a>
+        <a href="../authors/index.html">Авторы</a>
+        <a href="../contests/index.html">Конкурсы</a>
+        <a href="../radio/index.html">Радио</a>
+        <a href="../forum/index.html">Форум</a>
+      </nav>
+    </div>
+  </header>
+  <main class="wrap" id="top">
+    <h1>Произведения</h1>
+    <p class="muted">Раздел «Произведения» в стиле chitalnya.ru/stihi.php: подборки, рубрики и форумная лента ниже.</p>
+
+    <div id="works"></div>
+    <div id="authors"></div>
+    <div id="contests"></div>
+    <div id="radio"></div>
+    <div id="links"></div>
+ 
+    <div class="rubric-grid">
+      <div>
+        <a class="rubric-title" href="#">Стихи</a>
+        <ul class="rubric-list">
+          <li><a href="#">Анна Ахматова — «Поэма без героя»</a></li>
+          <li><a href="#">Александр Блок — «Аптека, улица, фонарь»</a></li>
+          <li><a href="#">Марина Цветаева — «Мне нравится, что вы больны не мной»</a></li>
+        </ul>
+      </div>
+      <div>
+        <a class="rubric-title" href="#">Проза</a>
+        <ul class="rubric-list">
+          <li><a href="#">Александр Пушкин — «Станционный смотритель»</a></li>
+          <li><a href="#">Михаил Лермонтов — «Герой нашего времени»</a></li>
+          <li><a href="#">Иван Тургенев — «Муму»</a></li>
+        </ul>
+      </div>
+      <div>
+        <a class="rubric-title" href="#">Проекты</a>
+        <ul class="rubric-list">
+          <li><a href="#">В. Шаинский, М. Пляцковский — «Улыбка» (песня)</a></li>
+          <li><a href="#">Николай Иванов — «Ночная лампа» (муз. клип)</a></li>
+          <li><a href="#">Марина Любимова — «Вчера вечером» (киносценарий)</a></li>
+        </ul>
+      </div>
+    </div>
+    
+
+    <section class="section">
+      <h2>Авторские анонсы</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="list">
+            <div class="item"><div class="title">Сказание о шаманке Нини</div><div class="meta">АЛИНА ВЕЛЬДЖ — Мистическая поэзия · просмотров: 8 · рецензий: 1</div></div>
+            <div class="item"><div class="title">Поэзия</div><div class="meta">Лолита Сойфер — Лирика философская · просмотров: 72 · рецензий: 3</div></div>
+            <div class="item"><div class="title">Сольвейг</div><div class="meta">Валерий Доронкин — Стихи, не вошедшие в рубрики · просмотров: 67 · рецензий: 2</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="list">
+            <div class="item"><div class="title">Туше</div><div class="meta">ДанТ исТ — Стихи, не вошедшие в рубрики · просмотров: 8</div></div>
+            <div class="item"><div class="title">"Мы победим"</div><div class="meta">ДанТ исТ — Стихи, не вошедшие в рубрики · просмотров: 9</div></div>
+            <div class="item"><div class="title">А капелла (Ушедшим родителям)</div><div class="meta">СИрена — Мир души · просмотров: 363 · рецензий: 21</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="list">
+            <div class="item"><div class="title">Хор ночных теней</div><div class="meta">Юрий Митченко — Мистическая поэзия · просмотров: 25 · рецензий: 3</div></div>
+            <div class="item"><div class="title">"Там, где цветёт орешник"</div><div class="meta">Марина Новикова-Шведт — Лирика любовная · просмотров: 78 · рецензий: 5</div></div>
+            <div class="item"><div class="title">***,...плюс,...леон</div><div class="meta">саша самсонов — Мир души · просмотров: 2</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Стихи по дополнительным подрубрикам</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="list">
+            <div class="item"><div class="title">короткие стихи детям 3-4 года</div><div class="meta">(144)</div></div>
+            <div class="item"><div class="title">короткие стихи детям 5-6 лет</div><div class="meta">(177)</div></div>
+            <div class="item"><div class="title">короткие стихи детям 7-8 лет</div><div class="meta">(164)</div></div>
+            <div class="item"><div class="title">короткие стихи про новый год</div><div class="meta">(165)</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="list">
+            <div class="item"><div class="title">короткие стихи про родителей</div><div class="meta">(23)</div></div>
+            <div class="item"><div class="title">поздравление в стихах на день рождения</div><div class="meta">(260)</div></div>
+            <div class="item"><div class="title">поздравление в стихах на праздник</div><div class="meta">(204)</div></div>
+            <div class="item"><div class="title">православные стихи</div><div class="meta">(…)</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Поэзия известных классиков</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="links-row">
+            <a class="link-chip" href="#">Стихи Ахматовой</a>
+            <a class="link-chip" href="#">Стихи Агнии Барто</a>
+            <a class="link-chip" href="#">Стихи Блока</a>
+            <a class="link-chip" href="#">Стихи Цветаевой</a>
+            <a class="link-chip" href="#">Стихи Есенина</a>
+            <a class="link-chip" href="#">Стихи Фета</a>
+            <a class="link-chip" href="#">Стихи Лермонтова</a>
+            <a class="link-chip" href="#">Стихи Маршака</a>
+            <a class="link-chip" href="#">Стихи Маяковского</a>
+            <a class="link-chip" href="#">Стихи Некрасова</a>
+            <a class="link-chip" href="#">Стихи Пушкина</a>
+            <a class="link-chip" href="#">Стихи Твардовского</a>
+            <a class="link-chip" href="#">Стихи Тютчева</a>
+            <a class="link-chip" href="#">Стихи Высоцкого</a>
+            <a class="link-chip" href="#">Стихи Бунина</a>
+            <a class="link-chip" href="#">Стихи Пастернака</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Свежие отзывы</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="list">
+            <div class="item"><div class="title">Элизабет Вельяминская</div><div class="meta">Отзыв на: На твоём подоконнике... (Амалия Канс) · положительный</div><div class="meta">15.05.2024 09:15:46</div></div>
+            <div class="item"><div class="title">Таис Никольская</div><div class="meta">Отзыв на: Поздний звонок. Николай Митрофанов (Николай Митрофанов) · положительный</div><div class="meta">15.05.2024 09:15:34</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="list">
+            <div class="item"><div class="title">Элизабет Вельяминская</div><div class="meta">Отзыв на: Ещё одна таёжная история (Светлана Громыко) · положительный</div><div class="meta">15.05.2024 08:54:38</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Популярные стихи портала</h2>
+      <div class="card">
+        <div class="links-row">
+          <a class="link-chip" href="#">Стихи с Днем Рождения</a>
+          <a class="link-chip" href="#">Красивые стихи</a>
+          <a class="link-chip" href="#">Стихи любимому</a>
+          <a class="link-chip" href="#">Стихи девушке</a>
+          <a class="link-chip" href="#">Стихи Маме</a>
+          <a class="link-chip" href="#">Стихи трогательные до слез</a>
+          <a class="link-chip" href="#">Новогодние стихи</a>
+          <a class="link-chip" href="#">Стихи о любви</a>
+          <a class="link-chip" href="#">Стихи про войну</a>
+          <a class="link-chip" href="#">Стихи про детей</a>
+          <a class="link-chip" href="#">Стихи про весну и лето</a>
+          <a class="link-chip" href="#">Стихи бабушке</a>
+          <a class="link-chip" href="#">Стихи на 8 марта</a>
+          <a class="link-chip" href="#">Стихи на 23 февраля</a>
+          <a class="link-chip" href="#">Стихи на Рождество</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>На крыльце</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="list">
+            <div class="item"><div class="title">Олег Медведев (turbomon)</div><div class="meta">Чёрные монеты</div></div>
+            <div class="item"><div class="title">Валерий Доронкин (valdorvich)</div><div class="meta">Поэт—вселенная, где он пророк!</div></div>
+            <div class="item"><div class="title">Лолита Сойфер (Loranna)</div><div class="meta">Давай сегодня помолчим</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="list">
+            <div class="item"><div class="title">Лиза Виолонова (Shchepinska)</div><div class="meta">записки на песке, монологи стёртых автопортретов</div></div>
+            <div class="item"><div class="title">Юрий Митченко (0000109)</div><div class="meta">У природы нет плохой погоды, если водка есть и бутерброды.</div></div>
+            <div class="item"><div class="title">ℨϐëʓ∂⭐∂σ੫ƙα (ZVJOZDDOCHKA)</div><div class="meta">🌟🌟🌟🌟🌟🌟🌟</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="forum">
+      <h2>Форум (Творческая мастерская)</h2>
+      <p class="muted">Свежие темы из локальной копии forum.php (t=1,2,13).</p>
+      <div class="grid">
+        <div class="card">
+          <div class="list">
+            <div class="item"><div class="title">Свои причины промолчать (ТМ)</div><div class="meta">Lone Traveler — 06.05.2026</div></div>
+            <div class="item"><div class="title">Мальчик - (Т.М.)</div><div class="meta">Давид — 09.05.2026</div></div>
+            <div class="item"><div class="title">В роще (ТМ)</div><div class="meta">Куратор ТМ — 08.05.2026</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="list">
+            <div class="item"><div class="title">Сочится жизнь (ТМ)</div><div class="meta">lf — 13.04.2026</div></div>
+            <div class="item"><div class="title">Последний день Трудоголикова..</div><div class="meta">Астсергей — 15.04.2026</div></div>
+            <div class="item"><div class="title">Три куста (ТМ)</div><div class="meta">lf — 06.04.2026</div></div>
+          </div>
+        </div>
+      </div>
+      <p class="muted" style="margin-top:10px;">Полная копия темы: ../lit_top.ucoz.site/forum-izba.html</p>
+    </section>
+  </main>
+</body>
+</html>
