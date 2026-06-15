@@ -1,79 +1,91 @@
-<template>
+<script setup>
+import { computed, ref, watch } from 'vue';
+import { useQuery } from '@vue/apollo-composable';
 
-    <div>
-      <h1>Радио</h1>
-      <p class="muted">Онлайн-поток, плейлист последних произведений и быстрая оценка.</p>
+import { RADIO_TRACKS_QUERY } from '../lib/graphql.js';
+import { formatDate, formatDuration, ratingLabel } from '../lib/format.js';
+
+const selectedTrackId = ref(null);
+
+const { result, loading, error } = useQuery(RADIO_TRACKS_QUERY, {
+  limit: 30,
+  offset: 0,
+}, {
+  fetchPolicy: 'cache-and-network',
+});
+
+const tracks = computed(() => result.value?.radioTracks ?? []);
+const selectedTrack = computed(() => tracks.value.find((item) => String(item.id) === String(selectedTrackId.value)) ?? null);
+
+watch(tracks, (items) => {
+  if (!items.length) {
+    selectedTrackId.value = null;
+    return;
+  }
+
+  const stillExists = items.some((item) => String(item.id) === String(selectedTrackId.value));
+  if (!stillExists) {
+    selectedTrackId.value = items[0].id;
+  }
+}, { immediate: true });
+</script>
+
+<template>
+  <section class="page-head">
+    <h1>Радио</h1>
+    <p class="muted">
+      Плейлист теперь читает <code>radioTracks</code> из backend. Если у трека есть <code>audioUrl</code>, фронт сразу даёт встроенный плеер;
+      если нет — показывает метаданные и ссылку на источник.
+    </p>
+  </section>
+
+  <div v-if="error" class="message error">{{ error.message }}</div>
+
+  <section class="layout-columns">
+    <div class="stack">
+      <div class="section-head">
+        <h2>Плейлист</h2>
+        <span class="pill">{{ loading ? 'загрузка…' : `${tracks.length} треков` }}</span>
+      </div>
+
+      <div v-if="tracks.length" class="stack">
+        <article
+          v-for="track in tracks"
+          :key="track.id"
+          class="card clickable"
+          :class="{ 'is-selected': String(track.id) === String(selectedTrackId) }"
+          @click="selectedTrackId = track.id"
+        >
+          <h3>{{ track.title }}</h3>
+          <div class="meta">{{ track.authorName || 'Автор не указан' }} · {{ formatDuration(track.durationSeconds) }}</div>
+          <div class="meta">{{ ratingLabel(track.averageRating, track.ratingsCount) }}</div>
+        </article>
+      </div>
+      <div v-else-if="!loading" class="empty-state">Треков пока нет. Компонент уже ждёт данные из radio_tracks без статических заглушек.</div>
     </div>
 
-    <section class="player" aria-label="Проигрыватель">
-      <div class="title">Онлайн-плеер</div>
-      <audio controls preload="metadata" style="width:100%;">
-        <source src="../source_pages/www.chitalnya.ru/radio/index.html" type="audio/mpeg" />
-        Ваш браузер не поддерживает аудио.
-      </audio>
-      <div class="meta">Поток из локальной копии radio/ (chitalnya.ru/radio/). Можно заменить ссылку на рабочий поток.</div>
-    </section>
-
-    <section aria-label="Список треков">
-      <h2 style="margin:0 0 10px;font-size:1.2rem;">Плейлист</h2>
-      <div class="tracks">
-        <div class="track">
-          <div class="title">Улыбка</div>
-          <div class="meta">Шаинский / Пляцковский · 02:34</div>
-          <div class="rate">
-            <span class="meta">Оценить:</span>
-            <button class="btn">★</button>
-            <button class="btn">★★</button>
-            <button class="btn">★★★</button>
-            <button class="btn">★★★★</button>
-            <button class="btn">★★★★★</button>
-          </div>
+    <div class="stack">
+      <article v-if="selectedTrack" class="panel stack">
+        <div class="section-head">
+          <h2>{{ selectedTrack.title }}</h2>
+          <span class="pill">{{ formatDuration(selectedTrack.durationSeconds) }}</span>
         </div>
-        <div class="track">
-          <div class="title">Ночная лампа</div>
-          <div class="meta">Николай Иванов · 03:12</div>
-          <div class="rate">
-            <span class="meta">Оценить:</span>
-            <button class="btn">★</button>
-            <button class="btn">★★</button>
-            <button class="btn">★★★</button>
-            <button class="btn">★★★★</button>
-            <button class="btn">★★★★★</button>
-          </div>
+        <div class="meta">
+          {{ selectedTrack.authorName || 'Автор не указан' }} · создано {{ formatDate(selectedTrack.createdAt) }}
         </div>
-        <div class="track">
-          <div class="title">Вчера вечером</div>
-          <div class="meta">Марина Любимова · 03:45</div>
-          <div class="rate">
-            <span class="meta">Оценить:</span>
-            <button class="btn">★</button>
-            <button class="btn">★★</button>
-            <button class="btn">★★★</button>
-            <button class="btn">★★★★</button>
-            <button class="btn">★★★★★</button>
-          </div>
+        <div class="chips">
+          <span class="pill">{{ ratingLabel(selectedTrack.averageRating, selectedTrack.ratingsCount) }}</span>
+          <a v-if="selectedTrack.sourceUrl" class="btn btn-outline" :href="selectedTrack.sourceUrl" target="_blank" rel="noreferrer">Источник</a>
         </div>
-      </div>
-    </section>
 
+        <audio v-if="selectedTrack.audioUrl" controls preload="metadata" style="width: 100%;">
+          <source :src="selectedTrack.audioUrl" type="audio/mpeg" />
+          Ваш браузер не поддерживает аудио.
+        </audio>
+        <div v-else class="message">У этого трека пока нет прямого audioUrl, но его карточка уже приходит из backend.</div>
+      </article>
 
+      <div v-else class="empty-state">Выбери трек слева, чтобы открыть детальную карточку.</div>
+    </div>
+  </section>
 </template>
-<style>
-    :root { --bg:#fff; --text:#111; --muted:#666; --border:#e0e0e0; }
-    *{box-sizing:border-box;}
-    body{margin:0;font-family:"Inter","Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;}
-    a{color:inherit;text-decoration:none;} a:hover{text-decoration:underline;}
-    header{border-bottom:1px solid var(--border);background:#fff;position:sticky;top:0;z-index:5;}
-    .navwrap{max-width:1180px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;gap:12px;}
-    .logo{font-weight:800;letter-spacing:0.02em;}
-    .nav{display:flex;gap:10px;flex-wrap:wrap;font-weight:600;color:var(--muted);} .nav a{padding:0 10px;color:inherit;} .nav a + a{border-left:1px solid var(--border);padding-left:14px;margin-left:6px;}
-    main{max-width:1180px;margin:0 auto;padding:20px 16px 56px;display:flex;flex-direction:column;gap:24px;}
-    h1{margin:0 0 8px;font-size:1.8rem;} .muted{color:var(--muted);margin:0 0 12px;}
-    .player{border:1px solid var(--border);padding:16px;background:#fafafa;display:flex;flex-direction:column;gap:10px;}
-    .tracks{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));}
-    .track{border:1px solid var(--border);padding:12px;background:#fdfdfd;display:flex;flex-direction:column;gap:6px;}
-    .title{font-weight:700;} .meta{color:var(--muted);font-size:0.95rem;}
-    .rate{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
-    .btn{padding:6px 10px;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:0.95rem;}
-    .btn:hover{border-color:#b51e1e;color:#b51e1e;}
-  </style>

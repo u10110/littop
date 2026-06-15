@@ -1,66 +1,95 @@
+<script setup>
+import { computed } from 'vue';
+import { useQuery } from '@vue/apollo-composable';
+
+import { CONTESTS_QUERY } from '../lib/graphql.js';
+import { excerptText, formatContestScope, formatContestStatus, formatDate } from '../lib/format.js';
+
+const { result, loading, error } = useQuery(CONTESTS_QUERY, {
+  limit: 30,
+  offset: 0,
+}, {
+  fetchPolicy: 'cache-and-network',
+});
+
+const contests = computed(() => result.value?.contests ?? []);
+const activeContests = computed(() => contests.value.filter((item) => ['accepting_entries', 'voting'].includes(item.status)));
+const archivedContests = computed(() => contests.value.filter((item) => ['finished', 'cancelled'].includes(item.status)));
+const draftContests = computed(() => contests.value.filter((item) => item.status === 'draft'));
+</script>
+
 <template>
+  <section class="page-head">
+    <h1>Конкурсы</h1>
+    <p class="muted">
+      Компонент переведён на live GraphQL-список <code>contests</code> и теперь разделяет активные, завершённые и черновые конкурсы
+      по реальным backend-статусам.
+    </p>
+  </section>
 
-    <div>
-      <h1>Конкурсы</h1>
-      <p class="muted">Подборка текущих конкурсов с litprichal.ru/contest.php и краткие итоги завершённых.</p>
+  <div v-if="error" class="message error">{{ error.message }}</div>
+
+  <section class="panel stack">
+    <div class="chips">
+      <span class="pill">всего: {{ loading ? '…' : contests.length }}</span>
+      <span class="pill good">активные: {{ activeContests.length }}</span>
+      <span class="pill warn">черновики: {{ draftContests.length }}</span>
+      <span class="pill">завершённые: {{ archivedContests.length }}</span>
     </div>
+  </section>
 
-    <section>
-      <div class="chips">
-        <span class="chip">Проводимые</span>
-        <span class="chip">Завершённые</span>
-      </div>
-    </section>
-
-    <section class="section" aria-label="Проводимые конкурсы">
-      <h2>Конкурсы сайта</h2>
-      <div class="grid">
-        <div class="card">
-          <div class="title">«Здесь начинается Россия»</div>
-          <div class="meta">25.05.2026 — 12.06.2026</div>
-          <span class="badge">Идёт голосование</span>
+  <section class="section-block">
+    <div class="section-head">
+      <h2>Активные</h2>
+      <span class="pill good">accepting_entries / voting</span>
+    </div>
+    <div v-if="activeContests.length" class="grid">
+      <article v-for="contest in activeContests" :key="contest.id" class="card">
+        <div class="chips">
+          <span class="pill">{{ formatContestScope(contest.contestScope) }}</span>
+          <span class="pill good">{{ formatContestStatus(contest.status) }}</span>
         </div>
-        <div class="card">
-          <div class="title">«Конкурс декламаций “История любви”»</div>
-          <div class="meta">13.05.2026 — 28.06.2026</div>
-          <span class="badge">Идёт приём работ</span>
+        <h3>{{ contest.title }}</h3>
+        <div class="meta">
+          старт: {{ formatDate(contest.startsAt) }} · дедлайн: {{ formatDate(contest.submissionEndsAt || contest.votingEndsAt) }}
         </div>
-      </div>
-    </section>
+        <div>{{ excerptText(contest.description, 180) }}</div>
+      </article>
+    </div>
+    <div v-else-if="!loading" class="empty-state">Сейчас в БД нет активных конкурсов.</div>
+  </section>
 
-    <section class="section" aria-label="Авторские конкурсы">
-      <h2>Авторские конкурсы</h2>
-      <p class="muted">Сейчас авторских конкурсов нет.</p>
-    </section>
+  <section class="section-block">
+    <div class="section-head">
+      <h2>Завершённые</h2>
+      <span class="pill">finished / cancelled</span>
+    </div>
+    <div v-if="archivedContests.length" class="grid">
+      <article v-for="contest in archivedContests" :key="contest.id" class="card">
+        <div class="chips">
+          <span class="pill">{{ formatContestScope(contest.contestScope) }}</span>
+          <span class="pill warn">{{ formatContestStatus(contest.status) }}</span>
+        </div>
+        <h3>{{ contest.title }}</h3>
+        <div class="meta">результаты: {{ formatDate(contest.resultsPublishedAt || contest.votingEndsAt || contest.submissionEndsAt) }}</div>
+        <div>{{ excerptText(contest.description, 180) }}</div>
+      </article>
+    </div>
+    <div v-else-if="!loading" class="empty-state">Завершённых конкурсов пока нет.</div>
+  </section>
 
-    <section class="section" aria-label="Победители">
-      <h2>Победители завершённых</h2>
-      <div class="list">
-        <div class="rowline"><strong>«Друг человека» (Поэзия)</strong>: 1 место — «О нас так вряд ли...» (Анжела Баер); 2 место — «Недолог век собаки на войне» (Сергей Анашкин); 3 место — «Старым собакам» (Lusia Rozanova).</div>
-        <div class="rowline"><strong>«Друг человека» (Проза)</strong>: 1 место — «Собака - подрывник Джульбарс» (Вера Павлова); 2 место — «Герд» (Сергей Богаткин); 3 место — «Как сочинялась опера» (Ольга Зимина).</div>
-        <div class="rowline"><strong>«История. События» (Поэзия)</strong>: 1 место — «накануне...» (Дана Верис); 2 место — «Горюн-трава» (Явецкий Павел); 3 место — «Ангелы с чёрными лицами» (Тианна Ридак).</div>
-        <div class="rowline"><strong>«История. События» (Проза)</strong>: 1 место — «Трагедия 1969 года» (Сергей НикулинЪ); 2 место — «Точка невозврата» (Даре Мачавариани); 3 место — «Не трогай мою игрушку!» (Сергей Кабских).</div>
-      </div>
-    </section>
-
+  <section class="section-block">
+    <div class="section-head">
+      <h2>Черновики</h2>
+      <span class="pill warn">draft</span>
+    </div>
+    <div v-if="draftContests.length" class="grid">
+      <article v-for="contest in draftContests" :key="contest.id" class="card">
+        <h3>{{ contest.title }}</h3>
+        <div class="meta">{{ formatContestScope(contest.contestScope) }}</div>
+        <div>{{ excerptText(contest.description, 180) }}</div>
+      </article>
+    </div>
+    <div v-else-if="!loading" class="empty-state">Черновиков нет — компонент корректно отрабатывает и это состояние.</div>
+  </section>
 </template>
-
- <style>
-    :root { --bg:#fff; --text:#111; --muted:#666; --border:#e0e0e0; }
-    *{box-sizing:border-box;}
-    body{margin:0;font-family:"Inter","Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;}
-    a{color:inherit;text-decoration:none;} a:hover{text-decoration:underline;}
-    header{border-bottom:1px solid var(--border);background:#fff;position:sticky;top:0;z-index:5;}
-    .navwrap{max-width:1180px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;gap:12px;}
-    .logo{font-weight:800;letter-spacing:0.02em;}
-    .nav{display:flex;gap:10px;flex-wrap:wrap;font-weight:600;color:var(--muted);} .nav a{padding:0 10px;color:inherit;} .nav a + a{border-left:1px solid var(--border);padding-left:14px;margin-left:6px;}
-    main{max-width:1180px;margin:0 auto;padding:20px 16px 56px;display:flex;flex-direction:column;gap:24px;}
-    h1{margin:0 0 8px;font-size:1.8rem;} .muted{color:var(--muted);margin:0 0 12px;}
-    .chips{display:flex;flex-wrap:wrap;gap:8px;} .chip{padding:8px 12px;border:1px solid var(--border);background:transparent;font-size:0.95rem;}
-    .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));}
-    .card{border:1px solid var(--border);padding:14px;background:#fafafa;display:flex;flex-direction:column;gap:6px;}
-    .title{font-weight:700;} .meta{color:var(--muted);font-size:0.95rem;}
-    .badge{display:inline-flex;align-items:center;padding:4px 8px;border:1px solid var(--border);color:var(--muted);font-size:0.85rem;}
-    .section{border-top:1px solid var(--border);padding-top:12px;} .section h2{margin:0 0 10px;font-size:1.2rem;}
-    .list{display:flex;flex-direction:column;gap:8px;} .rowline{padding:8px 10px;border:1px solid var(--border);background:#fdfdfd;}
-  </style>

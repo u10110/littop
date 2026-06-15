@@ -1,201 +1,182 @@
+<script setup>
+import { computed } from 'vue';
+import { useQuery } from '@vue/apollo-composable';
+import { RouterLink } from 'vue-router';
+
+import { HOME_QUERY } from '../lib/graphql.js';
+import {
+  excerptText,
+  formatContestScope,
+  formatContestStatus,
+  formatDate,
+  formatWorkSection,
+  ratingLabel,
+} from '../lib/format.js';
+
+const { result, loading, error } = useQuery(HOME_QUERY, null, {
+  fetchPolicy: 'cache-and-network',
+});
+
+const health = computed(() => result.value?.health ?? null);
+const featuredAuthors = computed(() => result.value?.featuredAuthors ?? []);
+const classicAuthors = computed(() => result.value?.classicAuthors ?? []);
+const recentWorks = computed(() => result.value?.recentWorks ?? []);
+const recentTopics = computed(() => result.value?.recentTopics ?? []);
+const contests = computed(() => result.value?.contests ?? []);
+const radioTracks = computed(() => result.value?.radioTracks ?? []);
+
+const healthTone = computed(() => {
+  if (!health.value) return 'warn';
+  return health.value.database ? 'good' : 'danger';
+});
+</script>
+
 <template>
-
   <section class="hero">
-    <h1>Литопотам — писать, читать, оценивать</h1>
-    <p>Регистрация для авторов, публикация стихов, прозы и проектов. Оценки и комментарии от читателей. Форум для живого общения.</p>
+    <h1>Литопотам — уже не статичный макет, а живой frontend на GraphQL</h1>
+    <p>
+      Главная теперь забирает данные из backend: состояние API, витрину авторов, свежие произведения,
+      форумные темы, конкурсы и радио. Все секции ниже рендерятся из Apollo-запросов, а не из вшитого HTML.
+    </p>
+    <div class="chips">
+      <span class="pill" :class="healthTone">API: {{ loading ? 'загрузка…' : health?.status ?? 'нет ответа' }}</span>
+      <span class="pill" :class="health?.database ? 'good' : 'danger'">
+        База: {{ loading ? 'проверяем…' : health?.database ? 'доступна' : 'недоступна' }}
+      </span>
+      <span class="pill">Vue Apollo подключён</span>
+    </div>
   </section>
 
-  <div id="links"></div>
+  <div v-if="error" class="message error">{{ error.message }}</div>
 
-  <section class="section" id="poetry">
-    <h2>Произведения</h2>
+  <section class="stats-grid">
+    <article class="card stat">
+      <span class="meta">Авторы в витрине</span>
+      <span class="value">{{ featuredAuthors.length }}</span>
+      <span class="note">featuredOnly=true</span>
+    </article>
+    <article class="card stat">
+      <span class="meta">Классики</span>
+      <span class="value">{{ classicAuthors.length }}</span>
+      <span class="note">classicsOnly=true</span>
+    </article>
+    <article class="card stat">
+      <span class="meta">Свежие произведения</span>
+      <span class="value">{{ recentWorks.length }}</span>
+      <span class="note">works(limit: 6)</span>
+    </article>
+    <article class="card stat">
+      <span class="meta">Темы форума</span>
+      <span class="value">{{ recentTopics.length }}</span>
+      <span class="note">forumTopics(limit: 6)</span>
+    </article>
+  </section>
 
-    <p class="muted">Свежие подборки и рубрики из Избы-Читальни.</p>
-    <div class="grid">
-      <div class="card">
-        <h3>Подборки</h3>
+  <section class="section-block">
+    <div class="section-head">
+      <h2>Свежие произведения</h2>
+      <RouterLink to="/works" class="btn btn-outline">Открыть каталог</RouterLink>
+    </div>
+
+    <div v-if="recentWorks.length" class="list-grid">
+      <article v-for="work in recentWorks" :key="work.id" class="card">
         <div class="chips">
-          <span class="chip">Стихи за сегодня</span>
-          <span class="chip">Все стихи</span>
-          <span class="chip">Авторы рекомендуют</span>
-          <span class="chip">Рекомендованные стихи</span>
+          <span class="pill">{{ formatWorkSection(work.sectionCode) }}</span>
+          <span class="pill">{{ ratingLabel(work.averageRating, work.ratingsCount) }}</span>
         </div>
-      </div>
-      <div class="card">
-        <h3>Рубрики</h3>
-        <ul>
-          <li>Акростихи, Басни, Белый стих</li>
-          <li>Лирика любовная, пейзажная, гражданская</li>
-          <li>Пародии, Подражания, Верлибр</li>
-          <li>Поэмы и циклы, Поэтические манифесты</li>
-          <li>Стихи с видео, Стихи в прозе, Детские</li>
-        </ul>
-      </div>
-      <div class="card">
-        <h3>Быстрые ссылки</h3>
-        <div class="list">
-          <div class="list-item"><span class="title">Стихи за сегодня</span><div class="meta">https://www.chitalnya.ru/poetrylist.php</div></div>
-          <div class="list-item"><span class="title">Все стихи</span><div class="meta">https://www.chitalnya.ru/stihi.php</div></div>
-          <div class="list-item"><span class="title">Авторы рекомендуют</span><div class="meta">https://www.chitalnya.ru/promotion.php</div></div>
+        <h3>{{ work.title }}</h3>
+        <div class="meta">
+          {{ work.author?.displayName || work.author?.login }} · {{ formatDate(work.publishedAt || work.createdAt) }}
         </div>
+        <div>{{ excerptText(work.excerpt || work.summary || work.body, 180) }}</div>
+      </article>
+    </div>
+    <div v-else class="empty-state">Пока нет опубликованных произведений. Создать первое можно на странице «Произведения».</div>
+  </section>
+
+  <section class="layout-columns">
+    <div class="section-block">
+      <div class="section-head">
+        <h2>Авторы</h2>
+        <RouterLink to="/authors" class="btn btn-outline">Все авторы</RouterLink>
       </div>
+      <div v-if="featuredAuthors.length || classicAuthors.length" class="stack">
+        <article class="card">
+          <h3>Витрина</h3>
+          <div class="list">
+            <div v-for="author in featuredAuthors" :key="`featured-${author.id}`" class="inline-card">
+              <strong>{{ author.displayName }}</strong>
+              <div class="meta">@{{ author.login }} · рейтинг {{ author.ratingTotal }}</div>
+            </div>
+          </div>
+        </article>
+        <article class="card">
+          <h3>Классики</h3>
+          <div class="list">
+            <div v-for="author in classicAuthors" :key="`classic-${author.id}`" class="inline-card">
+              <strong>{{ author.displayName }}</strong>
+              <div class="meta">{{ author.worksCountCached }} произведений</div>
+            </div>
+          </div>
+        </article>
+      </div>
+      <div v-else class="empty-state">В базе пока нет авторов. После регистрации они начнут появляться здесь автоматически.</div>
+    </div>
+
+    <div class="section-block">
+      <div class="section-head">
+        <h2>Форум</h2>
+        <RouterLink to="/forum" class="btn btn-outline">Открыть форум</RouterLink>
+      </div>
+      <div v-if="recentTopics.length" class="stack">
+        <article v-for="topic in recentTopics" :key="topic.id" class="card">
+          <div class="chips">
+            <span class="pill">{{ topic.sectionSlug }}</span>
+            <span class="pill">ответов: {{ topic.repliesCount }}</span>
+          </div>
+          <h3>{{ topic.title }}</h3>
+          <div class="meta">
+            {{ topic.author?.displayName || topic.author?.login }} · {{ formatDate(topic.lastPostAt || topic.createdAt) }}
+          </div>
+          <div>{{ excerptText(topic.body, 140) }}</div>
+        </article>
+      </div>
+      <div v-else class="empty-state">Форумные секции уже доступны, но тем пока нет. Их можно создать из фронта после входа.</div>
     </div>
   </section>
 
-  <section class="section" id="prose">
-    <h2>Проза</h2>
-    <p class="muted">Ключевые рубрики и подборки.</p>
-    <div class="grid">
-      <div class="card">
-        <h3>Подборки</h3>
-        <div class="chips">
-          <span class="chip">Проза за сегодня</span>
-          <span class="chip">Вся проза</span>
-        </div>
+  <section class="layout-columns">
+    <div class="section-block">
+      <div class="section-head">
+        <h2>Конкурсы</h2>
+        <RouterLink to="/contests" class="btn btn-outline">Смотреть все</RouterLink>
       </div>
-      <div class="card">
-        <h3>Рубрики</h3>
-        <ul>
-          <li>Антиутопия, Детектив, Исторический роман</li>
-          <li>Любовная литература, Мемуары, Миниатюра</li>
-          <li>Мистика, Новеллы, Остросюжетная литература</li>
-          <li>Психологический роман, Фантастика, Фэнтези</li>
-          <li>Эссе, Юмор, Детская литература</li>
-        </ul>
+      <div v-if="contests.length" class="stack">
+        <article v-for="contest in contests" :key="contest.id" class="card">
+          <div class="chips">
+            <span class="pill">{{ formatContestScope(contest.contestScope) }}</span>
+            <span class="pill">{{ formatContestStatus(contest.status) }}</span>
+          </div>
+          <h3>{{ contest.title }}</h3>
+          <div class="meta">Старт: {{ formatDate(contest.startsAt) }}</div>
+          <div>{{ excerptText(contest.description, 140) }}</div>
+        </article>
       </div>
-      <div class="card">
-        <h3>Быстрые ссылки</h3>
-        <div class="list">
-          <div class="list-item"><span class="title">Проза за сегодня</span><div class="meta">https://www.chitalnya.ru/proselist.php</div></div>
-          <div class="list-item"><span class="title">Вся проза</span><div class="meta">https://www.chitalnya.ru/prose.php</div></div>
-        </div>
-      </div>
+      <div v-else class="empty-state">Конкурсы пока не загружены в БД. Компонент уже работает с live GraphQL и корректно показывает пустое состояние.</div>
     </div>
-  </section>
 
-  <section class="section" id="projects">
-    <h2>Творческие проекты</h2>
-    <p class="muted">Песни, презентации, постановки, киносценарии.</p>
-    <div class="card">
-      <div class="chips">
-        <span class="chip">Песня</span>
-        <span class="chip">Презентация</span>
-        <span class="chip">Постановка</span>
-        <span class="chip">Киносценарий</span>
+    <div class="section-block">
+      <div class="section-head">
+        <h2>Радио</h2>
+        <RouterLink to="/radio" class="btn btn-outline">Открыть радио</RouterLink>
       </div>
-      <p class="muted" style="margin-top:12px;">Выгружено из раздела "Творческие проекты" (пример слайдов на lit-top.ucoz.site).</p>
-    </div>
-  </section>
-
-  <section class="section" id="forum">
-    <h2>Форум (Творческая мастерская)</h2>
-    <p class="muted">Свежие темы из Избы-Читальни, кратко.</p>
-    <div class="twocol">
-      <ul class="list">
-        <li class="list-item">
-          <div class="title">Свои причины промолчать (ТМ)</div>
-          <div class="meta">Lone Traveler — 06.05.2026</div>
-        </li>
-        <li class="list-item">
-          <div class="title">Мальчик - (Т.М.)</div>
-          <div class="meta">Давид — 09.05.2026</div>
-        </li>
-      </ul>
-      <ul class="list">
-        <li class="list-item">
-          <div class="title">В роще (ТМ)</div>
-          <div class="meta">Куратор ТМ — 08.05.2026</div>
-        </li>
-        <li class="list-item">
-          <div class="title">Сочится жизнь (ТМ)</div>
-          <div class="meta">lf — 13.04.2026</div>
-        </li>
-      </ul>
-      <ul class="list">
-        <li class="list-item">
-          <div class="title">Последний день Трудоголикова..</div>
-          <div class="meta">Астсергей — 15.04.2026</div>
-        </li>
-        <li class="list-item">
-          <div class="title">Три куста (ТМ)</div>
-          <div class="meta">lf — 06.04.2026</div>
-        </li>
-      </ul>
-    </div>
-    <p class="muted" style="margin-top:10px;">Полная копия темы доступна в локальном форуме: <code>../lit-top.ucoz.site/forum-izba.html</code>.</p>
-  </section>
-
-  <section class="section" id="contests">
-    <h2>Конкурсы</h2>
-    <p class="muted">Из блока "Конкурсы" на chitalnya.ru.</p>
-    <div class="grid">
-      <div class="card">
-        <img class="contest-img" src="../source_pages/www.chitalnya.ru/upload/960/c3767bc0e640c7ce33ee51d9413d05f2.jpg" alt="Поле ромашек" />
-        <h3>Конкурсы от "КЛиК"</h3>
-        <p class="muted">Из раздела users/contest</p>
+      <div v-if="radioTracks.length" class="stack">
+        <article v-for="track in radioTracks" :key="track.id" class="card">
+          <h3>{{ track.title }}</h3>
+          <div class="meta">{{ track.authorName || 'Автор не указан' }} · {{ ratingLabel(track.averageRating, track.ratingsCount) }}</div>
+        </article>
       </div>
-      <div class="card">
-        <img class="contest-img" src="../source_pages/www.chitalnya.ru/cache_image/3a/3a0bb9d12be6a2f3c10d37dfd1a46969.jpg" alt="Плакат С Днём России" />
-        <h3>Ежегодный кубок</h3>
-        <p class="muted">Из «Избы-Читальни», users/cup.izba</p>
-      </div>
-      <div class="card">
-        <img class="contest-img" src="../source_pages/www.chitalnya.ru/cache_image/c0/c07d65f7aae5e4125586c64eea8faaa9.jpg" alt="Дорога к воронке в небе" />
-        <h3>Конкурсы на форуме</h3>
-        <p class="muted">Ветка forum.php?t=13</p>
-      </div>
-    </div>
-  </section>
-
-  <section class="section" id="radio">
-    <h2>Радио</h2>
-    <p class="muted">Ссылка на локальную копию радио-страницы chitalnya.ru/radio/.</p>
-    <div class="card">
-      <div class="list-item" style="border:none; padding:0;">
-        <div class="title">Онлайн-плеер и чат</div>
-        <div class="meta">Файлы сохранены в ../source_pages/www.chitalnya.ru/radio/</div>
-        <div style="margin-top:8px;">
-          <a class="btn" href="../source_pages/www.chitalnya.ru/radio/index.html">Открыть радио</a>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="section" id="authors">
-    <h2>Авторы</h2>
-    <p class="muted">Список и витрина авторов из блока "Новые авторы".</p>
-    <div class="card">
-      <ul class="list">
-        <li class="list-item"><div class="title">Леон Ле</div></li>
-        <li class="list-item"><div class="title">Тимру Тамирхан</div></li>
-        <li class="list-item"><div class="title">Татьяна Кувшиновская</div></li>
-        <li class="list-item"><div class="title">Константин Клюев</div></li>
-        <li class="list-item"><div class="title">Николай Гумилёв</div></li>
-        <li class="list-item"><div class="title">Владимир Маяковский</div></li>
-      </ul>
-    </div>
-  </section>
-
-  <section class="section">
-    <h2>Виджеты и авторизация</h2>
-    <div class="grid">
-      <div class="card">
-        <h3>Регистрация</h3>
-        <p class="muted">Вход/регистрация вынесены в шапку — лёгкий доступ.</p>
-        <div class="chips">
-          <span class="chip">Регистрация</span>
-          <span class="chip">Вход</span>
-          <span class="chip">Профиль</span>
-        </div>
-      </div>
-      <div class="card">
-        <h3>Оценки и комментарии</h3>
-        <p class="muted">Модель: оценка произведения и комментарии читателей.</p>
-      </div>
-      <div class="card">
-        <h3>Форум-доска</h3>
-        <p class="muted">Быстрый обмен сообщениями и темами вне произведений.</p>
-      </div>
+      <div v-else class="empty-state">Треков пока нет, но страница уже читает данные из radioTracks(limit: 6).</div>
     </div>
   </section>
 </template>

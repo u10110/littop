@@ -1,110 +1,181 @@
+<script setup>
+import { computed, ref, watch } from 'vue';
+import { useQuery } from '@vue/apollo-composable';
+
+import { apolloClient } from '../lib/apollo.js';
+import { AUTHOR_DETAILS_QUERY, AUTHORS_QUERY } from '../lib/graphql.js';
+import { excerptText, formatDate, formatWorkSection, ratingLabel } from '../lib/format.js';
+
+const search = ref('');
+const onlyClassics = ref(false);
+const onlyFeatured = ref(false);
+const selectedAuthorLogin = ref('');
+const selectedAuthor = ref(null);
+const authorWorks = ref([]);
+const detailLoading = ref(false);
+const detailError = ref('');
+
+const queryVariables = computed(() => ({
+  limit: 30,
+  offset: 0,
+  search: search.value.trim() || null,
+  classicsOnly: onlyClassics.value,
+  featuredOnly: onlyFeatured.value,
+}));
+
+const { result, loading, error } = useQuery(AUTHORS_QUERY, queryVariables, {
+  fetchPolicy: 'cache-and-network',
+});
+
+const authors = computed(() => result.value?.authors ?? []);
+
+watch(authors, (items) => {
+  if (!items.length) {
+    selectedAuthorLogin.value = '';
+    selectedAuthor.value = null;
+    authorWorks.value = [];
+    return;
+  }
+
+  const stillExists = items.some((item) => item.login === selectedAuthorLogin.value);
+  if (!stillExists) {
+    selectedAuthorLogin.value = items[0].login;
+  }
+}, { immediate: true });
+
+watch(selectedAuthorLogin, (login) => {
+  if (!login) return;
+  loadAuthorDetails(login);
+}, { immediate: true });
+
+async function loadAuthorDetails(login) {
+  const baseAuthor = authors.value.find((item) => item.login === login);
+  if (!baseAuthor) return;
+
+  detailLoading.value = true;
+  detailError.value = '';
+
+  try {
+    const { data } = await apolloClient.query({
+      query: AUTHOR_DETAILS_QUERY,
+      variables: {
+        login,
+        authorId: baseAuthor.id,
+      },
+      fetchPolicy: 'network-only',
+    });
+    selectedAuthor.value = data?.author ?? baseAuthor;
+    authorWorks.value = data?.works ?? [];
+  } catch (queryError) {
+    selectedAuthor.value = baseAuthor;
+    authorWorks.value = [];
+    detailError.value = queryError.message;
+  } finally {
+    detailLoading.value = false;
+  }
+}
+</script>
+
 <template>
+  <section class="page-head">
+    <h1>Авторы</h1>
+    <p class="muted">
+      Страница больше не держит руками забитую витрину: список, поиск, фильтры и карточка автора подтягиваются
+      из queries <code>authors</code> и <code>works(authorId: ...)</code>.
+    </p>
+  </section>
 
-
-      <div>
-        <h1>Авторы</h1>
-        <p class="muted">Секция «Авторы» по схеме lit-top.ucoz.site: фильтры, блок с классиками и витрина первых страниц списка авторов с chitalnya.ru/authors.php.</p>
+  <section class="panel stack">
+    <div class="toolbar">
+      <div class="field" style="min-width: 260px; flex: 2;">
+        <span class="label">Поиск</span>
+        <input v-model="search" class="input" placeholder="Имя, логин или email" />
       </div>
-  
-      <section class="section" aria-label="Фильтр">
-        <h2>Фильтр</h2>
-        <div class="filters">
-          <div class="chip"><strong>По рейтингу</strong></div>
-          <div class="chip">По алфавиту</div>
-          <div class="chip">По дате регистрации ↑</div>
-          <div class="chip">По дате регистрации ↓</div>
-          <div class="chip">По количеству произведений</div>
-        </div>
-      </section>
-  
-      <section class="section" aria-label="Классики">
-        <h2>Классики (витрина)</h2>
-        <div class="grid-5">
-          <div class="card"><h3>Александр Пушкин</h3><span class="tag">классика</span></div>
-          <div class="card"><h3>Александр Блок</h3><span class="tag">классика</span></div>
-          <div class="card"><h3>Сергей Есенин</h3><span class="tag">классика</span></div>
-          <div class="card"><h3>Булат Окуджава</h3><span class="tag">классика</span></div>
-          <div class="card"><h3>Владимир Высоцкий</h3><span class="tag">классика</span></div>
-        </div>
-        <p class="note" style="margin-top:10px;">Пять слотов под платные анонсы авторских страниц (из исходной схемы).</p>
-      </section>
-  
-      <section class="section" aria-label="Список авторов">
-        <h2>Авторы (страница 1 из chitalnya.ru/authors.php)</h2>
-        <div class="authors-grid">
-          <div class="author"><div class="name">Олег Сталь</div><div class="login">Stan242</div></div>
-          <div class="author"><div class="name">Дейв Гахан</div><div class="login">Dave_Gahan</div></div>
-          <div class="author"><div class="name">Sergei Небогатый</div><div class="login">the_king_of_words</div></div>
-          <div class="author"><div class="name">Виктор Ергин</div><div class="login">ergin</div></div>
-          <div class="author"><div class="name">Антон Боровиков</div><div class="login">antonborovikov</div></div>
-          <div class="author"><div class="name">Ardak Kassymbek</div><div class="login">Ardak1977</div></div>
-          <div class="author"><div class="name">Алевтина Хоментовская</div><div class="login">Alevtina55</div></div>
-          <div class="author"><div class="name">Евгений Мирмович</div><div class="login">mirevgvlad@mail.ru</div></div>
-          <div class="author"><div class="name">Бабинцева Анна</div><div class="login">Martinova</div></div>
-          <div class="author"><div class="name">Кирилл Матюшкин</div><div class="login">Talman27</div></div>
-          <div class="author"><div class="name">Литературные презентации</div><div class="login">Dakotov_k</div></div>
-          <div class="author"><div class="name">Галина Лебединская</div><div class="login">galina030847</div></div>
-          <div class="author"><div class="name">Виталий Гольнев</div><div class="login">golnevv</div></div>
-          <div class="author"><div class="name">Сергей Корчагин</div><div class="login">strong47</div></div>
-          <div class="author"><div class="name">Ольга Снопова</div><div class="login">olga-snopova</div><div class="meta">Рейтинг: 62</div></div>
-          <div class="author"><div class="name">Петровна Краса</div><div class="login">PETROVNA</div><div class="meta">Рейтинг: 6</div></div>
-          <div class="author"><div class="name">Света Сантурян</div><div class="login">Sadmelandbanane</div></div>
-          <div class="author"><div class="name">Илья Поляков</div><div class="login">Ilyamurmuromec</div></div>
-          <div class="author"><div class="name">Kas Aur</div><div class="login">KasaurArt</div></div>
-          <div class="author"><div class="name">Станислав Попеляев</div><div class="login">grustniy_poet</div></div>
-          <div class="author"><div class="name">Алёна Барбоскина</div><div class="login">kinosshhii</div><div class="meta">Рейтинг: 3</div></div>
-        </div>
-        <p class="note" style="margin-top:10px;">Пагинация по образцу chitalnya.ru: страницы 1…>…»» (775). Для макета зафиксирована первая страница.</p>
-      </section>
-  
-      <section class="section" id="forum">
-        <h2>Форум</h2>
-        <p class="note">Заглушка под форумные ссылки (ссылка на ../litop_main/index.html#forum).</p>
-      </section>
-      <div id="poetry"></div>
-      <div id="contests"></div>
-      <div id="radio"></div>
 
+      <label class="chip">
+        <input v-model="onlyFeatured" type="checkbox" />
+        <span>Только витрина</span>
+      </label>
+
+      <label class="chip">
+        <input v-model="onlyClassics" type="checkbox" />
+        <span>Только классики</span>
+      </label>
+    </div>
+  </section>
+
+  <div v-if="error" class="message error">{{ error.message }}</div>
+
+  <section class="layout-columns">
+    <div class="stack">
+      <div class="section-head">
+        <h2>Список авторов</h2>
+        <span class="pill">{{ loading ? 'загрузка…' : `${authors.length} найдено` }}</span>
+      </div>
+
+      <div v-if="authors.length" class="stack">
+        <article
+          v-for="author in authors"
+          :key="author.id"
+          class="card clickable"
+          :class="{ 'is-selected': author.login === selectedAuthorLogin }"
+          @click="selectedAuthorLogin = author.login"
+        >
+          <div class="section-head">
+            <h3>{{ author.displayName }}</h3>
+            <div class="chips">
+              <span v-if="author.isFeatured" class="pill good">витрина</span>
+              <span v-if="author.isClassic" class="pill warn">классик</span>
+            </div>
+          </div>
+          <div class="meta">@{{ author.login }} · {{ author.email }}</div>
+          <div>{{ excerptText(author.bio, 120) }}</div>
+          <div class="chips">
+            <span class="pill">рейтинг {{ author.ratingTotal }}</span>
+            <span class="pill">{{ author.worksCountCached }} произведений</span>
+          </div>
+        </article>
+      </div>
+      <div v-else-if="!loading" class="empty-state">Авторов пока нет. После регистраций они будут появляться здесь автоматически.</div>
+    </div>
+
+    <div class="stack">
+      <article v-if="selectedAuthor" class="panel stack">
+        <div class="section-head">
+          <h2>{{ selectedAuthor.displayName }}</h2>
+          <span class="pill">@{{ selectedAuthor.login }}</span>
+        </div>
+
+        <div class="meta">
+          {{ selectedAuthor.email }} · с нами с {{ formatDate(selectedAuthor.registeredAt) }}
+        </div>
+        <div class="chips">
+          <span class="pill">рейтинг {{ selectedAuthor.ratingTotal }}</span>
+          <span class="pill">{{ selectedAuthor.worksCountCached }} произведений</span>
+          <span v-if="selectedAuthor.city" class="pill">{{ selectedAuthor.city }}</span>
+        </div>
+        <div>{{ excerptText(selectedAuthor.bio, 220) }}</div>
+        <a v-if="selectedAuthor.websiteUrl" class="btn btn-outline" :href="selectedAuthor.websiteUrl" target="_blank" rel="noreferrer">Сайт автора</a>
+
+        <hr class="divider" />
+
+        <div class="section-head">
+          <h3>Последние публикации</h3>
+          <span class="pill">{{ detailLoading ? 'обновляем…' : `${authorWorks.length} записей` }}</span>
+        </div>
+        <div v-if="detailError" class="message error">{{ detailError }}</div>
+        <div v-if="authorWorks.length" class="stack">
+          <article v-for="work in authorWorks" :key="work.id" class="work-card">
+            <strong>{{ work.title }}</strong>
+            <div class="meta">{{ formatWorkSection(work.sectionCode) }} · {{ formatDate(work.publishedAt || work.createdAt) }}</div>
+            <div>{{ excerptText(work.summary || work.excerpt || work.body, 150) }}</div>
+            <div class="meta">{{ ratingLabel(work.averageRating, work.ratingsCount) }}</div>
+          </article>
+        </div>
+        <div v-else-if="!detailLoading" class="empty-state">У этого автора пока нет опубликованных произведений.</div>
+      </article>
+
+      <div v-else class="empty-state">Выбери автора слева, чтобы увидеть его карточку и последние публикации.</div>
+    </div>
+  </section>
 </template>
-
-<style>
-:root {
-  --accent: #b51e1e;
-  --text: #111;
-  --muted: #666;
-  --border: #e1e1e1;
-  --bg: #fff;
-}
-* { box-sizing: border-box; }
-body { margin: 0; font-family: 'Inter', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
-a { color: inherit; text-decoration: none; }
-a:hover { text-decoration: underline; }
-header { border-bottom: 1px solid var(--border); background: #fff; position: sticky; top: 0; z-index: 5; }
-.navwrap { max-width: 1180px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; gap: 12px; }
-.logo { font-weight: 800; letter-spacing: 0.02em; }
-.nav { display: flex; gap: 10px; flex-wrap: wrap; font-weight: 600; color: var(--muted); }
-.nav a { color: inherit; padding: 0 10px; }
-.nav a + a { border-left: 1px solid var(--border); padding-left: 14px; margin-left: 6px; }
-main { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; padding: 20px 16px 56px; }
-h1 { margin: 0 0 8px; font-size: 1.8rem; letter-spacing: -0.3px; }
-.muted { color: var(--muted); margin: 0 0 4px; font-size: 0.98rem; }
-.filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
-.chip { border: 1px solid var(--border); padding: 10px 12px; font-size: 0.95rem; text-align: center; }
-.chip strong { color: var(--accent); }
-.grid-5 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
-.card { border: 1px solid var(--border); padding: 12px; display: flex; flex-direction: column; gap: 6px; background: #fafafa; }
-.card h3 { margin: 0; font-size: 1rem; }
-.tag { display: inline-flex; padding: 4px 8px; border: 1px solid var(--border); font-size: 0.85rem; color: var(--muted); }
-.authors-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
-.author { border: 1px solid var(--border); padding: 12px; background: #fdfdfd; display: flex; flex-direction: column; gap: 4px; }
-.author .name { font-weight: 600; }
-.author .login { color: var(--muted); font-size: 0.92rem; }
-.author .meta { color: var(--muted); font-size: 0.9rem; }
-.section { border-top: 1px solid var(--border); padding-top: 12px; }
-.section h2 { margin: 0 0 10px; font-size: 1.2rem; }
-.note { color: var(--muted); font-size: 0.9rem; }
-@media (max-width: 640px) {
-  body { padding: 24px 16px 40px; }
-  .navwrap { flex-direction: column; align-items: flex-start; }
-}
-</style>
