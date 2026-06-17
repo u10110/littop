@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 
+import WorkPublishForm from './WorkPublishForm.vue';
 import { useSession } from '../lib/session.js';
 import { formatDate, formatDateTime } from '../lib/format.js';
 
@@ -17,7 +18,12 @@ const {
 
 const profile = computed(() => currentUser.value?.profile ?? null);
 const displayName = computed(() => profile.value?.displayName || currentUser.value?.login || 'Автор');
+const myWorksLink = computed(() => ({
+  path: '/works',
+  query: { mine: '1' },
+}));
 const profileSuccess = ref('');
+const publishStatus = ref('');
 const profileForm = ref({
   displayName: '',
   city: '',
@@ -73,6 +79,11 @@ async function submitProfile() {
     // Ошибка уже проброшена в profileError.
   }
 }
+
+function handleWorkCreated(createdWork) {
+  const title = createdWork?.title ? ` «${createdWork.title}»` : '';
+  publishStatus.value = `Новая публикация${title} сохранена. Открой «Мои произведения», чтобы сразу её увидеть.`;
+}
 </script>
 
 <template>
@@ -86,7 +97,7 @@ async function submitProfile() {
       </div>
       <h1>Мой кабинет</h1>
       <p>
-        Здесь можно посмотреть и отредактировать основные данные автора: отображаемое имя, город, сайт и описание профиля.
+        Здесь можно редактировать профиль автора, быстро перейти к своим произведениям и сразу опубликовать новый текст.
       </p>
     </div>
 
@@ -244,12 +255,21 @@ async function submitProfile() {
             <span class="meta">Из кабинета</span>
           </div>
           <div class="inline-actions">
-            <RouterLink class="btn btn-primary" to="/works">Мои и новые произведения</RouterLink>
+            <RouterLink class="btn btn-primary" :to="myWorksLink">Мои произведения</RouterLink>
+            <a class="btn btn-outline" href="#publish-work">Добавить публикацию</a>
+            <RouterLink class="btn btn-outline" to="/works">Все произведения</RouterLink>
             <RouterLink class="btn btn-outline" to="/authors">Авторы</RouterLink>
             <RouterLink class="btn btn-outline" to="/forum">Форум</RouterLink>
-            <RouterLink class="btn btn-outline" to="/contests">Конкурсы</RouterLink>
+          </div>
+          <div class="note">
+            Кнопка «Мои произведения» открывает каталог сразу с фильтром <code>?mine=1</code> из адресной строки.
           </div>
         </article>
+      </section>
+
+      <section id="publish-work" class="section-block">
+        <div v-if="publishStatus" class="message success">{{ publishStatus }}</div>
+        <WorkPublishForm @created="handleWorkCreated" />
       </section>
     </template>
   </section>

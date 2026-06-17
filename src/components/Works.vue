@@ -1,11 +1,11 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useQuery } from '@vue/apollo-composable';
 
 import { apolloClient } from '../lib/apollo.js';
 import {
   ADD_WORK_COMMENT_MUTATION,
-  CREATE_WORK_MUTATION,
   RATE_WORK_MUTATION,
   WORK_COMMENTS_QUERY,
   WORKS_QUERY,
@@ -13,8 +13,12 @@ import {
 import { excerptText, formatDate, formatWorkSection, ratingLabel } from '../lib/format.js';
 import { useSession } from '../lib/session.js';
 
+const route = useRoute();
+const router = useRouter();
+
 const sectionFilter = ref('');
 const search = ref('');
+const mineOnly = ref(false);
 const selectedWorkId = ref(null);
 const comments = ref([]);
 const commentsLoading = ref(false);
@@ -24,18 +28,10 @@ const commentBusy = ref(false);
 const commentStatus = ref('');
 const ratingBusy = ref(false);
 const ratingStatus = ref('');
-const createBusy = ref(false);
-const createStatus = ref('');
-const createError = ref('');
-const createForm = ref({
-  sectionCode: 'poetry',
-  title: '',
-  summary: '',
-  body: '',
-  projectFormat: '',
-});
 
-const { isAuthenticated } = useSession();
+const { currentUser, isAuthenticated } = useSession();
+
+const allowedSectionCodes = new Set(['poetry', 'prose', 'project']);
 
 const sectionOptions = [
   { value: '', label: 'Все разделы' },
@@ -44,20 +40,107 @@ const sectionOptions = [
   { value: 'project', label: 'Творческие проекты' },
 ];
 
-const projectFormats = [
-  { value: '', label: 'Без уточнения' },
-  { value: 'song', label: 'Песня' },
-  { value: 'presentation', label: 'Презентация' },
-  { value: 'stage_production', label: 'Постановка' },
-  { value: 'screenplay', label: 'Киносценарий' },
-  { value: 'other', label: 'Другое' },
-];
+function takeQueryValue(value) {
+  if (Array.isArray(value)) {
+    return typeof value[0] === 'string' ? value[0] : '';
+  }
+  return typeof value === 'string' ? value : '';
+}
+
+function normalizeSectionQuery(value) {
+  const normalized = takeQueryValue(value).trim();
+  return allowedSectionCodes.has(normalized) ? normalized : '';
+}
+
+function normalizeSearchQuery(value) {
+  return takeQueryValue(value).trim();
+}
+
+function normalizeMineQuery(value) {
+  const normalized = takeQueryValue(value).trim().toLowerCase();
+  return ['1', 'true', 'yes', 'mine', 'my'].includes(normalized);
+}
+
+function applyFiltersFromQuery(query) {
+  sectionFilter.value = normalizeSectionQuery(query.section);
+  search.value = normalizeSearchQuery(query.search);
+  mineOnly.value = normalizeMineQuery(query.mine);
+}
+
+function buildNextQuery(baseQuery) {
+  const nextQuery = { ...baseQuery };
+  const normalizedSearch = search.value.trim();
+
+  if (sectionFilter.value) {
+    nextQuery.section = sectionFilter.value;
+  } else {
+    delete nextQuery.section;
+  }
+
+  if (normalizedSearch) {
+    nextQuery.search = normalizedSearch;
+  } else {
+    delete nextQuery.search;
+  }
+
+  if (mineOnly.value) {
+    nextQuery.mine = '1';
+  } else {
+    delete nextQuery.mine;
+  }
+
+  return nextQuery;
+}
+
+function managedQuerySnapshot(query) {
+  return JSON.stringify({
+    section: normalizeSectionQuery(query.section),
+    search: normalizeSearchQuery(query.search),
+    mine: normalizeMineQuery(query.mine),
+  });
+}
+
+watch(
+  () => route.query,
+  (query) => {
+    const querySnapshot = managedQuerySnapshot(query);
+    const stateSnapshot = JSON.stringify({
+      section: sectionFilter.value,
+      search: search.value.trim(),
+      mine: mineOnly.value,
+    });
+
+    if (querySnapshot !== stateSnapshot) {
+      applyFiltersFromQuery(query);
+    }
+  },
+  { immediate: true },
+);
+
+watch([sectionFilter, search, mineOnly], () => {
+  const stateSnapshot = JSON.stringify({
+    section: sectionFilter.value,
+    search: search.value.trim(),
+    mine: mineOnly.value,
+  });
+  const querySnapshot = managedQuerySnapshot(route.query);
+
+  if (stateSnapshot === querySnapshot) {
+    return;
+  }
+
+  router.replace({ query: buildNextQuery(route.query) });
+});
+
+const authorFilterActive = computed(() => mineOnly.value && Boolean(currentUser.value?.id));
+const mineFilterNeedsAuth = computed(() => mineOnly.value && !authorFilterActive.value);
 
 const queryVariables = computed(() => ({
   limit: 24,
   offset: 0,
   sectionCode: sectionFilter.value || null,
   search: search.value.trim() || null,
+  authorId: authorFilterActive.value ? currentUser.value.id : null,
 }));
 
 const { result, loading, error, refetch } = useQuery(WORKS_QUERY, queryVariables, {
@@ -66,6 +149,31 @@ const { result, loading, error, refetch } = useQuery(WORKS_QUERY, queryVariables
 
 const works = computed(() => result.value?.works ?? []);
 const selectedWork = computed(() => works.value.find((item) => String(item.id) === String(selectedWorkId.value)) ?? null);
+const activeFilterPills = computed(() => {
+  const pills = [];
+
+  if (sectionFilter.value) {
+    const match = sectionOptions.find((option) => option.value === sectionFilter.value);
+    pills.push(`раздел: ${match?.label || sectionFilter.value}`);
+  }
+
+  if (search.value.trim()) {
+    pills.push(`поиск: ${search.value.trim()}`);
+  }
+
+  if (mineOnly.value) {
+    pills.push('только мои произведения');
+  }
+
+  return pills;
+});
+const emptyStateText = computed(() => {
+  if (mineOnly.value && isAuthenticated.value) {
+    return 'По текущему фильтру твои произведения пока не найдены.';
+  }
+
+  return 'Список пока пуст.';
+});
 
 watch(works, (items) => {
   if (!items.length) {
@@ -87,11 +195,6 @@ watch(selectedWorkId, (workId) => {
   }
   loadComments(workId);
 }, { immediate: true });
-
-function normalizeOptional(value) {
-  const normalized = typeof value === 'string' ? value.trim() : '';
-  return normalized || null;
-}
 
 async function loadComments(workId) {
   commentsLoading.value = true;
@@ -162,41 +265,10 @@ async function submitComment() {
   }
 }
 
-async function submitCreateWork() {
-  createBusy.value = true;
-  createStatus.value = '';
-  createError.value = '';
-
-  try {
-    const { data } = await apolloClient.mutate({
-      mutation: CREATE_WORK_MUTATION,
-      variables: {
-        input: {
-          sectionCode: createForm.value.sectionCode,
-          title: createForm.value.title.trim(),
-          summary: normalizeOptional(createForm.value.summary),
-          body: normalizeOptional(createForm.value.body),
-          excerpt: normalizeOptional(createForm.value.summary),
-          projectFormat: createForm.value.sectionCode === 'project' ? normalizeOptional(createForm.value.projectFormat) : null,
-        },
-      },
-    });
-
-    createForm.value = {
-      sectionCode: 'poetry',
-      title: '',
-      summary: '',
-      body: '',
-      projectFormat: '',
-    };
-    createStatus.value = 'Произведение создано.';
-    await refetch();
-    selectedWorkId.value = data?.createWork?.id ?? selectedWorkId.value;
-  } catch (mutationError) {
-    createError.value = mutationError.message;
-  } finally {
-    createBusy.value = false;
-  }
+function clearFilters() {
+  sectionFilter.value = '';
+  search.value = '';
+  mineOnly.value = false;
 }
 </script>
 
@@ -204,8 +276,8 @@ async function submitCreateWork() {
   <section class="page-head">
     <h1>Произведения</h1>
     <p class="muted">
-      Эта страница полностью переведена на backend: список работ, выбор произведения, live-комментарии,
-      оценки и форма публикации нового текста.
+      Фильтры этой страницы читаются из адресной строки и синхронизируются обратно в URL. Можно открывать готовые ссылки
+      вида <code>/works?mine=1</code> или <code>/works?section=poetry</code>.
     </p>
   </section>
 
@@ -222,6 +294,24 @@ async function submitCreateWork() {
         <span class="label">Поиск</span>
         <input v-model="search" class="input" placeholder="Название, summary или текст" />
       </div>
+
+      <div class="field" style="min-width: 240px; flex: 1; align-self: end;">
+        <span class="label">Быстрый фильтр</span>
+        <div class="inline-actions">
+          <button class="btn" :class="mineOnly ? 'btn-primary' : 'btn-outline'" type="button" @click="mineOnly = !mineOnly">
+            {{ mineOnly ? 'Показываются мои' : 'Только мои произведения' }}
+          </button>
+          <button class="btn btn-outline" type="button" @click="clearFilters">Сбросить</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="activeFilterPills.length" class="chips">
+      <span v-for="pill in activeFilterPills" :key="pill" class="pill">{{ pill }}</span>
+    </div>
+
+    <div v-if="mineFilterNeedsAuth" class="message">
+      Фильтр <strong>«только мои произведения»</strong> пришёл из адресной строки, но для точной выборки нужен вход в аккаунт.
     </div>
   </section>
 
@@ -252,7 +342,7 @@ async function submitCreateWork() {
           <div>{{ excerptText(work.summary || work.excerpt || work.body, 180) }}</div>
         </article>
       </div>
-      <div v-else-if="!loading" class="empty-state">Список пока пуст. После авторизации можно создать первое произведение прямо с этой страницы.</div>
+      <div v-else-if="!loading" class="empty-state">{{ emptyStateText }}</div>
     </div>
 
     <div class="stack">
@@ -320,50 +410,6 @@ async function submitCreateWork() {
       </article>
 
       <div v-else class="empty-state">Выбери произведение слева, чтобы увидеть полный текст, комментарии и действия.</div>
-
-      <article v-if="isAuthenticated" class="panel stack">
-        <div class="section-head">
-          <h2>Новая публикация</h2>
-          <span class="pill good">mutation createWork</span>
-        </div>
-
-        <form class="stack" @submit.prevent="submitCreateWork">
-          <div class="field">
-            <label for="create-section">Раздел</label>
-            <select id="create-section" v-model="createForm.sectionCode" class="select">
-              <option value="poetry">Поэзия</option>
-              <option value="prose">Проза</option>
-              <option value="project">Творческий проект</option>
-            </select>
-          </div>
-
-          <div v-if="createForm.sectionCode === 'project'" class="field">
-            <label for="create-project-format">Формат проекта</label>
-            <select id="create-project-format" v-model="createForm.projectFormat" class="select">
-              <option v-for="option in projectFormats" :key="option.value || 'default'" :value="option.value">{{ option.label }}</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <label for="create-title">Заголовок</label>
-            <input id="create-title" v-model="createForm.title" class="input" required />
-          </div>
-
-          <div class="field">
-            <label for="create-summary">Краткое описание</label>
-            <textarea id="create-summary" v-model="createForm.summary" class="textarea" placeholder="2–3 предложения о публикации" />
-          </div>
-
-          <div class="field">
-            <label for="create-body">Текст</label>
-            <textarea id="create-body" v-model="createForm.body" class="textarea" placeholder="Полный текст произведения" />
-          </div>
-
-          <button class="btn btn-primary" type="submit" :disabled="createBusy">{{ createBusy ? 'Публикуем…' : 'Опубликовать' }}</button>
-          <div v-if="createStatus" class="message success">{{ createStatus }}</div>
-          <div v-if="createError" class="message error">{{ createError }}</div>
-        </form>
-      </article>
     </div>
   </section>
 </template>

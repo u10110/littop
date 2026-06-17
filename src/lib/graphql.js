@@ -224,8 +224,8 @@ export const AUTHOR_DETAILS_QUERY = gql`
 
 export const WORKS_QUERY = gql`
   ${WORK_PREVIEW_FIELDS}
-  query WorksPage($limit: Int!, $offset: Int!, $sectionCode: String, $search: String) {
-    works(limit: $limit, offset: $offset, sectionCode: $sectionCode, search: $search) {
+  query WorksPage($limit: Int!, $offset: Int!, $sectionCode: String, $search: String, $authorId: ID) {
+    works(limit: $limit, offset: $offset, sectionCode: $sectionCode, search: $search, authorId: $authorId) {
       ...WorkPreviewFields
     }
   }
