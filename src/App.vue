@@ -233,7 +233,7 @@ async function submitLogout() {
     <div class="navwrap">
       <div class="logo-block">
         <div class="logo">Литопотам</div>
-        <div class="logo-subtitle">Vue 3 + Vue Apollo + GraphQL backend</div>
+        <div class="logo-subtitle"></div>
       </div>
 
       <nav class="nav" aria-label="Главное меню">

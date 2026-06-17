@@ -5,6 +5,7 @@ import { RouterLink } from 'vue-router';
 import WorkPublishForm from './WorkPublishForm.vue';
 import { useSession } from '../lib/session.js';
 import { formatDate, formatDateTime } from '../lib/format.js';
+import { filenameToTrackTitle, probeAudioDuration, uploadRadioTrack } from '../lib/radio.js';
 
 const {
   currentUser,
@@ -24,11 +25,19 @@ const myWorksLink = computed(() => ({
 }));
 const profileSuccess = ref('');
 const publishStatus = ref('');
+const audioBusy = ref(false);
+const audioError = ref('');
+const audioSuccess = ref('');
+const audioFileInput = ref(null);
 const profileForm = ref({
   displayName: '',
   city: '',
   websiteUrl: '',
   bio: '',
+});
+const audioForm = ref({
+  title: '',
+  file: null,
 });
 
 onMounted(() => {
@@ -83,6 +92,52 @@ async function submitProfile() {
 function handleWorkCreated(createdWork) {
   const title = createdWork?.title ? ` «${createdWork.title}»` : '';
   publishStatus.value = `Новая публикация${title} сохранена. Открой «Мои произведения», чтобы сразу её увидеть.`;
+}
+
+function resetAudioForm() {
+  audioForm.value = {
+    title: '',
+    file: null,
+  };
+  audioError.value = '';
+  audioSuccess.value = '';
+  if (audioFileInput.value) {
+    audioFileInput.value.value = '';
+  }
+}
+
+function handleAudioFileChange(event) {
+  const file = event?.target?.files?.[0] ?? null;
+  audioForm.value.file = file;
+  audioError.value = '';
+  audioSuccess.value = '';
+
+  if (file && !audioForm.value.title.trim()) {
+    audioForm.value.title = filenameToTrackTitle(file.name);
+  }
+}
+
+async function submitAudio() {
+  audioBusy.value = true;
+  audioError.value = '';
+  audioSuccess.value = '';
+
+  try {
+    const file = audioForm.value.file;
+    const durationSeconds = await probeAudioDuration(file);
+    const track = await uploadRadioTrack({
+      title: audioForm.value.title,
+      file,
+      durationSeconds,
+    });
+    const title = track?.title ? ` «${track.title}»` : '';
+    resetAudioForm();
+    audioSuccess.value = `Аудио${title} загружено. Оно уже доступно на странице «Радио».`;
+  } catch (error) {
+    audioError.value = error instanceof Error ? error.message : 'Не удалось загрузить аудио.';
+  } finally {
+    audioBusy.value = false;
+  }
 }
 </script>
 
@@ -257,6 +312,8 @@ function handleWorkCreated(createdWork) {
           <div class="inline-actions">
             <RouterLink class="btn btn-primary" :to="myWorksLink">Мои произведения</RouterLink>
             <a class="btn btn-outline" href="#publish-work">Добавить публикацию</a>
+            <a class="btn btn-outline" href="#upload-audio">Добавить аудио</a>
+            <RouterLink class="btn btn-outline" to="/radio">Радио</RouterLink>
             <RouterLink class="btn btn-outline" to="/works">Все произведения</RouterLink>
             <RouterLink class="btn btn-outline" to="/authors">Авторы</RouterLink>
             <RouterLink class="btn btn-outline" to="/forum">Форум</RouterLink>
@@ -270,6 +327,53 @@ function handleWorkCreated(createdWork) {
       <section id="publish-work" class="section-block">
         <div v-if="publishStatus" class="message success">{{ publishStatus }}</div>
         <WorkPublishForm @created="handleWorkCreated" />
+      </section>
+
+      <section id="upload-audio" class="section-block">
+        <article class="panel">
+          <div class="section-head">
+            <h2>Добавить аудио</h2>
+            <span class="pill">Файл → папка + БД</span>
+          </div>
+
+          <p class="note">
+            Загруженный аудиофайл сохраняется на сервере, запись попадает в <code>radio_tracks</code>, а трек сразу
+            появляется на странице «Радио».
+          </p>
+
+          <div v-if="audioError" class="message error">{{ audioError }}</div>
+          <div v-if="audioSuccess" class="message success">{{ audioSuccess }}</div>
+
+          <form class="auth-grid" @submit.prevent="submitAudio">
+            <div class="field">
+              <label for="audio-title">Название аудио</label>
+              <input id="audio-title" v-model="audioForm.title" class="input" required placeholder="Например, Вечерний эфир" />
+            </div>
+
+            <div class="field">
+              <label for="audio-file">Аудиофайл</label>
+              <input
+                id="audio-file"
+                ref="audioFileInput"
+                class="input"
+                type="file"
+                accept="audio/*"
+                required
+                @change="handleAudioFileChange"
+              />
+            </div>
+
+            <div class="inline-actions">
+              <button class="btn btn-primary" type="submit" :disabled="audioBusy">
+                {{ audioBusy ? 'Загружаем…' : 'Загрузить аудио' }}
+              </button>
+              <button class="btn btn-outline" type="button" :disabled="audioBusy" @click="resetAudioForm">
+                Сбросить
+              </button>
+              <RouterLink class="btn btn-outline" to="/radio">Открыть радио</RouterLink>
+            </div>
+          </form>
+        </article>
       </section>
     </template>
   </section>
