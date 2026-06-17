@@ -1,13 +1,15 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
-import { RouterLink, RouterView } from 'vue-router';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { RouterLink, RouterView, useRoute } from 'vue-router';
 
 import { getGraphqlEndpoint } from './lib/auth.js';
 import { useSession } from './lib/session.js';
 
 const endpoint = getGraphqlEndpoint();
+const route = useRoute();
 const authMode = ref('login');
 const authSuccess = ref('');
+const isAuthModalOpen = ref(false);
 const loginForm = ref({
   identifier: '',
   password: '',
@@ -34,35 +36,103 @@ const {
 
 const displayName = computed(() => currentUser.value?.profile?.displayName || currentUser.value?.login || 'Автор');
 
+let successTimer = null;
+
+function clearSuccessTimer() {
+  if (successTimer) {
+    clearTimeout(successTimer);
+    successTimer = null;
+  }
+}
+
+function setSuccessMessage(message) {
+  clearSuccessTimer();
+  authSuccess.value = message;
+  if (message) {
+    successTimer = setTimeout(() => {
+      authSuccess.value = '';
+      successTimer = null;
+    }, 4000);
+  }
+}
+
+function openAuthModal(mode = 'login') {
+  authMode.value = mode;
+  isAuthModalOpen.value = true;
+}
+
+function closeAuthModal() {
+  isAuthModalOpen.value = false;
+}
+
+function handleOpenAuthEvent(event) {
+  openAuthModal(event?.detail?.mode === 'register' ? 'register' : 'login');
+}
+
 onMounted(() => {
   bootstrapSession();
+  window.addEventListener('littop:open-auth', handleOpenAuthEvent);
+});
+
+onBeforeUnmount(() => {
+  clearSuccessTimer();
+  window.removeEventListener('littop:open-auth', handleOpenAuthEvent);
+  document.body.style.overflow = '';
+});
+
+watch(isAuthModalOpen, (value) => {
+  document.body.style.overflow = value ? 'hidden' : '';
+});
+
+watch(
+  [() => route.name, bootstrapped, isAuthenticated],
+  ([name, isBootstrapped, authed]) => {
+    if (name === 'personal' && isBootstrapped && !authed) {
+      openAuthModal('login');
+    }
+  },
+  { immediate: true },
+);
+
+watch(isAuthenticated, (value) => {
+  if (value && isAuthModalOpen.value) {
+    closeAuthModal();
+  }
 });
 
 async function submitLogin() {
-  authSuccess.value = '';
-  await login({
-    identifier: loginForm.value.identifier.trim(),
-    password: loginForm.value.password,
-  });
-  loginForm.value = { identifier: '', password: '' };
-  authSuccess.value = 'Вход выполнен. Теперь доступны публикации, комментарии и форумные ответы.';
+  try {
+    await login({
+      identifier: loginForm.value.identifier.trim(),
+      password: loginForm.value.password,
+    });
+    loginForm.value = { identifier: '', password: '' };
+    setSuccessMessage('Вход выполнен. Модальное окно закрыто.');
+    closeAuthModal();
+  } catch {
+    // Ошибка уже отдана в authError из session store.
+  }
 }
 
 async function submitRegister() {
-  authSuccess.value = '';
-  await register({
-    email: registerForm.value.email.trim(),
-    login: registerForm.value.login.trim(),
-    password: registerForm.value.password,
-    displayName: registerForm.value.displayName.trim(),
-  });
-  registerForm.value = { email: '', login: '', password: '', displayName: '' };
-  authSuccess.value = 'Регистрация прошла успешно. Сессия уже открыта.';
+  try {
+    await register({
+      email: registerForm.value.email.trim(),
+      login: registerForm.value.login.trim(),
+      password: registerForm.value.password,
+      displayName: registerForm.value.displayName.trim(),
+    });
+    registerForm.value = { email: '', login: '', password: '', displayName: '' };
+    setSuccessMessage('Профиль создан. Модальное окно закрыто.');
+    closeAuthModal();
+  } catch {
+    // Ошибка уже отдана в authError из session store.
+  }
 }
 
 async function submitLogout() {
-  authSuccess.value = 'Сессия завершена.';
   await logout();
+  setSuccessMessage('Сессия завершена.');
 }
 </script>
 
@@ -71,7 +141,7 @@ async function submitLogout() {
     <div class="navwrap">
       <div class="logo-block">
         <div class="logo">Литопотам</div>
-        <div class="logo-subtitle">Vue 3 + Vue Apollo + GraphQL backend</div>
+        <div class="logo-subtitle"></div>
       </div>
 
       <nav class="nav" aria-label="Главное меню">
@@ -81,6 +151,7 @@ async function submitLogout() {
         <RouterLink to="/contests">Конкурсы</RouterLink>
         <RouterLink to="/radio">Радио</RouterLink>
         <RouterLink to="/forum">Форум</RouterLink>
+        <RouterLink to="/personal">Мой кабинет</RouterLink>
       </nav>
 
       <div class="actions">
@@ -94,72 +165,93 @@ async function submitLogout() {
             <div class="meta">Роль: {{ currentUser?.role }} · статус: {{ currentUser?.status }}</div>
           </div>
           <div class="inline-actions">
+            <RouterLink class="btn btn-outline" to="/personal">Personal</RouterLink>
             <button class="btn btn-outline" type="button" @click="submitLogout">Выйти</button>
           </div>
         </div>
 
-        <div v-else class="auth-box">
-          <div class="auth-toggle">
-            <button
-              class="btn"
-              :class="authMode === 'login' ? 'btn-primary' : 'btn-outline'"
-              type="button"
-              @click="authMode = 'login'"
-            >
-              Вход
-            </button>
-            <button
-              class="btn"
-              :class="authMode === 'register' ? 'btn-primary' : 'btn-outline'"
-              type="button"
-              @click="authMode = 'register'"
-            >
-              Регистрация
-            </button>
-          </div>
-
-          <form v-if="authMode === 'login'" class="auth-grid" @submit.prevent="submitLogin">
-            <div class="field">
-              <label for="login-identifier">Email или логин</label>
-              <input id="login-identifier" v-model="loginForm.identifier" class="input" required />
-            </div>
-            <div class="field">
-              <label for="login-password">Пароль</label>
-              <input id="login-password" v-model="loginForm.password" class="input" type="password" required />
-            </div>
-            <button class="btn btn-primary" type="submit" :disabled="authBusy">{{ authBusy ? 'Входим…' : 'Войти' }}</button>
-          </form>
-
-          <form v-else class="auth-grid" @submit.prevent="submitRegister">
-            <div class="field">
-              <label for="register-display-name">Отображаемое имя</label>
-              <input id="register-display-name" v-model="registerForm.displayName" class="input" required />
-            </div>
-            <div class="field">
-              <label for="register-login">Логин</label>
-              <input id="register-login" v-model="registerForm.login" class="input" required />
-            </div>
-            <div class="field">
-              <label for="register-email">Email</label>
-              <input id="register-email" v-model="registerForm.email" class="input" type="email" required />
-            </div>
-            <div class="field">
-              <label for="register-password">Пароль</label>
-              <input id="register-password" v-model="registerForm.password" class="input" type="password" required />
-            </div>
-            <button class="btn btn-primary" type="submit" :disabled="authBusy">
-              {{ authBusy ? 'Создаём профиль…' : 'Создать профиль' }}
-            </button>
-          </form>
+        <div v-else class="actions-compact">
+          <button class="btn btn-primary" type="button" @click="openAuthModal('login')">Войти</button>
+          <button class="btn btn-outline" type="button" @click="openAuthModal('register')">Регистрация</button>
         </div>
       </div>
     </div>
   </header>
 
+  <Transition name="fade-modal">
+    <div v-if="isAuthModalOpen" class="modal-backdrop" @click.self="closeAuthModal">
+      <div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+        <div class="section-head">
+          <div class="stack compact-stack">
+            <h2 id="auth-modal-title">{{ authMode === 'login' ? 'Авторизация' : 'Регистрация' }}</h2>
+            <span class="meta">
+              {{ authMode === 'login' ? 'Войди в аккаунт, чтобы открыть personal и живые действия.' : 'Создай профиль и сразу попади в personal.' }}
+            </span>
+          </div>
+          <button class="btn btn-ghost modal-close" type="button" @click="closeAuthModal" aria-label="Закрыть">×</button>
+        </div>
+
+        <div class="auth-toggle">
+          <button
+            class="btn"
+            :class="authMode === 'login' ? 'btn-primary' : 'btn-outline'"
+            type="button"
+            @click="authMode = 'login'"
+          >
+            Вход
+          </button>
+          <button
+            class="btn"
+            :class="authMode === 'register' ? 'btn-primary' : 'btn-outline'"
+            type="button"
+            @click="authMode = 'register'"
+          >
+            Регистрация
+          </button>
+        </div>
+
+        <div v-if="authError" class="message error">{{ authError }}</div>
+
+        <form v-if="authMode === 'login'" class="auth-grid" @submit.prevent="submitLogin">
+          <div class="field">
+            <label for="login-identifier">Email или логин</label>
+            <input id="login-identifier" v-model="loginForm.identifier" class="input" required />
+          </div>
+          <div class="field">
+            <label for="login-password">Пароль</label>
+            <input id="login-password" v-model="loginForm.password" class="input" type="password" required />
+          </div>
+          <button class="btn btn-primary" type="submit" :disabled="authBusy">{{ authBusy ? 'Входим…' : 'Войти' }}</button>
+        </form>
+
+        <form v-else class="auth-grid" @submit.prevent="submitRegister">
+          <div class="field">
+            <label for="register-display-name">Отображаемое имя</label>
+            <input id="register-display-name" v-model="registerForm.displayName" class="input" required />
+          </div>
+          <div class="field">
+            <label for="register-login">Логин</label>
+            <input id="register-login" v-model="registerForm.login" class="input" required />
+          </div>
+          <div class="field">
+            <label for="register-email">Email</label>
+            <input id="register-email" v-model="registerForm.email" class="input" type="email" required />
+          </div>
+          <div class="field">
+            <label for="register-password">Пароль</label>
+            <input id="register-password" v-model="registerForm.password" class="input" type="password" required />
+          </div>
+          <button class="btn btn-primary" type="submit" :disabled="authBusy">
+            {{ authBusy ? 'Создаём профиль…' : 'Создать профиль' }}
+          </button>
+        </form>
+      </div>
+    </div>
+  </Transition>
+
   <main>
     <div v-if="!bootstrapped && !isAuthenticated" class="message">Проверяем сохранённую сессию…</div>
     <div v-if="bootstrapError" class="message error">{{ bootstrapError }}</div>
-    <div v-if="authError" class="message error">{{ authError }}</div>
     <div v-if="authSuccess" class="message success">{{ authSuccess }}</div>
 
     <RouterView />

@@ -33,17 +33,10 @@ const healthTone = computed(() => {
 
 <template>
   <section class="hero">
-    <h1>Литопотам — уже не статичный макет, а живой frontend на GraphQL</h1>
-    <p>
-      Главная теперь забирает данные из backend: состояние API, витрину авторов, свежие произведения,
-      форумные темы, конкурсы и радио. Все секции ниже рендерятся из Apollo-запросов, а не из вшитого HTML.
-    </p>
+      <h1>Литопотам — писать, читать, оценивать</h1>
+       <p>Регистрация для авторов, публикация стихов, прозы и проектов. Оценки и комментарии от читателей. Форум для живого общения.</p>
     <div class="chips">
-      <span class="pill" :class="healthTone">API: {{ loading ? 'загрузка…' : health?.status ?? 'нет ответа' }}</span>
-      <span class="pill" :class="health?.database ? 'good' : 'danger'">
-        База: {{ loading ? 'проверяем…' : health?.database ? 'доступна' : 'недоступна' }}
-      </span>
-      <span class="pill">Vue Apollo подключён</span>
+   
     </div>
   </section>
 

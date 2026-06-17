@@ -105,6 +105,14 @@ main {
   gap: 12px;
 }
 
+.actions-compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
 main {
   display: flex;
   flex-direction: column;
@@ -373,7 +381,77 @@ button:disabled {
   width: min(360px, 100%);
   padding: 16px;
   display: grid;
+  position: absolute;
   gap: 12px;
+}
+
+.compact-stack {
+  gap: 4px;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.56);
+}
+
+.auth-modal {
+  width: min(520px, 100%);
+  max-height: min(92vh, 760px);
+  overflow: auto;
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: 0 24px 60px rgba(17, 24, 39, 0.24);
+  display: grid;
+  gap: 16px;
+}
+
+.modal-close {
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.fade-modal-enter-active,
+.fade-modal-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-modal-enter-active .auth-modal,
+.fade-modal-leave-active .auth-modal {
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.fade-modal-enter-from,
+.fade-modal-leave-to {
+  opacity: 0;
+}
+
+.fade-modal-enter-from .auth-modal,
+.fade-modal-leave-to .auth-modal {
+  opacity: 0;
+  transform: translateY(10px) scale(0.985);
+}
+
+.personal-layout {
+  align-items: start;
+}
+
+.personal-details {
+  gap: 12px;
+}
+
+.personal-guest-panel {
+  padding: 22px;
 }
 
 .auth-grid {
@@ -450,6 +528,10 @@ hr.divider {
     flex-direction: column;
   }
 
+  .actions-compact {
+    justify-content: flex-start;
+  }
+
   .nav {
     justify-content: flex-start;
   }
@@ -464,6 +546,15 @@ hr.divider {
   .navwrap,
   main {
     width: min(100%, calc(100% - 24px));
+  }
+
+  .modal-backdrop {
+    padding: 16px;
+  }
+
+  .auth-modal {
+    padding: 18px;
+    border-radius: 20px;
   }
 
   .hero,
