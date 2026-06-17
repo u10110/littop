@@ -1,4 +1,15 @@
 export const TOKEN_STORAGE_KEY = 'littop.auth.token';
+export const SOCIAL_AUTH_CALLBACK_PATH = '/auth/callback';
+export const SOCIAL_AUTH_PROVIDERS = {
+  vk: {
+    code: 'vk',
+    label: 'ВКонтакте',
+  },
+  ok: {
+    code: 'ok',
+    label: 'Одноклассники',
+  },
+};
 
 export function resolveGraphqlEndpoint(rawValue) {
   const normalized = typeof rawValue === 'string' ? rawValue.trim() : '';
@@ -7,6 +18,92 @@ export function resolveGraphqlEndpoint(rawValue) {
 
 export function getGraphqlEndpoint() {
   return resolveGraphqlEndpoint(import.meta.env.VITE_GRAPHQL_ENDPOINT);
+}
+
+export function resolveBackendBaseUrl(graphqlEndpoint = getGraphqlEndpoint()) {
+  const endpoint = resolveGraphqlEndpoint(graphqlEndpoint);
+
+  try {
+    const url = new URL(endpoint);
+    const normalizedPath = url.pathname.replace(/\/+$/, '') || '/';
+    let basePath = normalizedPath;
+
+    if (normalizedPath === '/graphql') {
+      basePath = '';
+    } else if (normalizedPath.endsWith('/graphql')) {
+      basePath = normalizedPath.slice(0, -'/graphql'.length);
+    }
+
+    return `${url.origin}${basePath.replace(/\/+$/, '')}`;
+  } catch {
+    return endpoint.replace(/\/+$/, '');
+  }
+}
+
+export function buildSocialAuthCallbackUrl({
+  currentOrigin = globalThis.location?.origin || 'http://localhost:5173',
+  redirectTo = '/personal',
+  provider = '',
+  mode = 'login',
+} = {}) {
+  const url = new URL(SOCIAL_AUTH_CALLBACK_PATH, currentOrigin);
+
+  if (provider) {
+    url.searchParams.set('provider', provider);
+  }
+
+  if (mode) {
+    url.searchParams.set('mode', mode);
+  }
+
+  if (redirectTo) {
+    url.searchParams.set('redirect', redirectTo);
+  }
+
+  return url.toString();
+}
+
+export function buildSocialAuthStartUrl(
+  provider,
+  {
+    mode = 'login',
+    graphqlEndpoint = getGraphqlEndpoint(),
+    currentOrigin = globalThis.location?.origin || 'http://localhost:5173',
+    redirectTo = '/personal',
+  } = {},
+) {
+  const backendBaseUrl = resolveBackendBaseUrl(graphqlEndpoint);
+  const url = new URL(`${backendBaseUrl}/auth/social/${provider}/start`);
+  url.searchParams.set('mode', mode);
+  url.searchParams.set(
+    'redirect_uri',
+    buildSocialAuthCallbackUrl({ currentOrigin, redirectTo, provider, mode }),
+  );
+  return url.toString();
+}
+
+export function parseSocialAuthCallbackParams(searchParamsLike) {
+  const params = searchParamsLike instanceof URLSearchParams
+    ? searchParamsLike
+    : new URLSearchParams(searchParamsLike || '');
+
+  const pick = (...keys) => {
+    for (const key of keys) {
+      const value = params.get(key);
+      if (typeof value === 'string' && value.trim()) {
+        return value.trim();
+      }
+    }
+    return '';
+  };
+
+  return {
+    token: pick('token', 'authToken', 'access_token'),
+    error: pick('error', 'authError'),
+    provider: pick('provider'),
+    mode: pick('mode') || 'login',
+    redirectTo: pick('redirect', 'next', 'returnTo') || '/personal',
+  };
 }
 
 export function getStoredToken(storage = globalThis.localStorage) {

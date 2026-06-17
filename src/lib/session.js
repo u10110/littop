@@ -123,6 +123,20 @@ export function useSession() {
     }
   }
 
+  async function completeExternalAuthToken(token) {
+    state.authBusy = true;
+    state.authError = '';
+    try {
+      await finishAuth(token);
+      return state.currentUser;
+    } catch (error) {
+      state.authError = extractGraphqlErrorMessage(error, 'Не удалось завершить вход через соцсеть.');
+      throw error;
+    } finally {
+      state.authBusy = false;
+    }
+  }
+
   async function logout() {
     clearStoredToken();
     state.token = '';
@@ -148,6 +162,7 @@ export function useSession() {
     login,
     register,
     saveProfile,
+    completeExternalAuthToken,
     logout,
     bootstrapSession,
   };

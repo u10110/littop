@@ -6,6 +6,7 @@ import Contests from '../components/Contests.vue';
 import Radio from '../components/Radio.vue';
 import Forum from '../components/Forum.vue';
 import Personal from '../components/Personal.vue';
+import SocialAuthCallback from '../components/SocialAuthCallback.vue';
 
 const routes = [
   { path: '/', name: 'home', component: Home },
@@ -15,6 +16,7 @@ const routes = [
   { path: '/radio', name: 'radio', component: Radio },
   { path: '/forum', name: 'forum', component: Forum },
   { path: '/personal', name: 'personal', component: Personal },
+  { path: '/auth/callback', name: 'social-auth-callback', component: SocialAuthCallback },
 ];
 
 const router = createRouter({

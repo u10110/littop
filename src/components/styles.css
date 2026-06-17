@@ -459,6 +459,26 @@ button:disabled {
   gap: 10px;
 }
 
+.social-auth-block {
+  display: grid;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.social-auth-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.btn-social {
+  width: 100%;
+}
+
+.social-auth-callback {
+  max-width: 720px;
+}
+
 .user-card {
   min-width: 240px;
 }

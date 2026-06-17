@@ -1,14 +1,22 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { RouterLink, RouterView, useRoute } from 'vue-router';
+import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router';
 
-import { getGraphqlEndpoint } from './lib/auth.js';
+import {
+  SOCIAL_AUTH_CALLBACK_PATH,
+  SOCIAL_AUTH_PROVIDERS,
+  buildSocialAuthStartUrl,
+  getGraphqlEndpoint,
+  parseSocialAuthCallbackParams,
+} from './lib/auth.js';
 import { useSession } from './lib/session.js';
 
 const endpoint = getGraphqlEndpoint();
 const route = useRoute();
+const router = useRouter();
 const authMode = ref('login');
 const authSuccess = ref('');
+const socialAuthFeedback = ref('');
 const isAuthModalOpen = ref(false);
 const loginForm = ref({
   identifier: '',
@@ -20,6 +28,7 @@ const registerForm = ref({
   password: '',
   displayName: '',
 });
+const socialProviders = Object.values(SOCIAL_AUTH_PROVIDERS);
 
 const {
   currentUser,
@@ -30,6 +39,7 @@ const {
   bootstrapped,
   login,
   register,
+  completeExternalAuthToken,
   logout,
   bootstrapSession,
 } = useSession();
@@ -37,6 +47,7 @@ const {
 const displayName = computed(() => currentUser.value?.profile?.displayName || currentUser.value?.login || 'Автор');
 
 let successTimer = null;
+let lastHandledSocialCallback = '';
 
 function clearSuccessTimer() {
   if (successTimer) {
@@ -69,6 +80,79 @@ function handleOpenAuthEvent(event) {
   openAuthModal(event?.detail?.mode === 'register' ? 'register' : 'login');
 }
 
+function providerLabel(providerCode) {
+  return SOCIAL_AUTH_PROVIDERS[providerCode]?.label || 'соцсеть';
+}
+
+function resolveRedirectTarget(rawValue) {
+  const fallback = '/personal';
+  if (typeof rawValue !== 'string' || !rawValue.trim()) {
+    return fallback;
+  }
+
+  try {
+    const url = new URL(rawValue, window.location.origin);
+    if (url.origin !== window.location.origin) {
+      return fallback;
+    }
+    return `${url.pathname}${url.search}${url.hash}` || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function startSocialAuth(provider, mode = 'login') {
+  socialAuthFeedback.value = '';
+  const authUrl = buildSocialAuthStartUrl(provider, {
+    mode,
+    graphqlEndpoint: endpoint,
+    currentOrigin: window.location.origin,
+    redirectTo: '/personal',
+  });
+  window.location.assign(authUrl);
+}
+
+async function handleSocialAuthCallback() {
+  if (route.path !== SOCIAL_AUTH_CALLBACK_PATH) {
+    return;
+  }
+
+  const callbackSignature = window.location.search;
+  if (callbackSignature === lastHandledSocialCallback) {
+    return;
+  }
+  lastHandledSocialCallback = callbackSignature;
+
+  const { token, error, provider, mode, redirectTo } = parseSocialAuthCallbackParams(window.location.search);
+  const targetPath = resolveRedirectTarget(redirectTo);
+
+  if (error) {
+    socialAuthFeedback.value = `Не удалось завершить вход через ${providerLabel(provider)}.`;
+    await router.replace(targetPath);
+    return;
+  }
+
+  if (!token) {
+    socialAuthFeedback.value = 'Соцсеть не вернула токен авторизации.';
+    await router.replace(targetPath);
+    return;
+  }
+
+  try {
+    await completeExternalAuthToken(token);
+    socialAuthFeedback.value = '';
+    setSuccessMessage(
+      mode === 'register'
+        ? `Профиль через ${providerLabel(provider)} создан и активирован.`
+        : `Вход через ${providerLabel(provider)} выполнен.`,
+    );
+  } catch {
+    socialAuthFeedback.value = `Не удалось завершить вход через ${providerLabel(provider)}.`;
+  } finally {
+    await router.replace(targetPath);
+  }
+}
+
 onMounted(() => {
   bootstrapSession();
   window.addEventListener('littop:open-auth', handleOpenAuthEvent);
@@ -99,6 +183,14 @@ watch(isAuthenticated, (value) => {
     closeAuthModal();
   }
 });
+
+watch(
+  () => route.fullPath,
+  () => {
+    void handleSocialAuthCallback();
+  },
+  { immediate: true },
+);
 
 async function submitLogin() {
   try {
@@ -141,7 +233,7 @@ async function submitLogout() {
     <div class="navwrap">
       <div class="logo-block">
         <div class="logo">Литопотам</div>
-        <div class="logo-subtitle"></div>
+        <div class="logo-subtitle">Vue 3 + Vue Apollo + GraphQL backend</div>
       </div>
 
       <nav class="nav" aria-label="Главное меню">
@@ -222,6 +314,20 @@ async function submitLogout() {
             <input id="login-password" v-model="loginForm.password" class="input" type="password" required />
           </div>
           <button class="btn btn-primary" type="submit" :disabled="authBusy">{{ authBusy ? 'Входим…' : 'Войти' }}</button>
+          <div class="social-auth-block">
+            <div class="meta">Или войди через соцсеть</div>
+            <div class="social-auth-grid">
+              <button
+                v-for="provider in socialProviders"
+                :key="`login-${provider.code}`"
+                class="btn btn-outline btn-social"
+                type="button"
+                @click="startSocialAuth(provider.code, 'login')"
+              >
+                {{ provider.label }}
+              </button>
+            </div>
+          </div>
         </form>
 
         <form v-else class="auth-grid" @submit.prevent="submitRegister">
@@ -244,6 +350,20 @@ async function submitLogout() {
           <button class="btn btn-primary" type="submit" :disabled="authBusy">
             {{ authBusy ? 'Создаём профиль…' : 'Создать профиль' }}
           </button>
+          <div class="social-auth-block">
+            <div class="meta">Или зарегистрируйся через соцсеть</div>
+            <div class="social-auth-grid">
+              <button
+                v-for="provider in socialProviders"
+                :key="`register-${provider.code}`"
+                class="btn btn-outline btn-social"
+                type="button"
+                @click="startSocialAuth(provider.code, 'register')"
+              >
+                {{ provider.label }}
+              </button>
+            </div>
+          </div>
         </form>
       </div>
     </div>
@@ -252,6 +372,7 @@ async function submitLogout() {
   <main>
     <div v-if="!bootstrapped && !isAuthenticated" class="message">Проверяем сохранённую сессию…</div>
     <div v-if="bootstrapError" class="message error">{{ bootstrapError }}</div>
+    <div v-if="socialAuthFeedback" class="message error">{{ socialAuthFeedback }}</div>
     <div v-if="authSuccess" class="message success">{{ authSuccess }}</div>
 
     <RouterView />
