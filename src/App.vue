@@ -141,7 +141,7 @@ async function submitLogout() {
     <div class="navwrap">
       <div class="logo-block">
         <div class="logo">Литопотам</div>
-        <div class="logo-subtitle"></div>
+        <div class="logo-subtitle">Vue 3 + Vue Apollo + GraphQL backend</div>
       </div>
 
       <nav class="nav" aria-label="Главное меню">
@@ -165,7 +165,7 @@ async function submitLogout() {
             <div class="meta">Роль: {{ currentUser?.role }} · статус: {{ currentUser?.status }}</div>
           </div>
           <div class="inline-actions">
-            <RouterLink class="btn btn-outline" to="/personal">Personal</RouterLink>
+            <RouterLink class="btn btn-outline" to="/personal">Мой кабинет</RouterLink>
             <button class="btn btn-outline" type="button" @click="submitLogout">Выйти</button>
           </div>
         </div>

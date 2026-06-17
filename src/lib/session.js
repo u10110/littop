@@ -7,7 +7,7 @@ import {
   getStoredToken,
   setStoredToken,
 } from './auth.js';
-import { LOGIN_MUTATION, ME_QUERY, REGISTER_MUTATION } from './graphql.js';
+import { LOGIN_MUTATION, ME_QUERY, REGISTER_MUTATION, UPDATE_MY_PROFILE_MUTATION } from './graphql.js';
 
 const state = reactive({
   token: getStoredToken(),
@@ -15,6 +15,8 @@ const state = reactive({
   bootstrapped: false,
   authBusy: false,
   authError: '',
+  profileBusy: false,
+  profileError: '',
   bootstrapError: '',
 });
 
@@ -103,11 +105,30 @@ export function useSession() {
     }
   }
 
+  async function saveProfile(input) {
+    state.profileBusy = true;
+    state.profileError = '';
+    try {
+      const { data } = await apolloClient.mutate({
+        mutation: UPDATE_MY_PROFILE_MUTATION,
+        variables: { input },
+      });
+      state.currentUser = data?.updateMyProfile ?? state.currentUser;
+      return state.currentUser;
+    } catch (error) {
+      state.profileError = extractGraphqlErrorMessage(error, 'Не удалось сохранить профиль.');
+      throw error;
+    } finally {
+      state.profileBusy = false;
+    }
+  }
+
   async function logout() {
     clearStoredToken();
     state.token = '';
     state.currentUser = null;
     state.authError = '';
+    state.profileError = '';
     state.bootstrapError = '';
     state.bootstrapped = true;
     await apolloClient.clearStore();
@@ -120,10 +141,13 @@ export function useSession() {
     isAuthenticated: computed(() => Boolean(state.currentUser && state.token)),
     authBusy: computed(() => state.authBusy),
     authError: computed(() => state.authError),
+    profileBusy: computed(() => state.profileBusy),
+    profileError: computed(() => state.profileError),
     bootstrapError: computed(() => state.bootstrapError),
     bootstrapped: computed(() => state.bootstrapped),
     login,
     register,
+    saveProfile,
     logout,
     bootstrapSession,
   };

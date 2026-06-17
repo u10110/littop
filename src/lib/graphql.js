@@ -312,6 +312,15 @@ export const REGISTER_MUTATION = gql`
   }
 `;
 
+export const UPDATE_MY_PROFILE_MUTATION = gql`
+  ${USER_SESSION_FIELDS}
+  mutation UpdateMyProfile($input: UpdateMyProfileInput!) {
+    updateMyProfile(input: $input) {
+      ...UserSessionFields
+    }
+  }
+`;
+
 export const CREATE_WORK_MUTATION = gql`
   ${WORK_PREVIEW_FIELDS}
   mutation CreateWork($input: CreateWorkInput!) {
