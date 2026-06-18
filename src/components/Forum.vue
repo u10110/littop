@@ -16,6 +16,7 @@ const topicStatus = ref('');
 const postStatus = ref('');
 const topicBusy = ref(false);
 const postBusy = ref(false);
+let topicRequestVersion = 0;
 const topicForm = ref({
   sectionSlug: 'tm',
   title: '',
@@ -49,34 +50,55 @@ watch(sections, (items) => {
   }
 }, { immediate: true });
 
-watch(selectedSection, (slug) => {
+watch(selectedSection, (slug, previousSlug) => {
   if (slug) {
     topicForm.value.sectionSlug = slug;
+  }
+
+  if (slug !== previousSlug) {
+    topicRequestVersion += 1;
+    selectedTopicId.value = null;
+    topicDetail.value = null;
+    topicDetailLoading.value = false;
+    topicDetailError.value = '';
+    postStatus.value = '';
+    postBody.value = '';
   }
 });
 
 watch(topics, (items) => {
   if (!items.length) {
+    topicRequestVersion += 1;
     selectedTopicId.value = null;
     topicDetail.value = null;
+    topicDetailLoading.value = false;
+    topicDetailError.value = '';
     return;
   }
 
   const stillExists = items.some((item) => String(item.id) === String(selectedTopicId.value));
   if (!stillExists) {
-    selectedTopicId.value = items[0].id;
+    topicRequestVersion += 1;
+    selectedTopicId.value = null;
+    topicDetail.value = null;
+    topicDetailLoading.value = false;
+    topicDetailError.value = '';
   }
 }, { immediate: true });
 
 watch(selectedTopicId, (topicId) => {
   if (!topicId) {
+    topicRequestVersion += 1;
     topicDetail.value = null;
+    topicDetailLoading.value = false;
+    topicDetailError.value = '';
     return;
   }
   loadTopic(topicId);
 }, { immediate: true });
 
 async function loadTopic(topicId) {
+  const requestVersion = ++topicRequestVersion;
   topicDetailLoading.value = true;
   topicDetailError.value = '';
 
@@ -86,12 +108,23 @@ async function loadTopic(topicId) {
       variables: { topicId },
       fetchPolicy: 'network-only',
     });
+
+    if (requestVersion !== topicRequestVersion) {
+      return;
+    }
+
     topicDetail.value = data?.forumTopic ?? null;
   } catch (queryError) {
+    if (requestVersion !== topicRequestVersion) {
+      return;
+    }
+
     topicDetail.value = null;
     topicDetailError.value = queryError.message;
   } finally {
-    topicDetailLoading.value = false;
+    if (requestVersion === topicRequestVersion) {
+      topicDetailLoading.value = false;
+    }
   }
 }
 
