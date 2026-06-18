@@ -33,7 +33,7 @@ const queryVariables = computed(() => ({
 }));
 
 const { result, loading, error, refetch } = useQuery(FORUM_OVERVIEW_QUERY, queryVariables, {
-  fetchPolicy: 'cache-and-network',
+  fetchPolicy: 'network-only',
 });
 
 const sections = computed(() => result.value?.forumSections ?? []);
@@ -41,12 +41,13 @@ const topics = computed(() => result.value?.forumTopics ?? []);
 
 watch(sections, (items) => {
   if (!items.length) {
-    selectedSection.value = '';
+    topicForm.value.sectionSlug = '';
     return;
   }
 
-  if (!selectedSection.value || !items.some((item) => item.slug === selectedSection.value)) {
-    selectedSection.value = items[0].slug;
+  const stillExists = items.some((item) => item.slug === topicForm.value.sectionSlug);
+  if (!stillExists) {
+    topicForm.value.sectionSlug = items[0].slug;
   }
 }, { immediate: true });
 
@@ -197,6 +198,14 @@ async function submitPost() {
       <span class="pill">{{ loading ? 'загрузка…' : `${sections.length} секций` }}</span>
     </div>
     <div class="chips">
+      <button
+        class="btn"
+        :class="selectedSection ? 'btn-outline' : 'btn-primary'"
+        type="button"
+        @click="selectedSection = ''"
+      >
+        Все секции
+      </button>
       <button
         v-for="section in sections"
         :key="section.id"
