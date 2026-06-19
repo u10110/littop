@@ -12,7 +12,7 @@ import {
   formatWorkSection,
   ratingLabel,
 } from '../lib/format.js';
-import { buildAuthorPageLocation, buildWorkPageLocation } from '../lib/routes.js';
+import { buildAuthorPageLocation, buildForumTopicPageLocation, buildWorkPageLocation } from '../lib/routes.js';
 
 const { result, loading, error } = useQuery(HOME_QUERY, null, {
   fetchPolicy: 'cache-and-network',
@@ -136,9 +136,13 @@ const healthTone = computed(() => {
             <span class="pill">{{ topic.sectionSlug }}</span>
             <span class="pill">ответов: {{ topic.repliesCount }}</span>
           </div>
-          <h3>{{ topic.title }}</h3>
+          <h3>
+            <RouterLink :to="buildForumTopicPageLocation(topic)">{{ topic.title }}</RouterLink>
+          </h3>
           <div class="meta">
-            {{ topic.author?.displayName || topic.author?.login }} · {{ formatDate(topic.lastPostAt || topic.createdAt) }}
+            <RouterLink v-if="topic.author?.login" class="user-inline-link" :to="buildAuthorPageLocation(topic.author)">{{ topic.author?.displayName || topic.author?.login }}</RouterLink>
+            <template v-else>{{ topic.author?.displayName || topic.author?.login }}</template>
+            · {{ formatDate(topic.lastPostAt || topic.createdAt) }}
           </div>
           <div>{{ excerptText(topic.body, 140) }}</div>
         </article>

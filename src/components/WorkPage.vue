@@ -370,17 +370,12 @@ async function softDeleteCurrentWork() {
         <div>
           <h2>{{ work.title }}</h2>
           <div class="meta">
-            {{ authorLabel(work.author) }} · {{ formatDate(work.publishedAt || work.createdAt) }}
+            <RouterLink v-if="work.author?.login" class="user-inline-link" :to="buildAuthorPageLocation(work.author)">{{ authorLabel(work.author) }}</RouterLink>
+            <template v-else>{{ authorLabel(work.author) }}</template>
+            · {{ formatDate(work.publishedAt || work.createdAt) }}
           </div>
         </div>
         <div class="inline-actions">
-          <RouterLink
-            v-if="work.author?.login"
-            class="btn btn-outline"
-            :to="buildAuthorPageLocation(work.author)"
-          >
-            Страница автора
-          </RouterLink>
           <button
             v-if="isOwner"
             class="btn btn-outline"
@@ -497,7 +492,10 @@ async function softDeleteCurrentWork() {
           </div>
           <div class="comment-item-body">
             <div class="forum-post-author-line">
-              <strong>{{ authorLabel(comment.author) }}</strong>
+              <strong>
+                <RouterLink v-if="comment.author?.login" class="user-inline-link" :to="buildAuthorPageLocation(comment.author)">{{ authorLabel(comment.author) }}</RouterLink>
+                <template v-else>{{ authorLabel(comment.author) }}</template>
+              </strong>
               <span v-if="comment.author?.city" class="meta">· {{ comment.author.city }}</span>
               <span class="meta">· {{ formatDate(comment.updatedAt || comment.createdAt) }}</span>
             </div>

@@ -247,7 +247,10 @@ async function submitProfileImage(kind) {
       <section class="stats-grid">
         <article class="card stat">
           <span class="meta">Автор</span>
-          <span class="value">{{ displayName }}</span>
+          <span class="value">
+            <RouterLink v-if="currentUser?.login" class="user-inline-link" :to="myAuthorPageLink">{{ displayName }}</RouterLink>
+            <template v-else>{{ displayName }}</template>
+          </span>
           <span class="note">@{{ currentUser?.login }}</span>
         </article>
         <article class="card stat">
@@ -446,7 +449,7 @@ async function submitProfileImage(kind) {
             <RouterLink class="btn btn-primary" :to="myWorksLink">Мои произведения</RouterLink>
             <a class="btn btn-outline" href="#publish-work">Добавить публикацию</a>
             <a class="btn btn-outline" href="#upload-audio">Добавить аудио</a>
-            <RouterLink v-if="currentUser?.login" class="btn btn-outline" :to="myAuthorPageLink">Моя страница автора</RouterLink>
+            <RouterLink v-if="currentUser?.login" class="btn btn-outline" :to="myAuthorPageLink">Авторская страница</RouterLink>
             <RouterLink class="btn btn-outline" to="/radio">Радио</RouterLink>
             <RouterLink class="btn btn-outline" to="/works">Все произведения</RouterLink>
             <RouterLink class="btn btn-outline" to="/authors">Авторы</RouterLink>

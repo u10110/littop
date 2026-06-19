@@ -92,6 +92,7 @@ export const FORUM_POST_FIELDS = gql`
     userId
     parentPostId
     body
+    imageUrl
     status
     createdAt
     updatedAt
@@ -403,8 +404,8 @@ export const CREATE_FORUM_TOPIC_MUTATION = gql`
 
 export const CREATE_FORUM_POST_MUTATION = gql`
   ${FORUM_POST_FIELDS}
-  mutation CreateForumPost($topicId: ID!, $body: String!, $parentPostId: ID) {
-    createForumPost(topicId: $topicId, body: $body, parentPostId: $parentPostId) {
+  mutation CreateForumPost($topicId: ID!, $body: String!, $parentPostId: ID, $imageUrl: String) {
+    createForumPost(topicId: $topicId, body: $body, parentPostId: $parentPostId, imageUrl: $imageUrl) {
       ...ForumPostFields
     }
   }
@@ -412,8 +413,8 @@ export const CREATE_FORUM_POST_MUTATION = gql`
 
 export const UPDATE_FORUM_POST_MUTATION = gql`
   ${FORUM_POST_FIELDS}
-  mutation UpdateForumPost($postId: ID!, $body: String!) {
-    updateForumPost(postId: $postId, body: $body) {
+  mutation UpdateForumPost($postId: ID!, $body: String!, $imageUrl: String) {
+    updateForumPost(postId: $postId, body: $body, imageUrl: $imageUrl) {
       ...ForumPostFields
     }
   }
