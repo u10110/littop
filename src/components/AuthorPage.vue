@@ -4,7 +4,7 @@ import { RouterLink, useRoute } from 'vue-router';
 
 import { apolloClient } from '../lib/apollo.js';
 import { AUTHOR_QUERY, WORKS_QUERY } from '../lib/graphql.js';
-import { excerptText, formatDate, formatWorkSection, ratingLabel } from '../lib/format.js';
+import { excerptText, formatDate, formatDateTime, formatWorkSection } from '../lib/format.js';
 import { buildWorkPageLocation, normalizeRouteParam } from '../lib/routes.js';
 
 const route = useRoute();
@@ -18,6 +18,61 @@ const pageError = ref('');
 const authorLogin = computed(() => normalizeRouteParam(route.params.login));
 const hasAuthor = computed(() => Boolean(author.value));
 const notFound = computed(() => !pageLoading.value && !pageError.value && Boolean(authorLogin.value) && !author.value);
+
+const authorInitial = computed(() => {
+  const source = String(author.value?.displayName || author.value?.login || '').trim();
+  return source ? source[0].toUpperCase() : 'А';
+});
+
+const profileLinkLabel = computed(() => {
+  const url = String(author.value?.websiteUrl || '').toLowerCase();
+  if (!url) return '';
+  if (url.includes('telegram') || url.includes('t.me')) return 'Я в Telegram';
+  return 'Сайт автора';
+});
+
+const authorFacts = computed(() => {
+  if (!author.value) return [];
+
+  const facts = [
+    { label: 'Логин', value: `@${author.value.login}` },
+    { label: 'С нами с', value: formatDate(author.value.registeredAt) },
+    { label: 'Рейтинг автора', value: String(author.value.ratingTotal ?? 0) },
+    { label: 'Произведений', value: String(authorWorks.value.length || author.value.worksCountCached || 0) },
+  ];
+
+  if (author.value.city) {
+    facts.push({ label: 'Город', value: author.value.city });
+  }
+
+  if (author.value.isFeatured) {
+    facts.push({ label: 'Статус', value: 'Автор витрины' });
+  } else if (author.value.isClassic) {
+    facts.push({ label: 'Статус', value: 'Классик' });
+  }
+
+  return facts;
+});
+
+const workRows = computed(() => authorWorks.value.map((work, index) => {
+  const parts = [formatWorkSection(work.sectionCode)];
+
+  if (Number(work.averageRating) > 0 || Number(work.ratingsCount) > 0) {
+    parts.push(`рейтинг ${Number(work.averageRating || 0).toFixed(1)}`);
+  }
+
+  if (Number(work.commentsCount) > 0) {
+    parts.push(`отзывов ${work.commentsCount}`);
+  }
+
+  parts.push(`опубл. ${formatDateTime(work.publishedAt || work.createdAt)}`);
+
+  return {
+    ...work,
+    order: index + 1,
+    metaLine: parts.join(' / '),
+  };
+}));
 
 watch(authorLogin, (login) => {
   loadAuthorPage(login);
@@ -79,11 +134,11 @@ async function loadAuthorWorks(authorId) {
 </script>
 
 <template>
-  <section class="page-head">
+  <section class="page-head author-showcase-head">
     <div class="section-head">
       <div>
         <h1>Страница автора</h1>
-        <p class="muted">Публичный профиль автора доступен всем посетителям сайта.</p>
+        <p class="muted">Публичная авторская страница в литературной подаче, как на классическом авторском портале.</p>
       </div>
       <RouterLink class="btn btn-outline" to="/authors">← К списку авторов</RouterLink>
     </div>
@@ -99,62 +154,73 @@ async function loadAuthorWorks(authorId) {
     <div class="empty-state">Автор с таким логином не найден.</div>
   </section>
 
-  <section v-else-if="hasAuthor" class="stack">
-    <article class="panel stack">
-      <div class="section-head">
-        <div>
-          <h2>{{ author.displayName }}</h2>
-          <div class="meta">@{{ author.login }} · с нами с {{ formatDate(author.registeredAt) }}</div>
-        </div>
-        <div class="chips">
-          <span v-if="author.isFeatured" class="pill good">витрина</span>
-          <span v-if="author.isClassic" class="pill warn">классик</span>
-        </div>
-      </div>
-
-      <div class="chips">
-        <span class="pill">рейтинг {{ author.ratingTotal }}</span>
-        <span class="pill">{{ author.worksCountCached }} произведений</span>
-        <span v-if="author.city" class="pill">{{ author.city }}</span>
-      </div>
-
-      <div>{{ author.bio || 'Автор пока не заполнил биографию.' }}</div>
-
-      <div class="inline-actions">
-        <a
-          v-if="author.websiteUrl"
-          class="btn btn-outline"
-          :href="author.websiteUrl"
-          target="_blank"
-          rel="noreferrer"
-        >
-          Сайт автора
-        </a>
-      </div>
-    </article>
-
-    <section class="panel stack">
-      <div class="section-head">
-        <h2>Произведения автора</h2>
-        <span class="pill">{{ worksLoading ? 'обновляем…' : `${authorWorks.length} записей` }}</span>
-      </div>
-
-      <div v-if="authorWorks.length" class="stack">
-        <article v-for="work in authorWorks" :key="work.id" class="work-card stack">
-          <div class="chips">
-            <span class="pill">{{ formatWorkSection(work.sectionCode) }}</span>
-            <span class="pill">{{ ratingLabel(work.averageRating, work.ratingsCount) }}</span>
-            <span class="pill">комментариев: {{ work.commentsCount }}</span>
+  <section v-else-if="hasAuthor" class="author-showcase-page">
+    <div class="author-showcase-shell">
+      <aside class="author-showcase-sidebar">
+        <article class="author-profile-rail">
+          <div class="author-portrait">{{ authorInitial }}</div>
+          <div class="author-name-block">
+            <h2>{{ author.displayName }}</h2>
+            <div class="author-login-link">[{{ author.login }}]</div>
           </div>
-          <div class="section-head">
-            <h3>{{ work.title }}</h3>
-            <RouterLink class="btn btn-outline" :to="buildWorkPageLocation(work)">Открыть произведение</RouterLink>
+
+          <div class="author-status-strip">
+            <span v-if="author.isFeatured" class="author-status-pill">Автор витрины</span>
+            <span v-else-if="author.isClassic" class="author-status-pill">Классик</span>
+            <span v-else class="author-status-pill">Публичная страница</span>
           </div>
-          <div class="meta">{{ formatDate(work.publishedAt || work.createdAt) }}</div>
-          <div>{{ excerptText(work.summary || work.excerpt || work.body, 220) }}</div>
+
+          <div class="author-facts-list">
+            <div v-for="fact in authorFacts" :key="fact.label" class="author-fact-row">
+              <span>{{ fact.label }}</span>
+              <strong>{{ fact.value }}</strong>
+            </div>
+          </div>
+
+          <a
+            v-if="author.websiteUrl"
+            class="author-portal-link"
+            :href="author.websiteUrl"
+            target="_blank"
+            rel="noreferrer"
+          >
+            {{ profileLinkLabel }}
+          </a>
         </article>
+      </aside>
+
+      <div class="author-showcase-main">
+        <article class="author-paper-card">
+          <div class="author-paper-eyebrow">Информация об авторе</div>
+          <h2 class="author-paper-title">{{ author.displayName }}</h2>
+          <div class="author-paper-meta">@{{ author.login }} · на сайте с {{ formatDate(author.registeredAt) }}</div>
+          <div class="author-paper-text">
+            {{ author.bio || 'Автор пока не добавил подробную биографию. Здесь будет литературная визитка, заметки о себе и авторские ссылки.' }}
+          </div>
+        </article>
+
+        <section class="author-paper-card">
+          <div class="section-head">
+            <div>
+              <div class="author-paper-eyebrow">Авторская лента</div>
+              <h3 class="author-paper-title author-paper-title-sm">Произведения</h3>
+            </div>
+            <span class="author-counter">{{ worksLoading ? 'обновляем…' : `${workRows.length} записей` }}</span>
+          </div>
+
+          <ol v-if="workRows.length" class="author-works-ledger">
+            <li v-for="work in workRows" :key="work.id" class="author-works-ledger-item">
+              <div class="author-work-order">{{ work.order }}.</div>
+              <div class="author-work-body">
+                <RouterLink class="author-work-title" :to="buildWorkPageLocation(work)">{{ work.title }}</RouterLink>
+                <div class="author-work-meta">{{ work.metaLine }}</div>
+                <div class="author-work-excerpt">{{ excerptText(work.summary || work.excerpt || work.body, 260) }}</div>
+              </div>
+            </li>
+          </ol>
+          <div v-else-if="!worksLoading" class="empty-state author-empty-ledger">У этого автора пока нет опубликованных произведений.</div>
+        </section>
       </div>
-      <div v-else-if="!worksLoading" class="empty-state">У этого автора пока нет опубликованных произведений.</div>
-    </section>
+    </div>
   </section>
 </template>

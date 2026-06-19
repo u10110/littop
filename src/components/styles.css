@@ -542,6 +542,226 @@ hr.divider {
   margin: 4px 0;
 }
 
+.author-showcase-page {
+  display: grid;
+  gap: 18px;
+}
+
+.author-showcase-shell {
+  display: grid;
+  grid-template-columns: minmax(250px, 300px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.author-showcase-sidebar,
+.author-showcase-main {
+  display: grid;
+  gap: 18px;
+}
+
+.author-profile-rail,
+.author-paper-card {
+  border: 1px solid #d9ccb4;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #fffdf8 0%, #f8f1e4 100%);
+  box-shadow: 0 14px 34px rgba(93, 73, 39, 0.08);
+}
+
+.author-profile-rail {
+  padding: 20px 18px;
+  display: grid;
+  gap: 14px;
+  position: sticky;
+  top: 88px;
+}
+
+.author-portrait {
+  width: 124px;
+  height: 124px;
+  margin: 0 auto;
+  border-radius: 18px;
+  border: 1px solid #ccb796;
+  background: linear-gradient(180deg, #f6e8cf 0%, #ebd5ae 100%);
+  color: #7b5530;
+  display: grid;
+  place-items: center;
+  font-size: 3rem;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 700;
+}
+
+.author-name-block {
+  text-align: center;
+  display: grid;
+  gap: 4px;
+}
+
+.author-name-block h2,
+.author-paper-title,
+.author-work-title {
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.author-name-block h2 {
+  margin: 0;
+  font-size: 1.55rem;
+}
+
+.author-login-link {
+  color: #7b5530;
+  font-size: 0.95rem;
+}
+
+.author-status-strip {
+  display: flex;
+  justify-content: center;
+}
+
+.author-status-pill,
+.author-counter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid #d3c2a7;
+  background: rgba(255, 250, 241, 0.95);
+  color: #7b5530;
+  font-size: 0.92rem;
+}
+
+.author-facts-list {
+  display: grid;
+  gap: 8px;
+}
+
+.author-fact-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(181, 156, 118, 0.35);
+  font-size: 0.96rem;
+}
+
+.author-fact-row:last-child {
+  border-bottom: none;
+}
+
+.author-fact-row span {
+  color: #7a6a57;
+}
+
+.author-fact-row strong {
+  color: #3e3021;
+  text-align: right;
+}
+
+.author-portal-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid #cdb48d;
+  background: #fff8ea;
+  color: #694626;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.author-portal-link:hover {
+  background: #f4e2bf;
+  text-decoration: none;
+}
+
+.author-paper-card {
+  padding: 22px 24px;
+  display: grid;
+  gap: 12px;
+}
+
+.author-paper-eyebrow {
+  color: #8a6b45;
+  font-size: 0.86rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.author-paper-title {
+  margin: 0;
+  font-size: 1.9rem;
+  color: #3f2d1b;
+}
+
+.author-paper-title-sm {
+  font-size: 1.45rem;
+}
+
+.author-paper-meta,
+.author-work-meta {
+  color: #7f6d57;
+  font-size: 0.94rem;
+}
+
+.author-paper-text,
+.author-work-excerpt {
+  color: #33271d;
+}
+
+.author-works-ledger {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0;
+}
+
+.author-works-ledger-item {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px 0;
+  border-top: 1px solid rgba(181, 156, 118, 0.35);
+}
+
+.author-works-ledger-item:first-child {
+  border-top: none;
+}
+
+.author-work-order {
+  color: #7b5530;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.3rem;
+  line-height: 1.5;
+}
+
+.author-work-body {
+  display: grid;
+  gap: 6px;
+}
+
+.author-work-title {
+  color: #5b2a2d;
+  font-size: 1.2rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.author-work-title:hover {
+  color: #8c2f39;
+}
+
+.author-empty-ledger {
+  border: 1px dashed #d3c2a7;
+  border-radius: 12px;
+  background: rgba(255, 251, 244, 0.8);
+  box-shadow: none;
+}
+
 @media (max-width: 980px) {
   .navwrap,
   .actions {
@@ -559,6 +779,14 @@ hr.divider {
   .auth-box,
   .user-card {
     width: 100%;
+  }
+
+  .author-showcase-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .author-profile-rail {
+    position: static;
   }
 }
 
