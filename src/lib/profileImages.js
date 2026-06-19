@@ -37,7 +37,7 @@ export async function uploadProfileImage({
   }
 
   const backendBaseUrl = resolveBackendBaseUrl(graphqlEndpoint);
-  const response = await fetch(`${backendBaseUrl}/api/profile/upload-image`, {
+  const response = await fetch(`${backendBaseUrl}/profile/upload-image`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
