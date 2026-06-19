@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   buildAuthorPageLocation,
+  buildForumTopicPageLocation,
   buildWorkPageLocation,
   normalizeRouteParam,
 } from './routes.js';
@@ -36,6 +37,20 @@ test('buildWorkPageLocation prefers slug and falls back to id', () => {
     name: 'work-public',
     params: { slugOrId: 'my-slug' },
   });
+});
+
+test('buildForumTopicPageLocation prefers slug and falls back to id', () => {
+  assert.deepEqual(buildForumTopicPageLocation({ slug: 'poetry-thread-7', id: 7 }), {
+    name: 'forum-topic-public',
+    params: { slugOrId: 'poetry-thread-7' },
+  });
+
+  assert.deepEqual(buildForumTopicPageLocation({ id: 7 }), {
+    name: 'forum-topic-public',
+    params: { slugOrId: '7' },
+  });
+
+  assert.deepEqual(buildForumTopicPageLocation(''), { name: 'forum' });
 });
 
 test('normalizeRouteParam safely handles arrays and non-strings', () => {

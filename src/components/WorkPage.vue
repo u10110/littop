@@ -1,20 +1,27 @@
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 
 import { apolloClient } from '../lib/apollo.js';
 import {
   ADD_WORK_COMMENT_MUTATION,
+  DELETE_WORK_MUTATION,
   RATE_WORK_MUTATION,
+  UPDATE_WORK_MUTATION,
   WORK_COMMENTS_QUERY,
   WORK_QUERY,
 } from '../lib/graphql.js';
 import { formatDate, formatWorkSection, ratingLabel } from '../lib/format.js';
+import { getAuthorDisplayName, getAuthorInitial } from '../lib/forum.js';
 import { buildAuthorPageLocation, normalizeRouteParam } from '../lib/routes.js';
 import { useSession } from '../lib/session.js';
 
 const route = useRoute();
-const { isAuthenticated } = useSession();
+const {
+  bootstrapSession,
+  currentUser,
+  isAuthenticated,
+} = useSession();
 
 const work = ref(null);
 const workLoading = ref(false);
@@ -27,34 +34,51 @@ const commentBusy = ref(false);
 const commentStatus = ref('');
 const ratingBusy = ref(false);
 const ratingStatus = ref('');
+const editMode = ref(false);
+const editBusy = ref(false);
+const editStatus = ref('');
+const deleteBusy = ref(false);
+const deleteStatus = ref('');
+const editForm = ref({
+  sectionCode: 'poetry',
+  title: '',
+  summary: '',
+  body: '',
+  projectFormat: '',
+});
 let workRequestVersion = 0;
+
+const projectFormats = [
+  { value: '', label: 'Без уточнения' },
+  { value: 'song', label: 'Песня' },
+  { value: 'presentation', label: 'Презентация' },
+  { value: 'stage_production', label: 'Постановка' },
+  { value: 'screenplay', label: 'Киносценарий' },
+  { value: 'other', label: 'Другое' },
+];
 
 const slugOrId = computed(() => normalizeRouteParam(route.params.slugOrId));
 const notFound = computed(() => !workLoading.value && !workError.value && Boolean(slugOrId.value) && !work.value);
+const isOwner = computed(() => {
+  if (!currentUser.value?.id || !work.value?.author?.id) {
+    return false;
+  }
+  return String(currentUser.value.id) === String(work.value.author.id);
+});
+
+onMounted(() => {
+  bootstrapSession();
+});
 
 watch(slugOrId, (value) => {
   loadWorkPage(value);
 }, { immediate: true });
 
-async function loadWorkPage(value) {
-  const requestVersion = workRequestVersion + 1;
-  workRequestVersion = requestVersion;
-  work.value = null;
-  comments.value = [];
-  commentsError.value = '';
-  workError.value = '';
-  commentStatus.value = '';
-  ratingStatus.value = '';
-
-  if (!value) {
-    return;
+watch(work, (value) => {
+  if (value && !editMode.value) {
+    syncEditForm(value);
   }
-
-  const loaded = await fetchWork(value, requestVersion);
-  if (loaded?.id) {
-    await loadComments(loaded.id, requestVersion);
-  }
-}
+}, { immediate: true });
 
 function currentLookupVariables(value) {
   const normalized = String(value || '').trim();
@@ -65,6 +89,73 @@ function currentLookupVariables(value) {
     return { id: normalized, slug: null };
   }
   return { id: null, slug: normalized };
+}
+
+function authorLabel(author) {
+  return getAuthorDisplayName(author);
+}
+
+function authorInitial(author) {
+  return getAuthorInitial(author);
+}
+
+function syncEditForm(sourceWork = work.value) {
+  editForm.value = {
+    sectionCode: sourceWork?.sectionCode || 'poetry',
+    title: sourceWork?.title || '',
+    summary: sourceWork?.summary || sourceWork?.excerpt || '',
+    body: sourceWork?.body || '',
+    projectFormat: sourceWork?.projectFormat || '',
+  };
+}
+
+function normalizeOptional(value) {
+  const normalized = typeof value === 'string' ? value.trim() : '';
+  return normalized || null;
+}
+
+function buildExcerpt(summary, body) {
+  const preferred = normalizeOptional(summary);
+  if (preferred) return preferred;
+  const normalizedBody = normalizeOptional(body);
+  if (!normalizedBody) return null;
+  return normalizedBody.slice(0, 280);
+}
+
+function startEditing() {
+  syncEditForm();
+  editStatus.value = '';
+  deleteStatus.value = '';
+  editMode.value = true;
+}
+
+function cancelEditing() {
+  syncEditForm();
+  editStatus.value = '';
+  editMode.value = false;
+}
+
+async function loadWorkPage(value) {
+  const requestVersion = workRequestVersion + 1;
+  workRequestVersion = requestVersion;
+  work.value = null;
+  comments.value = [];
+  commentsError.value = '';
+  workError.value = '';
+  commentStatus.value = '';
+  ratingStatus.value = '';
+  editStatus.value = '';
+  deleteStatus.value = '';
+  editMode.value = false;
+
+  if (!value) {
+    return;
+  }
+
+  const loaded = await fetchWork(value, requestVersion);
+  if (loaded?.id) {
+    await loadComments(loaded.id, requestVersion);
+  }
 }
 
 async function fetchWork(value, requestVersion = workRequestVersion) {
@@ -132,7 +223,10 @@ async function refreshCurrentWork() {
   if (!slugOrId.value) {
     return;
   }
-  await fetchWork(slugOrId.value);
+  const loaded = await fetchWork(slugOrId.value);
+  if (loaded?.id) {
+    await loadComments(loaded.id);
+  }
 }
 
 async function submitRating(rating) {
@@ -173,14 +267,70 @@ async function submitComment() {
     });
     commentText.value = '';
     commentStatus.value = 'Комментарий опубликован.';
-    await Promise.all([
-      refreshCurrentWork(),
-      loadComments(work.value.id),
-    ]);
+    await refreshCurrentWork();
   } catch (mutationError) {
     commentStatus.value = mutationError.message;
   } finally {
     commentBusy.value = false;
+  }
+}
+
+async function submitWorkUpdate() {
+  if (!work.value) return;
+  editBusy.value = true;
+  editStatus.value = '';
+  deleteStatus.value = '';
+
+  try {
+    await apolloClient.mutate({
+      mutation: UPDATE_WORK_MUTATION,
+      variables: {
+        workId: work.value.id,
+        input: {
+          sectionCode: editForm.value.sectionCode,
+          title: editForm.value.title.trim(),
+          summary: normalizeOptional(editForm.value.summary),
+          body: normalizeOptional(editForm.value.body),
+          excerpt: buildExcerpt(editForm.value.summary, editForm.value.body),
+          projectFormat: editForm.value.sectionCode === 'project' ? normalizeOptional(editForm.value.projectFormat) : null,
+        },
+      },
+    });
+    editMode.value = false;
+    editStatus.value = 'Изменения сохранены.';
+    await refreshCurrentWork();
+  } catch (mutationError) {
+    editStatus.value = mutationError.message;
+  } finally {
+    editBusy.value = false;
+  }
+}
+
+async function softDeleteCurrentWork() {
+  if (!work.value) return;
+  const confirmed = globalThis.confirm?.('Убрать произведение в архив? Удаление будет мягким — через статус archived.') ?? true;
+  if (!confirmed) {
+    return;
+  }
+
+  deleteBusy.value = true;
+  deleteStatus.value = '';
+  editStatus.value = '';
+
+  try {
+    await apolloClient.mutate({
+      mutation: DELETE_WORK_MUTATION,
+      variables: {
+        workId: work.value.id,
+      },
+    });
+    deleteStatus.value = 'Произведение убрано в архив.';
+    editMode.value = false;
+    await refreshCurrentWork();
+  } catch (mutationError) {
+    deleteStatus.value = mutationError.message;
+  } finally {
+    deleteBusy.value = false;
   }
 }
 </script>
@@ -213,25 +363,87 @@ async function submitComment() {
         <span class="pill">{{ ratingLabel(work.averageRating, work.ratingsCount) }}</span>
         <span class="pill">комментариев: {{ work.commentsCount }}</span>
         <span v-if="work.projectFormat" class="pill">{{ work.projectFormat }}</span>
+        <span v-if="work.status && work.status !== 'published'" class="pill warn">{{ work.status }}</span>
       </div>
 
-      <div class="section-head">
+      <div class="section-head work-page-head-row">
         <div>
           <h2>{{ work.title }}</h2>
           <div class="meta">
-            {{ work.author?.displayName || work.author?.login }} · {{ formatDate(work.publishedAt || work.createdAt) }}
+            {{ authorLabel(work.author) }} · {{ formatDate(work.publishedAt || work.createdAt) }}
           </div>
         </div>
-        <RouterLink
-          v-if="work.author?.login"
-          class="btn btn-outline"
-          :to="buildAuthorPageLocation(work.author)"
-        >
-          Страница автора
-        </RouterLink>
+        <div class="inline-actions">
+          <RouterLink
+            v-if="work.author?.login"
+            class="btn btn-outline"
+            :to="buildAuthorPageLocation(work.author)"
+          >
+            Страница автора
+          </RouterLink>
+          <button
+            v-if="isOwner"
+            class="btn btn-outline"
+            type="button"
+            :disabled="editBusy || deleteBusy"
+            @click="editMode ? cancelEditing() : startEditing()"
+          >
+            {{ editMode ? 'Отменить редактирование' : 'Редактировать' }}
+          </button>
+          <button
+            v-if="isOwner"
+            class="btn btn-danger"
+            type="button"
+            :disabled="editBusy || deleteBusy"
+            @click="softDeleteCurrentWork"
+          >
+            {{ deleteBusy ? 'Архивируем…' : 'Удалить' }}
+          </button>
+        </div>
       </div>
 
-      <div class="prewrap">{{ work.body || work.summary || work.excerpt || 'Текст пока не добавлен.' }}</div>
+      <div v-if="editStatus" class="message" :class="editStatus.includes('сохранены') ? 'success' : 'error'">{{ editStatus }}</div>
+      <div v-if="deleteStatus" class="message" :class="deleteStatus.includes('архив') ? 'success' : 'error'">{{ deleteStatus }}</div>
+
+      <form v-if="editMode && isOwner" class="stack work-edit-form" @submit.prevent="submitWorkUpdate">
+        <div class="field">
+          <label for="edit-work-section">Раздел</label>
+          <select id="edit-work-section" v-model="editForm.sectionCode" class="select">
+            <option value="poetry">Поэзия</option>
+            <option value="prose">Проза</option>
+            <option value="project">Творческий проект</option>
+          </select>
+        </div>
+
+        <div v-if="editForm.sectionCode === 'project'" class="field">
+          <label for="edit-work-project-format">Формат проекта</label>
+          <select id="edit-work-project-format" v-model="editForm.projectFormat" class="select">
+            <option v-for="option in projectFormats" :key="option.value || 'default'" :value="option.value">{{ option.label }}</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="edit-work-title">Заголовок</label>
+          <input id="edit-work-title" v-model="editForm.title" class="input" required />
+        </div>
+
+        <div class="field">
+          <label for="edit-work-summary">Краткое описание</label>
+          <textarea id="edit-work-summary" v-model="editForm.summary" class="textarea" placeholder="2–3 предложения о публикации" />
+        </div>
+
+        <div class="field">
+          <label for="edit-work-body">Текст</label>
+          <textarea id="edit-work-body" v-model="editForm.body" class="textarea" placeholder="Полный текст произведения" />
+        </div>
+
+        <div class="inline-actions">
+          <button class="btn btn-primary" type="submit" :disabled="editBusy">{{ editBusy ? 'Сохраняем…' : 'Сохранить' }}</button>
+          <button class="btn btn-outline" type="button" :disabled="editBusy" @click="cancelEditing">Отмена</button>
+        </div>
+      </form>
+
+      <div v-else class="prewrap">{{ work.body || work.summary || work.excerpt || 'Текст пока не добавлен.' }}</div>
     </article>
 
     <section class="panel stack">
@@ -278,10 +490,19 @@ async function submitComment() {
       </div>
       <div v-if="commentsError" class="message error">{{ commentsError }}</div>
       <div v-if="comments.length" class="stack">
-        <article v-for="comment in comments" :key="comment.id" class="comment-item">
-          <strong>{{ comment.author?.displayName || comment.author?.login || 'Пользователь' }}</strong>
-          <div class="meta">{{ formatDate(comment.createdAt) }}</div>
-          <div class="comment-body">{{ comment.body }}</div>
+        <article v-for="comment in comments" :key="comment.id" class="comment-item comment-item-rich">
+          <div class="forum-post-avatar-wrap">
+            <img v-if="comment.author?.avatarUrl" :src="comment.author.avatarUrl" class="forum-post-avatar" alt="avatar автора комментария" />
+            <div v-else class="forum-post-avatar forum-post-avatar-fallback">{{ authorInitial(comment.author) }}</div>
+          </div>
+          <div class="comment-item-body">
+            <div class="forum-post-author-line">
+              <strong>{{ authorLabel(comment.author) }}</strong>
+              <span v-if="comment.author?.city" class="meta">· {{ comment.author.city }}</span>
+              <span class="meta">· {{ formatDate(comment.updatedAt || comment.createdAt) }}</span>
+            </div>
+            <div class="comment-body prewrap">{{ comment.body }}</div>
+          </div>
         </article>
       </div>
       <div v-else-if="!commentsLoading" class="empty-state">Пока без комментариев — можно начать обсуждение первым.</div>

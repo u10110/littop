@@ -13,6 +13,21 @@ export function buildAuthorPageLocation(authorOrLogin) {
   };
 }
 
+export function buildForumTopicPageLocation(topicOrSlug) {
+  const slugOrId = typeof topicOrSlug === 'string'
+    ? topicOrSlug.trim()
+    : String(topicOrSlug?.slug || topicOrSlug?.id || '').trim();
+
+  if (!slugOrId) {
+    return { name: 'forum' };
+  }
+
+  return {
+    name: 'forum-topic-public',
+    params: { slugOrId },
+  };
+}
+
 export function buildWorkPageLocation(workOrSlug) {
   const slugOrId = typeof workOrSlug === 'string'
     ? workOrSlug.trim()

@@ -138,7 +138,7 @@ async function loadAuthorWorks(authorId) {
     <div class="section-head">
       <div>
         <h1>Страница автора</h1>
-        <p class="muted">Публичная авторская страница в литературной подаче, как на классическом авторском портале.</p>
+        <p class="muted">Публичная авторская страница в литературной подаче, с большим фото и отдельной аватаркой автора.</p>
       </div>
       <RouterLink class="btn btn-outline" to="/authors">← К списку авторов</RouterLink>
     </div>
@@ -155,10 +155,21 @@ async function loadAuthorWorks(authorId) {
   </section>
 
   <section v-else-if="hasAuthor" class="author-showcase-page">
+    <div class="author-cover-card" :class="{ 'author-cover-card-empty': !author.coverImageUrl }">
+      <img v-if="author.coverImageUrl" :src="author.coverImageUrl" class="author-cover-image" alt="Большое фото автора" />
+      <div v-else class="author-cover-placeholder">
+        <div class="author-paper-eyebrow">Большое фото автора</div>
+        <strong>Здесь может быть крупный снимок, загруженный из кабинета.</strong>
+      </div>
+    </div>
+
     <div class="author-showcase-shell">
       <aside class="author-showcase-sidebar">
         <article class="author-profile-rail">
-          <div class="author-portrait">{{ authorInitial }}</div>
+          <div class="author-portrait author-portrait-photo">
+            <img v-if="author.avatarUrl" :src="author.avatarUrl" class="author-portrait-image" alt="Аватар автора" />
+            <template v-else>{{ authorInitial }}</template>
+          </div>
           <div class="author-name-block">
             <h2>{{ author.displayName }}</h2>
             <div class="author-login-link">[{{ author.login }}]</div>

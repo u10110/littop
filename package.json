@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test src/lib/auth.test.js src/lib/format.test.js src/lib/routes.test.js"
+    "test": "node --test src/lib/auth.test.js src/lib/format.test.js src/lib/routes.test.js src/lib/forum.test.js"
   },
   "dependencies": {
     "@apollo/client": "^3.13.9",

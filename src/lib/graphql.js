@@ -7,6 +7,8 @@ export const AUTHOR_CARD_FIELDS = gql`
     login
     displayName
     bio
+    avatarUrl
+    coverImageUrl
     city
     websiteUrl
     ratingTotal
@@ -148,6 +150,8 @@ export const USER_SESSION_FIELDS = gql`
     profile {
       displayName
       bio
+      avatarUrl
+      coverImageUrl
       city
       websiteUrl
       ratingTotal
@@ -296,8 +300,8 @@ export const FORUM_OVERVIEW_QUERY = gql`
 export const FORUM_TOPIC_QUERY = gql`
   ${FORUM_TOPIC_PREVIEW_FIELDS}
   ${FORUM_POST_FIELDS}
-  query ForumTopicDetails($topicId: ID!) {
-    forumTopic(id: $topicId) {
+  query ForumTopicDetails($topicId: ID, $slug: String) {
+    forumTopic(id: $topicId, slug: $slug) {
       ...ForumTopicPreviewFields
       posts {
         ...ForumPostFields
@@ -348,6 +352,24 @@ export const CREATE_WORK_MUTATION = gql`
   }
 `;
 
+export const UPDATE_WORK_MUTATION = gql`
+  ${WORK_PREVIEW_FIELDS}
+  mutation UpdateWork($workId: ID!, $input: UpdateWorkInput!) {
+    updateWork(workId: $workId, input: $input) {
+      ...WorkPreviewFields
+    }
+  }
+`;
+
+export const DELETE_WORK_MUTATION = gql`
+  ${WORK_PREVIEW_FIELDS}
+  mutation DeleteWork($workId: ID!) {
+    deleteWork(workId: $workId) {
+      ...WorkPreviewFields
+    }
+  }
+`;
+
 export const RATE_WORK_MUTATION = gql`
   mutation RateWork($workId: ID!, $rating: Int!) {
     rateWork(workId: $workId, rating: $rating) {
@@ -383,6 +405,15 @@ export const CREATE_FORUM_POST_MUTATION = gql`
   ${FORUM_POST_FIELDS}
   mutation CreateForumPost($topicId: ID!, $body: String!, $parentPostId: ID) {
     createForumPost(topicId: $topicId, body: $body, parentPostId: $parentPostId) {
+      ...ForumPostFields
+    }
+  }
+`;
+
+export const UPDATE_FORUM_POST_MUTATION = gql`
+  ${FORUM_POST_FIELDS}
+  mutation UpdateForumPost($postId: ID!, $body: String!) {
+    updateForumPost(postId: $postId, body: $body) {
       ...ForumPostFields
     }
   }

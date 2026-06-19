@@ -6,6 +6,8 @@ import WorkPublishForm from './WorkPublishForm.vue';
 import { useSession } from '../lib/session.js';
 import { formatDate, formatDateTime } from '../lib/format.js';
 import { filenameToTrackTitle, probeAudioDuration, uploadRadioTrack } from '../lib/radio.js';
+import { uploadProfileImage } from '../lib/profileImages.js';
+import { buildAuthorPageLocation } from '../lib/routes.js';
 
 const {
   currentUser,
@@ -23,17 +25,27 @@ const myWorksLink = computed(() => ({
   path: '/works',
   query: { mine: '1' },
 }));
+const myAuthorPageLink = computed(() => buildAuthorPageLocation(currentUser.value?.login || ''));
 const profileSuccess = ref('');
 const publishStatus = ref('');
 const audioBusy = ref(false);
 const audioError = ref('');
 const audioSuccess = ref('');
 const audioFileInput = ref(null);
+const avatarFileInput = ref(null);
+const coverFileInput = ref(null);
+const profileImageBusy = ref(false);
+const profileImageError = ref('');
+const profileImageSuccess = ref('');
+const avatarImageFile = ref(null);
+const coverImageFile = ref(null);
 const profileForm = ref({
   displayName: '',
   city: '',
   websiteUrl: '',
   bio: '',
+  avatarUrl: '',
+  coverImageUrl: '',
 });
 const audioForm = ref({
   title: '',
@@ -54,6 +66,8 @@ function syncProfileForm({ clearSuccess = false } = {}) {
     city: currentUser.value?.profile?.city || '',
     websiteUrl: currentUser.value?.profile?.websiteUrl || '',
     bio: currentUser.value?.profile?.bio || '',
+    avatarUrl: currentUser.value?.profile?.avatarUrl || '',
+    coverImageUrl: currentUser.value?.profile?.coverImageUrl || '',
   };
 }
 
@@ -73,15 +87,22 @@ function resetProfileForm() {
   syncProfileForm({ clearSuccess: true });
 }
 
+function buildProfilePayload(overrides = {}) {
+  return {
+    displayName: profileForm.value.displayName,
+    city: profileForm.value.city,
+    websiteUrl: profileForm.value.websiteUrl,
+    bio: profileForm.value.bio,
+    avatarUrl: profileForm.value.avatarUrl || null,
+    coverImageUrl: profileForm.value.coverImageUrl || null,
+    ...overrides,
+  };
+}
+
 async function submitProfile() {
   profileSuccess.value = '';
   try {
-    await saveProfile({
-      displayName: profileForm.value.displayName,
-      city: profileForm.value.city,
-      websiteUrl: profileForm.value.websiteUrl,
-      bio: profileForm.value.bio,
-    });
+    await saveProfile(buildProfilePayload());
     syncProfileForm();
     profileSuccess.value = 'Данные кабинета сохранены.';
   } catch {
@@ -139,6 +160,57 @@ async function submitAudio() {
     audioBusy.value = false;
   }
 }
+
+function handleProfileImageChange(kind, event) {
+  const file = event?.target?.files?.[0] ?? null;
+  if (kind === 'avatar') {
+    avatarImageFile.value = file;
+  } else {
+    coverImageFile.value = file;
+  }
+  profileImageError.value = '';
+  profileImageSuccess.value = '';
+}
+
+function resetProfileImageSelection(kind) {
+  if (kind === 'avatar') {
+    avatarImageFile.value = null;
+    if (avatarFileInput.value) {
+      avatarFileInput.value.value = '';
+    }
+    return;
+  }
+
+  coverImageFile.value = null;
+  if (coverFileInput.value) {
+    coverFileInput.value.value = '';
+  }
+}
+
+async function submitProfileImage(kind) {
+  const file = kind === 'avatar' ? avatarImageFile.value : coverImageFile.value;
+  profileImageBusy.value = true;
+  profileImageError.value = '';
+  profileImageSuccess.value = '';
+
+  try {
+    const imageUrl = await uploadProfileImage({ kind, file });
+    const patch = kind === 'avatar'
+      ? { avatarUrl: imageUrl }
+      : { coverImageUrl: imageUrl };
+
+    await saveProfile(buildProfilePayload(patch));
+    syncProfileForm();
+    resetProfileImageSelection(kind);
+    profileImageSuccess.value = kind === 'avatar'
+      ? 'Аватарка сохранена. Она будет показываться у сообщений и рецензий.'
+      : 'Большое фото автора сохранено. Оно уже доступно на публичной странице автора.';
+  } catch (error) {
+    profileImageError.value = error instanceof Error ? error.message : 'Не удалось загрузить изображение.';
+  } finally {
+    profileImageBusy.value = false;
+  }
+}
 </script>
 
 <template>
@@ -152,7 +224,7 @@ async function submitAudio() {
       </div>
       <h1>Мой кабинет</h1>
       <p>
-        Здесь можно редактировать профиль автора, быстро перейти к своим произведениям и сразу опубликовать новый текст.
+        Здесь можно редактировать профиль автора, загрузить большое фото и аватарку, быстро перейти к своим произведениям и сразу опубликовать новый текст.
       </p>
     </div>
 
@@ -263,18 +335,77 @@ async function submitAudio() {
             </div>
 
             <div class="inline-actions">
-              <button class="btn btn-primary" type="submit" :disabled="profileBusy">
+              <button class="btn btn-primary" type="submit" :disabled="profileBusy || profileImageBusy">
                 {{ profileBusy ? 'Сохраняем…' : 'Сохранить изменения' }}
               </button>
-              <button class="btn btn-outline" type="button" :disabled="profileBusy" @click="resetProfileForm">
+              <button class="btn btn-outline" type="button" :disabled="profileBusy || profileImageBusy" @click="resetProfileForm">
                 Сбросить
               </button>
+              <RouterLink v-if="currentUser?.login" class="btn btn-outline" :to="myAuthorPageLink">Открыть страницу автора</RouterLink>
             </div>
           </form>
         </article>
       </section>
 
       <section class="layout-columns personal-layout">
+        <article class="panel">
+          <div class="section-head">
+            <h2>Фото автора</h2>
+            <span class="pill">Аватар + большое фото</span>
+          </div>
+
+          <div class="note">
+            Аватарка идёт в форум и рецензии, а большое фото показывается на публичной странице автора отдельным крупным блоком.
+          </div>
+
+          <div v-if="profileImageError" class="message error">{{ profileImageError }}</div>
+          <div v-if="profileImageSuccess" class="message success">{{ profileImageSuccess }}</div>
+
+          <div class="profile-image-grid">
+            <div class="profile-image-card">
+              <div class="meta">Аватарка для сообщений и рецензий</div>
+              <div class="profile-image-preview profile-image-preview-avatar">
+                <img v-if="profileForm.avatarUrl" :src="profileForm.avatarUrl" class="profile-image-preview-img" alt="Аватар автора" />
+                <div v-else class="profile-image-placeholder">Нет аватарки</div>
+              </div>
+              <input
+                ref="avatarFileInput"
+                class="input"
+                type="file"
+                accept="image/*"
+                @change="handleProfileImageChange('avatar', $event)"
+              />
+              <div class="inline-actions">
+                <button class="btn btn-primary" type="button" :disabled="profileImageBusy" @click="submitProfileImage('avatar')">
+                  {{ profileImageBusy ? 'Загружаем…' : 'Загрузить аватарку' }}
+                </button>
+                <button class="btn btn-outline" type="button" :disabled="profileImageBusy" @click="resetProfileImageSelection('avatar')">Сбросить</button>
+              </div>
+            </div>
+
+            <div class="profile-image-card">
+              <div class="meta">Большое фото автора</div>
+              <div class="profile-image-preview profile-image-preview-cover">
+                <img v-if="profileForm.coverImageUrl" :src="profileForm.coverImageUrl" class="profile-image-preview-img profile-image-preview-img-cover" alt="Большое фото автора" />
+                <div v-else class="profile-image-placeholder">Нет большого фото</div>
+              </div>
+              <input
+                ref="coverFileInput"
+                class="input"
+                type="file"
+                accept="image/*"
+                @change="handleProfileImageChange('cover', $event)"
+              />
+              <div class="inline-actions">
+                <button class="btn btn-primary" type="button" :disabled="profileImageBusy" @click="submitProfileImage('cover')">
+                  {{ profileImageBusy ? 'Загружаем…' : 'Загрузить большое фото' }}
+                </button>
+                <button class="btn btn-outline" type="button" :disabled="profileImageBusy" @click="resetProfileImageSelection('cover')">Сбросить</button>
+              </div>
+            </div>
+          </div>
+        </article>
+
         <article class="panel">
           <div class="section-head">
             <h2>Активность</h2>
@@ -303,7 +434,9 @@ async function submitAudio() {
             </div>
           </div>
         </article>
+      </section>
 
+      <section class="layout-columns personal-layout">
         <article class="panel">
           <div class="section-head">
             <h2>Быстрые переходы</h2>
@@ -313,6 +446,7 @@ async function submitAudio() {
             <RouterLink class="btn btn-primary" :to="myWorksLink">Мои произведения</RouterLink>
             <a class="btn btn-outline" href="#publish-work">Добавить публикацию</a>
             <a class="btn btn-outline" href="#upload-audio">Добавить аудио</a>
+            <RouterLink v-if="currentUser?.login" class="btn btn-outline" :to="myAuthorPageLink">Моя страница автора</RouterLink>
             <RouterLink class="btn btn-outline" to="/radio">Радио</RouterLink>
             <RouterLink class="btn btn-outline" to="/works">Все произведения</RouterLink>
             <RouterLink class="btn btn-outline" to="/authors">Авторы</RouterLink>
