@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { useQuery } from '@vue/apollo-composable';
 
 import { apolloClient } from '../lib/apollo.js';
@@ -11,6 +11,7 @@ import {
   WORKS_QUERY,
 } from '../lib/graphql.js';
 import { excerptText, formatDate, formatWorkSection, ratingLabel } from '../lib/format.js';
+import { buildAuthorPageLocation, buildWorkPageLocation } from '../lib/routes.js';
 import { useSession } from '../lib/session.js';
 
 const route = useRoute();
@@ -340,6 +341,10 @@ function clearFilters() {
           <h3>{{ work.title }}</h3>
           <div class="meta">{{ work.author?.displayName || work.author?.login }} · {{ formatDate(work.publishedAt || work.createdAt) }}</div>
           <div>{{ excerptText(work.summary || work.excerpt || work.body, 180) }}</div>
+          <div class="inline-actions">
+            <RouterLink class="btn btn-outline" :to="buildWorkPageLocation(work)" @click.stop>Страница произведения</RouterLink>
+            <RouterLink v-if="work.author?.login" class="btn btn-outline" :to="buildAuthorPageLocation(work.author)" @click.stop>Автор</RouterLink>
+          </div>
         </article>
       </div>
       <div v-else-if="!loading" class="empty-state">{{ emptyStateText }}</div>
@@ -359,6 +364,10 @@ function clearFilters() {
           <span class="pill">{{ ratingLabel(selectedWork.averageRating, selectedWork.ratingsCount) }}</span>
           <span class="pill">комментариев: {{ selectedWork.commentsCount }}</span>
           <span v-if="selectedWork.projectFormat" class="pill">{{ selectedWork.projectFormat }}</span>
+        </div>
+        <div class="inline-actions">
+          <RouterLink class="btn btn-outline" :to="buildWorkPageLocation(selectedWork)">Публичная страница произведения</RouterLink>
+          <RouterLink v-if="selectedWork.author?.login" class="btn btn-outline" :to="buildAuthorPageLocation(selectedWork.author)">Страница автора</RouterLink>
         </div>
 
         <div class="prewrap">{{ selectedWork.body || selectedWork.summary || selectedWork.excerpt || 'Текст пока не добавлен.' }}</div>

@@ -209,6 +209,15 @@ export const AUTHORS_QUERY = gql`
   }
 `;
 
+export const AUTHOR_QUERY = gql`
+  ${AUTHOR_CARD_FIELDS}
+  query AuthorPage($login: String!) {
+    author(login: $login) {
+      ...AuthorCardFields
+    }
+  }
+`;
+
 export const AUTHOR_DETAILS_QUERY = gql`
   ${AUTHOR_CARD_FIELDS}
   ${WORK_PREVIEW_FIELDS}
@@ -226,6 +235,15 @@ export const WORKS_QUERY = gql`
   ${WORK_PREVIEW_FIELDS}
   query WorksPage($limit: Int!, $offset: Int!, $sectionCode: String, $search: String, $authorId: ID) {
     works(limit: $limit, offset: $offset, sectionCode: $sectionCode, search: $search, authorId: $authorId) {
+      ...WorkPreviewFields
+    }
+  }
+`;
+
+export const WORK_QUERY = gql`
+  ${WORK_PREVIEW_FIELDS}
+  query WorkPage($id: ID, $slug: String) {
+    work(id: $id, slug: $slug) {
       ...WorkPreviewFields
     }
   }

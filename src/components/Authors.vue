@@ -1,10 +1,12 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { RouterLink } from 'vue-router';
 import { useQuery } from '@vue/apollo-composable';
 
 import { apolloClient } from '../lib/apollo.js';
 import { AUTHOR_DETAILS_QUERY, AUTHORS_QUERY } from '../lib/graphql.js';
 import { excerptText, formatDate, formatWorkSection, ratingLabel } from '../lib/format.js';
+import { buildAuthorPageLocation, buildWorkPageLocation } from '../lib/routes.js';
 
 const search = ref('');
 const onlyClassics = ref(false);
@@ -130,6 +132,9 @@ async function loadAuthorDetails(login) {
           </div>
           <div class="meta">@{{ author.login }} · {{ author.email }}</div>
           <div>{{ excerptText(author.bio, 120) }}</div>
+          <div class="inline-actions">
+            <RouterLink class="btn btn-outline" :to="buildAuthorPageLocation(author)" @click.stop>Страница автора</RouterLink>
+          </div>
           <div class="chips">
             <span class="pill">рейтинг {{ author.ratingTotal }}</span>
             <span class="pill">{{ author.worksCountCached }} произведений</span>
@@ -155,7 +160,10 @@ async function loadAuthorDetails(login) {
           <span v-if="selectedAuthor.city" class="pill">{{ selectedAuthor.city }}</span>
         </div>
         <div>{{ excerptText(selectedAuthor.bio, 220) }}</div>
-        <a v-if="selectedAuthor.websiteUrl" class="btn btn-outline" :href="selectedAuthor.websiteUrl" target="_blank" rel="noreferrer">Сайт автора</a>
+        <div class="inline-actions">
+          <a v-if="selectedAuthor.websiteUrl" class="btn btn-outline" :href="selectedAuthor.websiteUrl" target="_blank" rel="noreferrer">Сайт автора</a>
+          <RouterLink class="btn btn-outline" :to="buildAuthorPageLocation(selectedAuthor)">Публичная страница автора</RouterLink>
+        </div>
 
         <hr class="divider" />
 
@@ -166,7 +174,10 @@ async function loadAuthorDetails(login) {
         <div v-if="detailError" class="message error">{{ detailError }}</div>
         <div v-if="authorWorks.length" class="stack">
           <article v-for="work in authorWorks" :key="work.id" class="work-card">
-            <strong>{{ work.title }}</strong>
+            <div class="section-head">
+              <strong>{{ work.title }}</strong>
+              <RouterLink class="btn btn-outline" :to="buildWorkPageLocation(work)">Открыть</RouterLink>
+            </div>
             <div class="meta">{{ formatWorkSection(work.sectionCode) }} · {{ formatDate(work.publishedAt || work.createdAt) }}</div>
             <div>{{ excerptText(work.summary || work.excerpt || work.body, 150) }}</div>
             <div class="meta">{{ ratingLabel(work.averageRating, work.ratingsCount) }}</div>

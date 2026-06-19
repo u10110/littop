@@ -12,6 +12,7 @@ import {
   formatWorkSection,
   ratingLabel,
 } from '../lib/format.js';
+import { buildAuthorPageLocation, buildWorkPageLocation } from '../lib/routes.js';
 
 const { result, loading, error } = useQuery(HOME_QUERY, null, {
   fetchPolicy: 'cache-and-network',
@@ -77,9 +78,13 @@ const healthTone = computed(() => {
           <span class="pill">{{ formatWorkSection(work.sectionCode) }}</span>
           <span class="pill">{{ ratingLabel(work.averageRating, work.ratingsCount) }}</span>
         </div>
-        <h3>{{ work.title }}</h3>
+        <h3>
+          <RouterLink :to="buildWorkPageLocation(work)">{{ work.title }}</RouterLink>
+        </h3>
         <div class="meta">
-          {{ work.author?.displayName || work.author?.login }} · {{ formatDate(work.publishedAt || work.createdAt) }}
+          <RouterLink v-if="work.author?.login" :to="buildAuthorPageLocation(work.author)">{{ work.author?.displayName || work.author?.login }}</RouterLink>
+          <template v-else>{{ work.author?.displayName || work.author?.login }}</template>
+          · {{ formatDate(work.publishedAt || work.createdAt) }}
         </div>
         <div>{{ excerptText(work.excerpt || work.summary || work.body, 180) }}</div>
       </article>
@@ -98,7 +103,9 @@ const healthTone = computed(() => {
           <h3>Витрина</h3>
           <div class="list">
             <div v-for="author in featuredAuthors" :key="`featured-${author.id}`" class="inline-card">
-              <strong>{{ author.displayName }}</strong>
+              <strong>
+                <RouterLink :to="buildAuthorPageLocation(author)">{{ author.displayName }}</RouterLink>
+              </strong>
               <div class="meta">@{{ author.login }} · рейтинг {{ author.ratingTotal }}</div>
             </div>
           </div>
@@ -107,7 +114,9 @@ const healthTone = computed(() => {
           <h3>Классики</h3>
           <div class="list">
             <div v-for="author in classicAuthors" :key="`classic-${author.id}`" class="inline-card">
-              <strong>{{ author.displayName }}</strong>
+              <strong>
+                <RouterLink :to="buildAuthorPageLocation(author)">{{ author.displayName }}</RouterLink>
+              </strong>
               <div class="meta">{{ author.worksCountCached }} произведений</div>
             </div>
           </div>
