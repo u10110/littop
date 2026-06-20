@@ -32,7 +32,7 @@ export async function uploadForumPostImage({
   }
 
   const backendBaseUrl = resolveBackendBaseUrl(graphqlEndpoint);
-  const response = await fetch(`${backendBaseUrl}/forum/upload-image`, {
+  const response = await fetch(`${backendBaseUrl}/api/forum/upload-image`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

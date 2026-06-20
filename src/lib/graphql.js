@@ -16,6 +16,8 @@ export const AUTHOR_CARD_FIELDS = gql`
     isClassic
     isFeatured
     registeredAt
+    lastSeenAt
+    isOnline
     createdAt
     updatedAt
   }
@@ -53,6 +55,7 @@ export const WORK_COMMENT_FIELDS = gql`
     userId
     parentCommentId
     body
+    imageUrl
     status
     createdAt
     updatedAt
@@ -103,6 +106,20 @@ export const FORUM_POST_FIELDS = gql`
   ${AUTHOR_CARD_FIELDS}
 `;
 
+
+export const WORK_VIEWER_FIELDS = gql`
+  fragment WorkViewerFields on WorkViewer {
+    id
+    workId
+    viewerUserId
+    viewedAt
+    viewer {
+      ...AuthorCardFields
+    }
+  }
+  ${AUTHOR_CARD_FIELDS}
+`;
+
 export const CONTEST_FIELDS = gql`
   fragment ContestFields on Contest {
     id
@@ -146,6 +163,8 @@ export const USER_SESSION_FIELDS = gql`
     status
     registeredAt
     lastLoginAt
+    lastSeenAt
+    isOnline
     createdAt
     updatedAt
     profile {
@@ -179,6 +198,9 @@ export const HOME_QUERY = gql`
       ...AuthorCardFields
     }
     classicAuthors: authors(limit: 6, classicsOnly: true) {
+      ...AuthorCardFields
+    }
+    onlineAuthors(limit: 8) {
       ...AuthorCardFields
     }
     recentWorks: works(limit: 6) {
@@ -259,6 +281,15 @@ export const WORK_COMMENTS_QUERY = gql`
   query WorkComments($workId: ID!, $limit: Int!, $offset: Int!) {
     workComments(workId: $workId, limit: $limit, offset: $offset) {
       ...WorkCommentFields
+    }
+  }
+`;
+
+export const WORK_VIEWERS_QUERY = gql`
+  ${WORK_VIEWER_FIELDS}
+  query WorkViewers($workId: ID!, $limit: Int!) {
+    workViewers(workId: $workId, limit: $limit) {
+      ...WorkViewerFields
     }
   }
 `;
@@ -344,6 +375,15 @@ export const UPDATE_MY_PROFILE_MUTATION = gql`
   }
 `;
 
+export const TOUCH_PRESENCE_MUTATION = gql`
+  ${USER_SESSION_FIELDS}
+  mutation TouchPresence {
+    touchPresence {
+      ...UserSessionFields
+    }
+  }
+`;
+
 export const CREATE_WORK_MUTATION = gql`
   ${WORK_PREVIEW_FIELDS}
   mutation CreateWork($input: CreateWorkInput!) {
@@ -386,8 +426,8 @@ export const RATE_WORK_MUTATION = gql`
 
 export const ADD_WORK_COMMENT_MUTATION = gql`
   ${WORK_COMMENT_FIELDS}
-  mutation AddWorkComment($workId: ID!, $body: String!, $parentCommentId: ID) {
-    addWorkComment(workId: $workId, body: $body, parentCommentId: $parentCommentId) {
+  mutation AddWorkComment($workId: ID!, $body: String!, $parentCommentId: ID, $imageUrl: String) {
+    addWorkComment(workId: $workId, body: $body, parentCommentId: $parentCommentId, imageUrl: $imageUrl) {
       ...WorkCommentFields
     }
   }

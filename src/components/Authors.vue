@@ -49,10 +49,18 @@ function authorLetter(author) {
 
 const filteredAuthors = computed(() => {
   const targetLetter = selectedLetter.value;
-  if (!targetLetter) {
-    return authors.value;
-  }
-  return authors.value.filter((author) => authorLetter(author) === targetLetter);
+  const base = targetLetter
+    ? authors.value.filter((author) => authorLetter(author) === targetLetter)
+    : authors.value;
+
+  return [...base].sort((left, right) => {
+    const rightTime = Date.parse(right?.registeredAt || '') || 0;
+    const leftTime = Date.parse(left?.registeredAt || '') || 0;
+    if (rightTime !== leftTime) {
+      return rightTime - leftTime;
+    }
+    return String(left?.displayName || left?.login || '').localeCompare(String(right?.displayName || right?.login || ''), 'ru');
+  });
 });
 
 const availableLetters = computed(() => new Set(authors.value.map(authorLetter).filter(Boolean)));
@@ -149,6 +157,7 @@ const authorsCountText = computed(() => loading.value ? 'загрузка…' : 
         <div v-if="author.city" class="meta">{{ author.city }}</div>
         <div v-if="author.bio" class="authors-directory-bio">{{ excerptText(author.bio, 180) }}</div>
         <div class="chips">
+          <span v-if="author.isOnline" class="pill good">в сети</span>
           <span v-if="author.isFeatured" class="pill good">витрина</span>
           <span v-if="author.isClassic" class="pill warn">классик</span>
         </div>

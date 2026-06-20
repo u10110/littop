@@ -10,8 +10,11 @@ import {
   UPDATE_WORK_MUTATION,
   WORK_COMMENTS_QUERY,
   WORK_QUERY,
+  WORK_VIEWERS_QUERY,
 } from '../lib/graphql.js';
 import { formatDate, formatWorkSection, ratingLabel } from '../lib/format.js';
+import { flattenThreadTree } from '../lib/discussion.js';
+import { uploadForumPostImage } from '../lib/forumImages.js';
 import { getAuthorDisplayName, getAuthorInitial } from '../lib/forum.js';
 import { buildAuthorPageLocation, normalizeRouteParam } from '../lib/routes.js';
 import { useSession } from '../lib/session.js';
@@ -30,8 +33,16 @@ const comments = ref([]);
 const commentsLoading = ref(false);
 const commentsError = ref('');
 const commentText = ref('');
+const commentImageFile = ref(null);
 const commentBusy = ref(false);
 const commentStatus = ref('');
+const replyTargetId = ref(null);
+const replyText = ref('');
+const replyImageFile = ref(null);
+const viewers = ref([]);
+const viewersLoading = ref(false);
+const viewersError = ref('');
+const viewersVisible = ref(false);
 const ratingBusy = ref(false);
 const ratingStatus = ref('');
 const editMode = ref(false);
@@ -65,6 +76,7 @@ const isOwner = computed(() => {
   }
   return String(currentUser.value.id) === String(work.value.author.id);
 });
+const flatComments = computed(() => flattenThreadTree(comments.value, 'parentCommentId'));
 
 onMounted(() => {
   bootstrapSession();
@@ -122,6 +134,40 @@ function buildExcerpt(summary, body) {
   return normalizedBody.slice(0, 280);
 }
 
+function commentDepthStyle(comment) {
+  return {
+    '--forum-depth': Math.min(Math.max(Number(comment?.depth) || 0, 0), 6),
+  };
+}
+
+function handleCommentImageChange(event) {
+  commentImageFile.value = event?.target?.files?.[0] ?? null;
+}
+
+function handleReplyImageChange(event) {
+  replyImageFile.value = event?.target?.files?.[0] ?? null;
+}
+
+function startReply(comment) {
+  replyTargetId.value = comment?.id ?? null;
+  replyText.value = '';
+  replyImageFile.value = null;
+  commentStatus.value = '';
+}
+
+function cancelReply() {
+  replyTargetId.value = null;
+  replyText.value = '';
+  replyImageFile.value = null;
+}
+
+async function resolveUploadedImageUrl(file) {
+  if (file instanceof File) {
+    return uploadForumPostImage({ file });
+  }
+  return null;
+}
+
 function startEditing() {
   syncEditForm();
   editStatus.value = '';
@@ -140,9 +186,16 @@ async function loadWorkPage(value) {
   workRequestVersion = requestVersion;
   work.value = null;
   comments.value = [];
+  viewers.value = [];
+  viewersError.value = '';
   commentsError.value = '';
   workError.value = '';
   commentStatus.value = '';
+  commentText.value = '';
+  commentImageFile.value = null;
+  replyTargetId.value = null;
+  replyText.value = '';
+  replyImageFile.value = null;
   ratingStatus.value = '';
   editStatus.value = '';
   deleteStatus.value = '';
@@ -219,6 +272,32 @@ async function loadComments(workId, requestVersion = workRequestVersion) {
   }
 }
 
+async function loadViewers(workId) {
+  viewersLoading.value = true;
+  viewersError.value = '';
+
+  try {
+    const { data } = await apolloClient.query({
+      query: WORK_VIEWERS_QUERY,
+      variables: { workId, limit: 100 },
+      fetchPolicy: 'network-only',
+    });
+    viewers.value = data?.workViewers ?? [];
+  } catch (queryError) {
+    viewers.value = [];
+    viewersError.value = queryError.message;
+  } finally {
+    viewersLoading.value = false;
+  }
+}
+
+async function toggleViewers() {
+  viewersVisible.value = !viewersVisible.value;
+  if (viewersVisible.value && work.value?.id) {
+    await loadViewers(work.value.id);
+  }
+}
+
 async function refreshCurrentWork() {
   if (!slugOrId.value) {
     return;
@@ -226,6 +305,9 @@ async function refreshCurrentWork() {
   const loaded = await fetchWork(slugOrId.value);
   if (loaded?.id) {
     await loadComments(loaded.id);
+    if (viewersVisible.value) {
+      await loadViewers(loaded.id);
+    }
   }
 }
 
@@ -257,16 +339,47 @@ async function submitComment() {
   commentStatus.value = '';
 
   try {
+    const imageUrl = await resolveUploadedImageUrl(commentImageFile.value);
     await apolloClient.mutate({
       mutation: ADD_WORK_COMMENT_MUTATION,
       variables: {
         workId: work.value.id,
         body: commentText.value.trim(),
         parentCommentId: null,
+        imageUrl,
       },
     });
     commentText.value = '';
-    commentStatus.value = 'Комментарий опубликован.';
+    commentImageFile.value = null;
+    commentStatus.value = imageUrl ? 'Комментарий с картинкой опубликован.' : 'Комментарий опубликован.';
+    await refreshCurrentWork();
+  } catch (mutationError) {
+    commentStatus.value = mutationError.message;
+  } finally {
+    commentBusy.value = false;
+  }
+}
+
+async function submitReply(comment) {
+  if (!work.value || !comment?.id) return;
+  commentBusy.value = true;
+  commentStatus.value = '';
+
+  try {
+    const imageUrl = await resolveUploadedImageUrl(replyImageFile.value);
+    await apolloClient.mutate({
+      mutation: ADD_WORK_COMMENT_MUTATION,
+      variables: {
+        workId: work.value.id,
+        body: replyText.value.trim(),
+        parentCommentId: comment.id,
+        imageUrl,
+      },
+    });
+    replyTargetId.value = null;
+    replyText.value = '';
+    replyImageFile.value = null;
+    commentStatus.value = imageUrl ? 'Ответ с картинкой опубликован.' : 'Ответ опубликован.';
     await refreshCurrentWork();
   } catch (mutationError) {
     commentStatus.value = mutationError.message;
@@ -376,6 +489,9 @@ async function softDeleteCurrentWork() {
           </div>
         </div>
         <div class="inline-actions">
+          <button class="btn btn-outline" type="button" @click="toggleViewers">
+            {{ viewersVisible ? 'Скрыть список просмотров' : 'Список просмотров' }}
+          </button>
           <button
             v-if="isOwner"
             class="btn btn-outline"
@@ -471,8 +587,12 @@ async function softDeleteCurrentWork() {
               placeholder="Напиши отзыв о тексте"
             />
           </div>
+          <div class="field">
+            <label for="work-page-comment-image">Картинка к комментарию</label>
+            <input id="work-page-comment-image" class="input" type="file" accept="image/*" @change="handleCommentImageChange" />
+          </div>
           <button class="btn btn-primary" type="submit" :disabled="commentBusy">{{ commentBusy ? 'Публикуем…' : 'Опубликовать комментарий' }}</button>
-          <div v-if="commentStatus" class="message" :class="commentStatus.includes('опубликован') ? 'success' : 'error'">{{ commentStatus }}</div>
+          <div v-if="commentStatus" class="message" :class="commentStatus.includes('опубликован') || commentStatus.includes('Ответ') ? 'success' : 'error'">{{ commentStatus }}</div>
         </form>
       </div>
       <div v-else class="message">Чтобы ставить оценки и оставлять комментарии, войди или зарегистрируйся в шапке.</div>
@@ -484,8 +604,34 @@ async function softDeleteCurrentWork() {
         <span class="pill">{{ commentsLoading ? 'обновляем…' : `${comments.length} записей` }}</span>
       </div>
       <div v-if="commentsError" class="message error">{{ commentsError }}</div>
-      <div v-if="comments.length" class="stack">
-        <article v-for="comment in comments" :key="comment.id" class="comment-item comment-item-rich">
+      <div v-if="viewersVisible" class="panel stack">
+        <div class="section-head">
+          <h3>Список просмотров</h3>
+          <span class="pill">{{ viewersLoading ? 'обновляем…' : `${viewers.length} записей` }}</span>
+        </div>
+        <div v-if="viewersError" class="message error">{{ viewersError }}</div>
+        <div v-if="viewers.length" class="stack">
+          <article v-for="viewer in viewers" :key="viewer.id" class="comment-item comment-item-rich">
+            <div class="forum-post-avatar-wrap">
+              <img v-if="viewer.viewer?.avatarUrl" :src="viewer.viewer.avatarUrl" class="forum-post-avatar" alt="avatar читателя" />
+              <div v-else class="forum-post-avatar forum-post-avatar-fallback">{{ authorInitial(viewer.viewer) }}</div>
+            </div>
+            <div class="comment-item-body">
+              <div class="forum-post-author-line">
+                <strong>
+                  <RouterLink v-if="viewer.viewer?.login" class="user-inline-link" :to="buildAuthorPageLocation(viewer.viewer)">{{ authorLabel(viewer.viewer) }}</RouterLink>
+                  <template v-else>{{ authorLabel(viewer.viewer) }}</template>
+                </strong>
+                <span class="meta">· {{ formatDate(viewer.viewedAt) }}</span>
+              </div>
+            </div>
+          </article>
+        </div>
+        <div v-else-if="!viewersLoading" class="empty-state">Пока нет сохранённых просмотров авторизованных пользователей.</div>
+      </div>
+
+      <div v-if="flatComments.length" class="stack">
+        <article v-for="comment in flatComments" :key="comment.id" class="comment-item-rich forum-thread-post" :style="commentDepthStyle(comment)">
           <div class="forum-post-avatar-wrap">
             <img v-if="comment.author?.avatarUrl" :src="comment.author.avatarUrl" class="forum-post-avatar" alt="avatar автора комментария" />
             <div v-else class="forum-post-avatar forum-post-avatar-fallback">{{ authorInitial(comment.author) }}</div>
@@ -499,7 +645,28 @@ async function softDeleteCurrentWork() {
               <span v-if="comment.author?.city" class="meta">· {{ comment.author.city }}</span>
               <span class="meta">· {{ formatDate(comment.updatedAt || comment.createdAt) }}</span>
             </div>
+            <div v-if="comment.replyToAuthor" class="forum-reply-note">
+              Ответ пользователю {{ authorLabel(comment.replyToAuthor) }}
+            </div>
             <div class="comment-body prewrap">{{ comment.body }}</div>
+            <img v-if="comment.imageUrl" :src="comment.imageUrl" class="forum-post-image" alt="Картинка к комментарию" />
+            <div v-if="isAuthenticated" class="inline-actions forum-post-actions">
+              <button class="btn btn-outline" type="button" :disabled="commentBusy" @click="startReply(comment)">Ответить</button>
+            </div>
+            <form v-if="replyTargetId === comment.id" class="stack forum-inline-form" @submit.prevent="submitReply(comment)">
+              <div class="field">
+                <label :for="`reply-comment-${comment.id}`">Ответить на комментарий</label>
+                <textarea :id="`reply-comment-${comment.id}`" v-model="replyText" class="textarea" required placeholder="Твой ответ" />
+              </div>
+              <div class="field">
+                <label :for="`reply-comment-image-${comment.id}`">Картинка к ответу</label>
+                <input :id="`reply-comment-image-${comment.id}`" class="input" type="file" accept="image/*" @change="handleReplyImageChange" />
+              </div>
+              <div class="inline-actions">
+                <button class="btn btn-primary" type="submit" :disabled="commentBusy">{{ commentBusy ? 'Публикуем…' : 'Опубликовать ответ' }}</button>
+                <button class="btn btn-outline" type="button" :disabled="commentBusy" @click="cancelReply">Отмена</button>
+              </div>
+            </form>
           </div>
         </article>
       </div>

@@ -21,6 +21,7 @@ const { result, loading, error } = useQuery(HOME_QUERY, null, {
 const health = computed(() => result.value?.health ?? null);
 const featuredAuthors = computed(() => result.value?.featuredAuthors ?? []);
 const classicAuthors = computed(() => result.value?.classicAuthors ?? []);
+const onlineAuthors = computed(() => result.value?.onlineAuthors ?? []);
 const recentWorks = computed(() => result.value?.recentWorks ?? []);
 const recentTopics = computed(() => result.value?.recentTopics ?? []);
 const contests = computed(() => result.value?.contests ?? []);
@@ -98,7 +99,7 @@ const healthTone = computed(() => {
         <h2>Авторы</h2>
         <RouterLink to="/authors" class="btn btn-outline">Все авторы</RouterLink>
       </div>
-      <div v-if="featuredAuthors.length || classicAuthors.length" class="stack">
+      <div v-if="featuredAuthors.length || classicAuthors.length || onlineAuthors.length" class="stack">
         <article class="card">
           <h3>Витрина</h3>
           <div class="list">
@@ -120,6 +121,18 @@ const healthTone = computed(() => {
               <div class="meta">{{ author.worksCountCached }} произведений</div>
             </div>
           </div>
+        </article>
+        <article class="card">
+          <h3>Кто в сети</h3>
+          <div v-if="onlineAuthors.length" class="list">
+            <div v-for="author in onlineAuthors" :key="`online-${author.id}`" class="inline-card">
+              <strong>
+                <RouterLink :to="buildAuthorPageLocation(author)">{{ author.displayName }}</RouterLink>
+              </strong>
+              <div class="meta">@{{ author.login }} · сейчас на сайте</div>
+            </div>
+          </div>
+          <div v-else class="empty-state">Сейчас в сети никого не видно.</div>
         </article>
       </div>
       <div v-else class="empty-state">В базе пока нет авторов. После регистрации они начнут появляться здесь автоматически.</div>

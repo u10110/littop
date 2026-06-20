@@ -312,7 +312,7 @@ async function submitEdit(post) {
               :disabled="threadBusy"
               @click="startReply(post)"
             >
-              Добавить комментарий
+              Ответить
             </button>
             <button
               v-if="isAuthenticated && isOwnPost(post)"
