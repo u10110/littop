@@ -3,7 +3,13 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 
 import { apolloClient } from '../lib/apollo.js';
-import { CREATE_FORUM_POST_MUTATION, UPDATE_FORUM_POST_MUTATION } from '../lib/graphql.js';
+import {
+  CREATE_FORUM_POST_MUTATION,
+  DELETE_FORUM_POST_MUTATION,
+  DELETE_FORUM_TOPIC_MUTATION,
+  UPDATE_FORUM_POST_MUTATION,
+  UPDATE_FORUM_TOPIC_MUTATION,
+} from '../lib/graphql.js';
 import { formatDate } from '../lib/format.js';
 import { uploadForumPostImage } from '../lib/forumImages.js';
 import { flattenForumPostTree, getAuthorDisplayName, getAuthorInitial } from '../lib/forum.js';
@@ -31,6 +37,11 @@ const { currentUser, isAuthenticated, bootstrapSession } = useSession();
 
 const threadBusy = ref(false);
 const threadStatus = ref('');
+const topicEditMode = ref(false);
+const topicForm = ref({
+  title: '',
+  body: '',
+});
 const rootPostBody = ref('');
 const rootImageFile = ref(null);
 const replyTargetId = ref(null);
@@ -42,6 +53,7 @@ const editImageFile = ref(null);
 
 const flatPosts = computed(() => flattenForumPostTree(props.topic?.posts ?? []));
 const currentUserId = computed(() => String(currentUser.value?.id || ''));
+const isAdmin = computed(() => currentUser.value?.role === 'admin');
 
 onMounted(() => {
   bootstrapSession();
@@ -52,6 +64,11 @@ watch(() => props.topic?.id, () => {
 }, { immediate: true });
 
 function resetComposer() {
+  topicEditMode.value = false;
+  topicForm.value = {
+    title: String(props.topic?.title || ''),
+    body: String(props.topic?.body || ''),
+  };
   rootPostBody.value = '';
   rootImageFile.value = null;
   replyTargetId.value = null;
@@ -65,6 +82,14 @@ function resetComposer() {
 
 function isOwnPost(post) {
   return Boolean(currentUserId.value) && String(post?.userId || '') === currentUserId.value;
+}
+
+function canManagePost(post) {
+  return isAdmin.value || isOwnPost(post);
+}
+
+function canManageTopic() {
+  return isAdmin.value || (Boolean(currentUserId.value) && String(props.topic?.author?.id || '') === currentUserId.value);
 }
 
 function authorLocation(author) {
@@ -127,6 +152,23 @@ function cancelEdit() {
   editPostId.value = null;
   editBody.value = '';
   editImageFile.value = null;
+}
+
+function startTopicEdit() {
+  topicEditMode.value = true;
+  topicForm.value = {
+    title: String(props.topic?.title || ''),
+    body: String(props.topic?.body || ''),
+  };
+  threadStatus.value = '';
+}
+
+function cancelTopicEdit() {
+  topicEditMode.value = false;
+  topicForm.value = {
+    title: String(props.topic?.title || ''),
+    body: String(props.topic?.body || ''),
+  };
 }
 
 async function resolveUploadedImageUrl(file, fallbackUrl = null) {
@@ -226,6 +268,77 @@ async function submitEdit(post) {
     threadBusy.value = false;
   }
 }
+
+async function submitTopicEdit() {
+  if (!props.topic?.id) return;
+
+  threadBusy.value = true;
+  threadStatus.value = '';
+
+  try {
+    await apolloClient.mutate({
+      mutation: UPDATE_FORUM_TOPIC_MUTATION,
+      variables: {
+        topicId: props.topic.id,
+        input: {
+          title: String(topicForm.value.title || '').trim(),
+          body: String(topicForm.value.body || '').trim(),
+        },
+      },
+    });
+    topicEditMode.value = false;
+    threadStatus.value = 'Тема обновлена.';
+    emit('refresh');
+  } catch (mutationError) {
+    threadStatus.value = mutationError.message;
+  } finally {
+    threadBusy.value = false;
+  }
+}
+
+async function deleteTopic() {
+  if (!props.topic?.id) return;
+  const confirmed = globalThis.confirm?.('Убрать тему в архив?') ?? true;
+  if (!confirmed) return;
+
+  threadBusy.value = true;
+  threadStatus.value = '';
+
+  try {
+    await apolloClient.mutate({
+      mutation: DELETE_FORUM_TOPIC_MUTATION,
+      variables: { topicId: props.topic.id },
+    });
+    threadStatus.value = 'Тема отправлена в архив.';
+    emit('refresh');
+  } catch (mutationError) {
+    threadStatus.value = mutationError.message;
+  } finally {
+    threadBusy.value = false;
+  }
+}
+
+async function deletePost(post) {
+  if (!post?.id) return;
+  const confirmed = globalThis.confirm?.('Скрыть это сообщение?') ?? true;
+  if (!confirmed) return;
+
+  threadBusy.value = true;
+  threadStatus.value = '';
+
+  try {
+    await apolloClient.mutate({
+      mutation: DELETE_FORUM_POST_MUTATION,
+      variables: { postId: post.id },
+    });
+    threadStatus.value = 'Сообщение скрыто.';
+    emit('refresh');
+  } catch (mutationError) {
+    threadStatus.value = mutationError.message;
+  } finally {
+    threadBusy.value = false;
+  }
+}
 </script>
 
 <template>
@@ -244,6 +357,14 @@ async function submitEdit(post) {
           · {{ formatDate(topic.createdAt) }}
         </div>
       </div>
+      <div v-if="isAuthenticated && canManageTopic()" class="inline-actions">
+        <button class="btn btn-outline" type="button" :disabled="threadBusy" @click="topicEditMode ? cancelTopicEdit() : startTopicEdit()">
+          {{ topicEditMode ? 'Отменить редактирование' : 'Редактировать тему' }}
+        </button>
+        <button class="btn btn-danger" type="button" :disabled="threadBusy" @click="deleteTopic">
+          Удалить тему
+        </button>
+      </div>
     </div>
 
     <article class="forum-topic-opening">
@@ -259,7 +380,21 @@ async function submitEdit(post) {
           </strong>
           <span v-if="topic.author?.city" class="meta">· {{ topic.author.city }}</span>
         </div>
-        <div class="prewrap">{{ topic.body || 'Текст темы не указан.' }}</div>
+        <form v-if="topicEditMode" class="stack forum-inline-form" @submit.prevent="submitTopicEdit">
+          <div class="field">
+            <label for="forum-topic-title">Заголовок темы</label>
+            <input id="forum-topic-title" v-model="topicForm.title" class="input" required />
+          </div>
+          <div class="field">
+            <label for="forum-topic-body">Текст темы</label>
+            <textarea id="forum-topic-body" v-model="topicForm.body" class="textarea" required />
+          </div>
+          <div class="inline-actions">
+            <button class="btn btn-primary" type="submit" :disabled="threadBusy">{{ threadBusy ? 'Сохраняем…' : 'Сохранить тему' }}</button>
+            <button class="btn btn-outline" type="button" :disabled="threadBusy" @click="cancelTopicEdit">Отмена</button>
+          </div>
+        </form>
+        <div v-else class="prewrap">{{ topic.body || 'Текст темы не указан.' }}</div>
       </div>
     </article>
 
@@ -271,7 +406,7 @@ async function submitEdit(post) {
     </div>
 
     <div v-if="error" class="message error">{{ error }}</div>
-    <div v-if="threadStatus" class="message" :class="threadStatus.includes('обновлено') || threadStatus.includes('опубликован') || threadStatus.includes('добавлен') ? 'success' : 'error'">
+    <div v-if="threadStatus" class="message" :class="threadStatus.includes('обновлен') || threadStatus.includes('опубликован') || threadStatus.includes('добавлен') || threadStatus.includes('архив') || threadStatus.includes('скрыто') ? 'success' : 'error'">
       {{ threadStatus }}
     </div>
 
@@ -315,13 +450,22 @@ async function submitEdit(post) {
               Ответить
             </button>
             <button
-              v-if="isAuthenticated && isOwnPost(post)"
+              v-if="isAuthenticated && canManagePost(post)"
               class="btn btn-outline"
               type="button"
               :disabled="threadBusy"
               @click="startEdit(post)"
             >
               Редактировать
+            </button>
+            <button
+              v-if="isAuthenticated && canManagePost(post)"
+              class="btn btn-danger"
+              type="button"
+              :disabled="threadBusy"
+              @click="deletePost(post)"
+            >
+              Удалить
             </button>
           </div>
 

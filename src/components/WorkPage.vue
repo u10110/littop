@@ -17,6 +17,7 @@ import { flattenThreadTree } from '../lib/discussion.js';
 import { uploadForumPostImage } from '../lib/forumImages.js';
 import { getAuthorDisplayName, getAuthorInitial } from '../lib/forum.js';
 import { buildAuthorPageLocation, normalizeRouteParam } from '../lib/routes.js';
+import { setDocumentTitle } from '../lib/pageTitle.js';
 import { useSession } from '../lib/session.js';
 
 const route = useRoute();
@@ -76,6 +77,7 @@ const isOwner = computed(() => {
   }
   return String(currentUser.value.id) === String(work.value.author.id);
 });
+const canManageWork = computed(() => isOwner.value || currentUser.value?.role === 'admin');
 const flatComments = computed(() => flattenThreadTree(comments.value, 'parentCommentId'));
 
 onMounted(() => {
@@ -90,6 +92,22 @@ watch(work, (value) => {
   if (value && !editMode.value) {
     syncEditForm(value);
   }
+}, { immediate: true });
+
+watch([work, slugOrId, workLoading, workError], () => {
+  if (work.value?.title) {
+    setDocumentTitle(work.value.title);
+    return;
+  }
+  if (workError.value) {
+    setDocumentTitle('Ошибка произведения');
+    return;
+  }
+  if (!workLoading.value && slugOrId.value) {
+    setDocumentTitle('Произведение не найдено');
+    return;
+  }
+  setDocumentTitle('Произведение');
 }, { immediate: true });
 
 function currentLookupVariables(value) {
@@ -493,7 +511,7 @@ async function softDeleteCurrentWork() {
             {{ viewersVisible ? 'Скрыть список просмотров' : 'Список просмотров' }}
           </button>
           <button
-            v-if="isOwner"
+            v-if="canManageWork"
             class="btn btn-outline"
             type="button"
             :disabled="editBusy || deleteBusy"
@@ -502,7 +520,7 @@ async function softDeleteCurrentWork() {
             {{ editMode ? 'Отменить редактирование' : 'Редактировать' }}
           </button>
           <button
-            v-if="isOwner"
+            v-if="canManageWork"
             class="btn btn-danger"
             type="button"
             :disabled="editBusy || deleteBusy"
@@ -516,7 +534,7 @@ async function softDeleteCurrentWork() {
       <div v-if="editStatus" class="message" :class="editStatus.includes('сохранены') ? 'success' : 'error'">{{ editStatus }}</div>
       <div v-if="deleteStatus" class="message" :class="deleteStatus.includes('архив') ? 'success' : 'error'">{{ deleteStatus }}</div>
 
-      <form v-if="editMode && isOwner" class="stack work-edit-form" @submit.prevent="submitWorkUpdate">
+      <form v-if="editMode && canManageWork" class="stack work-edit-form" @submit.prevent="submitWorkUpdate">
         <div class="field">
           <label for="edit-work-section">Раздел</label>
           <select id="edit-work-section" v-model="editForm.sectionCode" class="select">

@@ -375,6 +375,12 @@ export const UPDATE_MY_PROFILE_MUTATION = gql`
   }
 `;
 
+export const CLOSE_MY_ACCOUNT_MUTATION = gql`
+  mutation CloseMyAccount {
+    closeMyAccount
+  }
+`;
+
 export const TOUCH_PRESENCE_MUTATION = gql`
   ${USER_SESSION_FIELDS}
   mutation TouchPresence {
@@ -442,6 +448,24 @@ export const CREATE_FORUM_TOPIC_MUTATION = gql`
   }
 `;
 
+export const UPDATE_FORUM_TOPIC_MUTATION = gql`
+  ${FORUM_TOPIC_PREVIEW_FIELDS}
+  mutation UpdateForumTopic($topicId: ID!, $input: UpdateForumTopicInput!) {
+    updateForumTopic(topicId: $topicId, input: $input) {
+      ...ForumTopicPreviewFields
+    }
+  }
+`;
+
+export const DELETE_FORUM_TOPIC_MUTATION = gql`
+  ${FORUM_TOPIC_PREVIEW_FIELDS}
+  mutation DeleteForumTopic($topicId: ID!) {
+    deleteForumTopic(topicId: $topicId) {
+      ...ForumTopicPreviewFields
+    }
+  }
+`;
+
 export const CREATE_FORUM_POST_MUTATION = gql`
   ${FORUM_POST_FIELDS}
   mutation CreateForumPost($topicId: ID!, $body: String!, $parentPostId: ID, $imageUrl: String) {
@@ -455,6 +479,15 @@ export const UPDATE_FORUM_POST_MUTATION = gql`
   ${FORUM_POST_FIELDS}
   mutation UpdateForumPost($postId: ID!, $body: String!, $imageUrl: String) {
     updateForumPost(postId: $postId, body: $body, imageUrl: $imageUrl) {
+      ...ForumPostFields
+    }
+  }
+`;
+
+export const DELETE_FORUM_POST_MUTATION = gql`
+  ${FORUM_POST_FIELDS}
+  mutation DeleteForumPost($postId: ID!) {
+    deleteForumPost(postId: $postId) {
       ...ForumPostFields
     }
   }

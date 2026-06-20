@@ -7,6 +7,7 @@ import { apolloClient } from '../lib/apollo.js';
 import { FORUM_TOPIC_QUERY } from '../lib/graphql.js';
 import { buildForumTopicLookupVariables } from '../lib/forum.js';
 import { normalizeRouteParam } from '../lib/routes.js';
+import { setDocumentTitle } from '../lib/pageTitle.js';
 import { useSession } from '../lib/session.js';
 
 const route = useRoute();
@@ -26,6 +27,22 @@ onMounted(() => {
 
 watch(slugOrId, (value) => {
   loadTopicPage(value);
+}, { immediate: true });
+
+watch([topic, slugOrId, topicLoading, topicError], () => {
+  if (topic.value?.title) {
+    setDocumentTitle(topic.value.title);
+    return;
+  }
+  if (topicError.value) {
+    setDocumentTitle('Ошибка темы');
+    return;
+  }
+  if (!topicLoading.value && slugOrId.value) {
+    setDocumentTitle('Тема не найдена');
+    return;
+  }
+  setDocumentTitle('Тема форума');
 }, { immediate: true });
 
 async function loadTopicPage(value) {

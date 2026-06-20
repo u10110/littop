@@ -7,7 +7,7 @@ import {
   getStoredToken,
   setStoredToken,
 } from './auth.js';
-import { LOGIN_MUTATION, ME_QUERY, REGISTER_MUTATION, UPDATE_MY_PROFILE_MUTATION } from './graphql.js';
+import { CLOSE_MY_ACCOUNT_MUTATION, LOGIN_MUTATION, ME_QUERY, REGISTER_MUTATION, UPDATE_MY_PROFILE_MUTATION } from './graphql.js';
 
 const state = reactive({
   token: getStoredToken(),
@@ -137,6 +137,23 @@ export function useSession() {
     }
   }
 
+  async function closeAccount() {
+    state.profileBusy = true;
+    state.profileError = '';
+    try {
+      await apolloClient.mutate({
+        mutation: CLOSE_MY_ACCOUNT_MUTATION,
+      });
+      await logout();
+      return true;
+    } catch (error) {
+      state.profileError = extractGraphqlErrorMessage(error, 'Не удалось закрыть аккаунт.');
+      throw error;
+    } finally {
+      state.profileBusy = false;
+    }
+  }
+
   async function logout() {
     clearStoredToken();
     state.token = '';
@@ -163,6 +180,7 @@ export function useSession() {
     register,
     saveProfile,
     completeExternalAuthToken,
+    closeAccount,
     logout,
     bootstrapSession,
   };

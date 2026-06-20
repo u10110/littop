@@ -12,6 +12,7 @@ import {
 import { useSession } from './lib/session.js';
 import { apolloClient } from './lib/apollo.js';
 import { TOUCH_PRESENCE_MUTATION } from './lib/graphql.js';
+import { setDocumentTitle } from './lib/pageTitle.js';
 
 const endpoint = getGraphqlEndpoint();
 const route = useRoute();
@@ -225,6 +226,14 @@ watch(
   () => route.fullPath,
   () => {
     void handleSocialAuthCallback();
+  },
+  { immediate: true },
+);
+
+watch(
+  () => route.meta?.title,
+  (title) => {
+    setDocumentTitle(typeof title === 'string' ? title : 'Литопотам');
   },
   { immediate: true },
 );

@@ -17,6 +17,7 @@ const {
   profileError,
   bootstrapSession,
   saveProfile,
+  closeAccount,
 } = useSession();
 
 const profile = computed(() => currentUser.value?.profile ?? null);
@@ -27,6 +28,7 @@ const myWorksLink = computed(() => ({
 }));
 const myAuthorPageLink = computed(() => buildAuthorPageLocation(currentUser.value?.login || ''));
 const profileSuccess = ref('');
+const accountClosureStatus = ref('');
 const publishStatus = ref('');
 const audioBusy = ref(false);
 const audioError = ref('');
@@ -209,6 +211,19 @@ async function submitProfileImage(kind) {
     profileImageError.value = error instanceof Error ? error.message : 'Не удалось загрузить изображение.';
   } finally {
     profileImageBusy.value = false;
+  }
+}
+
+async function submitAccountClosure() {
+  const confirmed = globalThis.confirm?.('Закрыть аккаунт автора? Публикации будут сняты с витрины, а сессия завершится.') ?? true;
+  if (!confirmed) return;
+
+  accountClosureStatus.value = '';
+  try {
+    await closeAccount();
+    accountClosureStatus.value = 'Аккаунт закрыт. Сессия завершена.';
+  } catch {
+    // Текст уже лежит в profileError.
   }
 }
 </script>
@@ -457,6 +472,24 @@ async function submitProfileImage(kind) {
           </div>
           <div class="note">
             Кнопка «Мои произведения» открывает каталог сразу с фильтром <code>?mine=1</code> из адресной строки.
+          </div>
+        </article>
+      </section>
+
+      <section class="layout-columns personal-layout">
+        <article class="panel">
+          <div class="section-head">
+            <h2>Закрытие аккаунта</h2>
+            <span class="pill warn">soft delete</span>
+          </div>
+          <div class="note">
+            Аккаунт автора будет закрыт: сессия завершится, произведения уйдут в архив, а форумные записи будут скрыты.
+          </div>
+          <div v-if="accountClosureStatus" class="message success">{{ accountClosureStatus }}</div>
+          <div class="inline-actions">
+            <button class="btn btn-danger" type="button" :disabled="profileBusy" @click="submitAccountClosure">
+              {{ profileBusy ? 'Закрываем…' : 'Закрыть аккаунт' }}
+            </button>
           </div>
         </article>
       </section>

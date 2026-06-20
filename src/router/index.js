@@ -12,17 +12,17 @@ import Personal from '../components/Personal.vue';
 import SocialAuthCallback from '../components/SocialAuthCallback.vue';
 
 const routes = [
-  { path: '/', name: 'home', component: Home },
-  { path: '/works', name: 'works', component: Works },
-  { path: '/works/:slugOrId', name: 'work-public', component: WorkPage },
-  { path: '/authors', name: 'authors', component: Authors },
-  { path: '/authors/:login', name: 'author-public', component: AuthorPage },
-  { path: '/contests', name: 'contests', component: Contests },
-  { path: '/radio', name: 'radio', component: Radio },
-  { path: '/forum', name: 'forum', component: Forum },
-  { path: '/forum/:slugOrId', name: 'forum-topic-public', component: ForumTopicPage },
-  { path: '/personal', name: 'personal', component: Personal },
-  { path: '/auth/callback', name: 'social-auth-callback', component: SocialAuthCallback },
+  { path: '/', name: 'home', component: Home, meta: { title: 'Главная' } },
+  { path: '/works', name: 'works', component: Works, meta: { title: 'Произведения' } },
+  { path: '/works/:slugOrId', name: 'work-public', component: WorkPage, meta: { title: 'Произведение' } },
+  { path: '/authors', name: 'authors', component: Authors, meta: { title: 'Авторы' } },
+  { path: '/authors/:login', name: 'author-public', component: AuthorPage, meta: { title: 'Страница автора' } },
+  { path: '/contests', name: 'contests', component: Contests, meta: { title: 'Конкурсы' } },
+  { path: '/radio', name: 'radio', component: Radio, meta: { title: 'Радио' } },
+  { path: '/forum', name: 'forum', component: Forum, meta: { title: 'Форум' } },
+  { path: '/forum/:slugOrId', name: 'forum-topic-public', component: ForumTopicPage, meta: { title: 'Тема форума' } },
+  { path: '/personal', name: 'personal', component: Personal, meta: { title: 'Мой кабинет' } },
+  { path: '/auth/callback', name: 'social-auth-callback', component: SocialAuthCallback, meta: { title: 'Авторизация' } },
 ];
 
 const router = createRouter({

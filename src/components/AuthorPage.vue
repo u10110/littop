@@ -6,6 +6,7 @@ import { apolloClient } from '../lib/apollo.js';
 import { AUTHOR_QUERY, WORKS_QUERY } from '../lib/graphql.js';
 import { excerptText, formatDate, formatDateTime, formatWorkSection } from '../lib/format.js';
 import { buildWorkPageLocation, normalizeRouteParam } from '../lib/routes.js';
+import { setDocumentTitle } from '../lib/pageTitle.js';
 
 const route = useRoute();
 
@@ -76,6 +77,22 @@ const workRows = computed(() => authorWorks.value.map((work, index) => {
 
 watch(authorLogin, (login) => {
   loadAuthorPage(login);
+}, { immediate: true });
+
+watch([author, authorLogin, pageLoading, pageError], () => {
+  if (author.value?.displayName) {
+    setDocumentTitle(author.value.displayName);
+    return;
+  }
+  if (pageError.value) {
+    setDocumentTitle('Ошибка автора');
+    return;
+  }
+  if (!pageLoading.value && authorLogin.value) {
+    setDocumentTitle('Автор не найден');
+    return;
+  }
+  setDocumentTitle('Страница автора');
 }, { immediate: true });
 
 async function loadAuthorPage(login) {
