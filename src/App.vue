@@ -10,9 +10,6 @@ import {
   parseSocialAuthCallbackParams,
 } from './lib/auth.js';
 import { useSession } from './lib/session.js';
-import { apolloClient } from './lib/apollo.js';
-import { TOUCH_PRESENCE_MUTATION } from './lib/graphql.js';
-import { setDocumentTitle } from './lib/pageTitle.js';
 
 const endpoint = getGraphqlEndpoint();
 const route = useRoute();
@@ -50,7 +47,6 @@ const {
 const displayName = computed(() => currentUser.value?.profile?.displayName || currentUser.value?.login || 'Автор');
 
 let successTimer = null;
-let presenceTimer = null;
 let lastHandledSocialCallback = '';
 
 function clearSuccessTimer() {
@@ -58,34 +54,6 @@ function clearSuccessTimer() {
     clearTimeout(successTimer);
     successTimer = null;
   }
-}
-
-function clearPresenceTimer() {
-  if (presenceTimer) {
-    clearInterval(presenceTimer);
-    presenceTimer = null;
-  }
-}
-
-async function touchPresence() {
-  if (!isAuthenticated.value) return;
-  try {
-    await apolloClient.mutate({
-      mutation: TOUCH_PRESENCE_MUTATION,
-      fetchPolicy: 'no-cache',
-    });
-  } catch {
-    // Молча пропускаем: presence не должен ломать UI.
-  }
-}
-
-function startPresenceHeartbeat() {
-  clearPresenceTimer();
-  if (!isAuthenticated.value) return;
-  void touchPresence();
-  presenceTimer = setInterval(() => {
-    void touchPresence();
-  }, 60_000);
 }
 
 function setSuccessMessage(message) {
@@ -192,7 +160,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   clearSuccessTimer();
-  clearPresenceTimer();
   window.removeEventListener('littop:open-auth', handleOpenAuthEvent);
   document.body.style.overflow = '';
 });
@@ -215,25 +182,12 @@ watch(isAuthenticated, (value) => {
   if (value && isAuthModalOpen.value) {
     closeAuthModal();
   }
-  if (value) {
-    startPresenceHeartbeat();
-  } else {
-    clearPresenceTimer();
-  }
-}, { immediate: true });
+});
 
 watch(
   () => route.fullPath,
   () => {
     void handleSocialAuthCallback();
-  },
-  { immediate: true },
-);
-
-watch(
-  () => route.meta?.title,
-  (title) => {
-    setDocumentTitle(typeof title === 'string' ? title : 'Литопотам');
   },
   { immediate: true },
 );
@@ -279,6 +233,7 @@ async function submitLogout() {
     <div class="navwrap">
       <div class="logo-block">
         <div class="logo">Литопотам</div>
+        <div class="logo-subtitle">Vue 3 + Vue Apollo + GraphQL backend</div>
       </div>
 
       <nav class="nav" aria-label="Главное меню">

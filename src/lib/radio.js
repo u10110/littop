@@ -71,7 +71,7 @@ export async function uploadRadioTrack({
   }
 
   const backendBaseUrl = resolveBackendBaseUrl(graphqlEndpoint);
-  const response = await fetch(`${backendBaseUrl}/radio/upload`, {
+  const response = await fetch(`${backendBaseUrl}/api/radio/upload`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

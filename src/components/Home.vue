@@ -12,7 +12,7 @@ import {
   formatWorkSection,
   ratingLabel,
 } from '../lib/format.js';
-import { buildAuthorPageLocation, buildForumTopicPageLocation, buildWorkPageLocation } from '../lib/routes.js';
+import { buildAuthorPageLocation, buildWorkPageLocation } from '../lib/routes.js';
 
 const { result, loading, error } = useQuery(HOME_QUERY, null, {
   fetchPolicy: 'cache-and-network',
@@ -21,7 +21,6 @@ const { result, loading, error } = useQuery(HOME_QUERY, null, {
 const health = computed(() => result.value?.health ?? null);
 const featuredAuthors = computed(() => result.value?.featuredAuthors ?? []);
 const classicAuthors = computed(() => result.value?.classicAuthors ?? []);
-const onlineAuthors = computed(() => result.value?.onlineAuthors ?? []);
 const recentWorks = computed(() => result.value?.recentWorks ?? []);
 const recentTopics = computed(() => result.value?.recentTopics ?? []);
 const contests = computed(() => result.value?.contests ?? []);
@@ -99,7 +98,7 @@ const healthTone = computed(() => {
         <h2>Авторы</h2>
         <RouterLink to="/authors" class="btn btn-outline">Все авторы</RouterLink>
       </div>
-      <div v-if="featuredAuthors.length || classicAuthors.length || onlineAuthors.length" class="stack">
+      <div v-if="featuredAuthors.length || classicAuthors.length" class="stack">
         <article class="card">
           <h3>Витрина</h3>
           <div class="list">
@@ -122,18 +121,6 @@ const healthTone = computed(() => {
             </div>
           </div>
         </article>
-        <article class="card">
-          <h3>Кто в сети</h3>
-          <div v-if="onlineAuthors.length" class="list">
-            <div v-for="author in onlineAuthors" :key="`online-${author.id}`" class="inline-card">
-              <strong>
-                <RouterLink :to="buildAuthorPageLocation(author)">{{ author.displayName }}</RouterLink>
-              </strong>
-              <div class="meta">@{{ author.login }} · сейчас на сайте</div>
-            </div>
-          </div>
-          <div v-else class="empty-state">Сейчас в сети никого не видно.</div>
-        </article>
       </div>
       <div v-else class="empty-state">В базе пока нет авторов. После регистрации они начнут появляться здесь автоматически.</div>
     </div>
@@ -149,13 +136,9 @@ const healthTone = computed(() => {
             <span class="pill">{{ topic.sectionSlug }}</span>
             <span class="pill">ответов: {{ topic.repliesCount }}</span>
           </div>
-          <h3>
-            <RouterLink :to="buildForumTopicPageLocation(topic)">{{ topic.title }}</RouterLink>
-          </h3>
+          <h3>{{ topic.title }}</h3>
           <div class="meta">
-            <RouterLink v-if="topic.author?.login" class="user-inline-link" :to="buildAuthorPageLocation(topic.author)">{{ topic.author?.displayName || topic.author?.login }}</RouterLink>
-            <template v-else>{{ topic.author?.displayName || topic.author?.login }}</template>
-            · {{ formatDate(topic.lastPostAt || topic.createdAt) }}
+            {{ topic.author?.displayName || topic.author?.login }} · {{ formatDate(topic.lastPostAt || topic.createdAt) }}
           </div>
           <div>{{ excerptText(topic.body, 140) }}</div>
         </article>
