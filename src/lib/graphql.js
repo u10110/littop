@@ -16,8 +16,6 @@ export const AUTHOR_CARD_FIELDS = gql`
     isClassic
     isFeatured
     registeredAt
-    lastSeenAt
-    isOnline
     createdAt
     updatedAt
   }
@@ -38,6 +36,9 @@ export const WORK_PREVIEW_FIELDS = gql`
     commentsCount
     ratingsCount
     averageRating
+    likesCount
+    likedByMe
+    announcementActive
     publishedAt
     createdAt
     updatedAt
@@ -57,6 +58,8 @@ export const WORK_COMMENT_FIELDS = gql`
     body
     imageUrl
     status
+    likesCount
+    likedByMe
     createdAt
     updatedAt
     author {
@@ -95,7 +98,6 @@ export const FORUM_POST_FIELDS = gql`
     userId
     parentPostId
     body
-    imageUrl
     status
     createdAt
     updatedAt
@@ -106,14 +108,20 @@ export const FORUM_POST_FIELDS = gql`
   ${AUTHOR_CARD_FIELDS}
 `;
 
-
-export const WORK_VIEWER_FIELDS = gql`
-  fragment WorkViewerFields on WorkViewer {
+export const AUTHOR_REVIEW_FEED_ITEM_FIELDS = gql`
+  fragment AuthorReviewFeedItemFields on AuthorReviewFeedItem {
     id
+    body
+    status
+    createdAt
+    updatedAt
     workId
-    viewerUserId
-    viewedAt
-    viewer {
+    workTitle
+    workSlug
+    commentAuthor {
+      ...AuthorCardFields
+    }
+    workAuthor {
       ...AuthorCardFields
     }
   }
@@ -163,8 +171,6 @@ export const USER_SESSION_FIELDS = gql`
     status
     registeredAt
     lastLoginAt
-    lastSeenAt
-    isOnline
     createdAt
     updatedAt
     profile {
@@ -200,13 +206,19 @@ export const HOME_QUERY = gql`
     classicAuthors: authors(limit: 6, classicsOnly: true) {
       ...AuthorCardFields
     }
-    onlineAuthors(limit: 8) {
+    onlineAuthors(limit: 6) {
       ...AuthorCardFields
     }
     recentWorks: works(limit: 6) {
       ...WorkPreviewFields
     }
+    announcements: announcedWorks(limit: 12) {
+      ...WorkPreviewFields
+    }
     recentTopics: forumTopics(limit: 6) {
+      ...ForumTopicPreviewFields
+    }
+    editorColumnTopics: forumTopics(sectionSlug: "editor-column", limit: 1) {
       ...ForumTopicPreviewFields
     }
     contests(limit: 6) {
@@ -248,12 +260,19 @@ export const AUTHOR_QUERY = gql`
 export const AUTHOR_DETAILS_QUERY = gql`
   ${AUTHOR_CARD_FIELDS}
   ${WORK_PREVIEW_FIELDS}
+  ${AUTHOR_REVIEW_FEED_ITEM_FIELDS}
   query AuthorDetails($login: String!, $authorId: ID!) {
     author(login: $login) {
       ...AuthorCardFields
     }
     works(authorId: $authorId, limit: 6) {
       ...WorkPreviewFields
+    }
+    writtenReviews: authorWrittenWorkComments(authorId: $authorId, limit: 50) {
+      ...AuthorReviewFeedItemFields
+    }
+    receivedReviews: authorReceivedWorkComments(authorId: $authorId, limit: 50) {
+      ...AuthorReviewFeedItemFields
     }
   }
 `;
@@ -285,11 +304,77 @@ export const WORK_COMMENTS_QUERY = gql`
   }
 `;
 
+export const WORK_LIKERS_QUERY = gql`
+  ${AUTHOR_CARD_FIELDS}
+  query WorkLikers($workId: ID!, $limit: Int!) {
+    workLikers(workId: $workId, limit: $limit) {
+      ...AuthorCardFields
+    }
+  }
+`;
+
+export const WORK_COMMENT_LIKERS_QUERY = gql`
+  ${AUTHOR_CARD_FIELDS}
+  query WorkCommentLikers($commentId: ID!, $limit: Int!) {
+    workCommentLikers(commentId: $commentId, limit: $limit) {
+      ...AuthorCardFields
+    }
+  }
+`;
+
+export const WORK_READERS_QUERY = gql`
+  ${AUTHOR_CARD_FIELDS}
+  query WorkReaders($workId: ID!, $limit: Int!) {
+    workReaders(workId: $workId, limit: $limit) {
+      totalViews
+      lockedViews
+      batchSize
+      viewers {
+        id
+        workId
+        viewerUserId
+        viewedAt
+        viewer {
+          ...AuthorCardFields
+        }
+      }
+    }
+  }
+`;
+
 export const WORK_VIEWERS_QUERY = gql`
-  ${WORK_VIEWER_FIELDS}
+  ${AUTHOR_CARD_FIELDS}
   query WorkViewers($workId: ID!, $limit: Int!) {
     workViewers(workId: $workId, limit: $limit) {
-      ...WorkViewerFields
+      id
+      workId
+      viewerUserId
+      viewedAt
+      viewer {
+        ...AuthorCardFields
+      }
+    }
+  }
+`;
+
+export const AUTHOR_PAGE_VISITORS_QUERY = gql`
+  ${AUTHOR_CARD_FIELDS}
+  query AuthorPageVisitors($workId: ID!, $limit: Int!) {
+    authorPageVisitors(workId: $workId, limit: $limit) {
+      totalViews
+      lockedViews
+      batchSize
+      visitors {
+        id
+        workId
+        viewerUserId
+        viewedAt
+        workTitle
+        workSlug
+        viewer {
+          ...AuthorCardFields
+        }
+      }
     }
   }
 `;
@@ -325,6 +410,19 @@ export const FORUM_OVERVIEW_QUERY = gql`
     }
     forumTopics(sectionSlug: $sectionSlug, limit: $limit, offset: $offset) {
       ...ForumTopicPreviewFields
+    }
+  }
+`;
+
+export const FORUM_SECTIONS_QUERY = gql`
+  query ForumSectionsOnly {
+    forumSections {
+      id
+      slug
+      name
+      description
+      sortOrder
+      isPublic
     }
   }
 `;
@@ -375,12 +473,6 @@ export const UPDATE_MY_PROFILE_MUTATION = gql`
   }
 `;
 
-export const CLOSE_MY_ACCOUNT_MUTATION = gql`
-  mutation CloseMyAccount {
-    closeMyAccount
-  }
-`;
-
 export const TOUCH_PRESENCE_MUTATION = gql`
   ${USER_SESSION_FIELDS}
   mutation TouchPresence {
@@ -417,6 +509,24 @@ export const DELETE_WORK_MUTATION = gql`
   }
 `;
 
+export const ACTIVATE_WORK_ANNOUNCEMENT_MUTATION = gql`
+  ${WORK_PREVIEW_FIELDS}
+  mutation ActivateWorkAnnouncement($workId: ID!) {
+    activateWorkAnnouncement(workId: $workId) {
+      ...WorkPreviewFields
+    }
+  }
+`;
+
+export const TOGGLE_WORK_LIKE_MUTATION = gql`
+  ${WORK_PREVIEW_FIELDS}
+  mutation ToggleWorkLike($workId: ID!) {
+    toggleWorkLike(workId: $workId) {
+      ...WorkPreviewFields
+    }
+  }
+`;
+
 export const RATE_WORK_MUTATION = gql`
   mutation RateWork($workId: ID!, $rating: Int!) {
     rateWork(workId: $workId, rating: $rating) {
@@ -432,8 +542,35 @@ export const RATE_WORK_MUTATION = gql`
 
 export const ADD_WORK_COMMENT_MUTATION = gql`
   ${WORK_COMMENT_FIELDS}
-  mutation AddWorkComment($workId: ID!, $body: String!, $parentCommentId: ID, $imageUrl: String) {
-    addWorkComment(workId: $workId, body: $body, parentCommentId: $parentCommentId, imageUrl: $imageUrl) {
+  mutation AddWorkComment($workId: ID!, $body: String!, $parentCommentId: ID) {
+    addWorkComment(workId: $workId, body: $body, parentCommentId: $parentCommentId) {
+      ...WorkCommentFields
+    }
+  }
+`;
+
+export const UPDATE_WORK_COMMENT_MUTATION = gql`
+  ${WORK_COMMENT_FIELDS}
+  mutation UpdateWorkComment($commentId: ID!, $body: String!) {
+    updateWorkComment(commentId: $commentId, body: $body) {
+      ...WorkCommentFields
+    }
+  }
+`;
+
+export const DELETE_WORK_COMMENT_MUTATION = gql`
+  ${WORK_COMMENT_FIELDS}
+  mutation DeleteWorkComment($commentId: ID!) {
+    deleteWorkComment(commentId: $commentId) {
+      ...WorkCommentFields
+    }
+  }
+`;
+
+export const TOGGLE_WORK_COMMENT_LIKE_MUTATION = gql`
+  ${WORK_COMMENT_FIELDS}
+  mutation ToggleWorkCommentLike($commentId: ID!) {
+    toggleWorkCommentLike(commentId: $commentId) {
       ...WorkCommentFields
     }
   }
@@ -457,19 +594,10 @@ export const UPDATE_FORUM_TOPIC_MUTATION = gql`
   }
 `;
 
-export const DELETE_FORUM_TOPIC_MUTATION = gql`
-  ${FORUM_TOPIC_PREVIEW_FIELDS}
-  mutation DeleteForumTopic($topicId: ID!) {
-    deleteForumTopic(topicId: $topicId) {
-      ...ForumTopicPreviewFields
-    }
-  }
-`;
-
 export const CREATE_FORUM_POST_MUTATION = gql`
   ${FORUM_POST_FIELDS}
-  mutation CreateForumPost($topicId: ID!, $body: String!, $parentPostId: ID, $imageUrl: String) {
-    createForumPost(topicId: $topicId, body: $body, parentPostId: $parentPostId, imageUrl: $imageUrl) {
+  mutation CreateForumPost($topicId: ID!, $body: String!, $parentPostId: ID) {
+    createForumPost(topicId: $topicId, body: $body, parentPostId: $parentPostId) {
       ...ForumPostFields
     }
   }
@@ -477,8 +605,8 @@ export const CREATE_FORUM_POST_MUTATION = gql`
 
 export const UPDATE_FORUM_POST_MUTATION = gql`
   ${FORUM_POST_FIELDS}
-  mutation UpdateForumPost($postId: ID!, $body: String!, $imageUrl: String) {
-    updateForumPost(postId: $postId, body: $body, imageUrl: $imageUrl) {
+  mutation UpdateForumPost($postId: ID!, $body: String!) {
+    updateForumPost(postId: $postId, body: $body) {
       ...ForumPostFields
     }
   }

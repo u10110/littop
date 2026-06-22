@@ -7,7 +7,13 @@ function compareByCreatedAt(left, right) {
   return Number(left?.id || 0) - Number(right?.id || 0);
 }
 
-export function buildThreadTree(items = [], parentKey = 'parentCommentId') {
+export function buildThreadTree(items = [], options = {}) {
+  const {
+    idKey = 'id',
+    parentKey = 'parentId',
+    authorKey = 'author',
+  } = options;
+
   const nodes = Array.isArray(items)
     ? items.map((item) => ({
         ...item,
@@ -17,15 +23,16 @@ export function buildThreadTree(items = [], parentKey = 'parentCommentId') {
       }))
     : [];
 
-  const byId = new Map(nodes.map((node) => [String(node.id), node]));
+  const byId = new Map(nodes.map((node) => [String(node?.[idKey]), node]));
   const roots = [];
 
   for (const node of nodes) {
-    const parentId = node[parentKey] == null ? '' : String(node[parentKey]);
+    const rawParentId = node?.[parentKey];
+    const parentId = rawParentId == null ? '' : String(rawParentId);
     const parent = parentId ? byId.get(parentId) : null;
     if (parent) {
       node.depth = parent.depth + 1;
-      node.replyToAuthor = parent.author || null;
+      node.replyToAuthor = parent?.[authorKey] || null;
       parent.children.push(node);
     } else {
       roots.push(node);
@@ -43,8 +50,8 @@ export function buildThreadTree(items = [], parentKey = 'parentCommentId') {
   return roots;
 }
 
-export function flattenThreadTree(items = [], parentKey = 'parentCommentId') {
-  const roots = buildThreadTree(items, parentKey);
+export function flattenThreadTree(items = [], options = {}) {
+  const roots = buildThreadTree(items, options);
   const flattened = [];
 
   const visit = (node) => {

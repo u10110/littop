@@ -23,7 +23,10 @@ const featuredAuthors = computed(() => result.value?.featuredAuthors ?? []);
 const classicAuthors = computed(() => result.value?.classicAuthors ?? []);
 const onlineAuthors = computed(() => result.value?.onlineAuthors ?? []);
 const recentWorks = computed(() => result.value?.recentWorks ?? []);
+const announcements = computed(() => result.value?.announcements ?? []);
 const recentTopics = computed(() => result.value?.recentTopics ?? []);
+const editorColumnTopics = computed(() => result.value?.editorColumnTopics ?? []);
+const editorLead = computed(() => editorColumnTopics.value[0] ?? null);
 const contests = computed(() => result.value?.contests ?? []);
 const radioTracks = computed(() => result.value?.radioTracks ?? []);
 
@@ -48,23 +51,76 @@ const healthTone = computed(() => {
     <article class="card stat">
       <span class="meta">Авторы в витрине</span>
       <span class="value">{{ featuredAuthors.length }}</span>
-      <span class="note">featuredOnly=true</span>
+      <span class="note">выбор редакции</span>
     </article>
     <article class="card stat">
       <span class="meta">Классики</span>
       <span class="value">{{ classicAuthors.length }}</span>
-      <span class="note">classicsOnly=true</span>
+      <span class="note">основной фонд</span>
     </article>
     <article class="card stat">
       <span class="meta">Свежие произведения</span>
       <span class="value">{{ recentWorks.length }}</span>
-      <span class="note">works(limit: 6)</span>
+      <span class="note">последние публикации</span>
     </article>
     <article class="card stat">
       <span class="meta">Темы форума</span>
       <span class="value">{{ recentTopics.length }}</span>
-      <span class="note">forumTopics(limit: 6)</span>
+      <span class="note">обновляется по новым темам</span>
     </article>
+  </section>
+
+  <section class="layout-columns">
+    <div class="section-block">
+      <div class="section-head">
+        <h2>Колонка редактора</h2>
+        <RouterLink to="/forum?section=editor-column" class="btn btn-outline">Все статьи</RouterLink>
+      </div>
+      <article v-if="editorLead" class="card stack">
+        <div class="chips">
+          <span class="pill">Колонка редактора</span>
+          <span class="pill">ответов: {{ editorLead.repliesCount }}</span>
+        </div>
+        <h3>
+          <RouterLink :to="buildForumTopicPageLocation(editorLead)">{{ editorLead.title }}</RouterLink>
+        </h3>
+        <div class="meta">
+          <RouterLink v-if="editorLead.author?.login" class="user-inline-link" :to="buildAuthorPageLocation(editorLead.author)">{{ editorLead.author?.displayName || editorLead.author?.login }}</RouterLink>
+          <template v-else>{{ editorLead.author?.displayName || editorLead.author?.login }}</template>
+          · {{ formatDate(editorLead.lastPostAt || editorLead.createdAt) }}
+        </div>
+        <div>{{ excerptText(editorLead.body, 320) }}</div>
+        <div class="inline-actions">
+          <RouterLink class="btn btn-primary" :to="buildForumTopicPageLocation(editorLead)">Открыть тему</RouterLink>
+        </div>
+      </article>
+      <div v-else class="empty-state">В колонке редактора пока нет опубликованных статей.</div>
+    </div>
+
+    <div class="section-block">
+      <div class="section-head">
+        <h2>Анонсы</h2>
+        <RouterLink to="/works" class="btn btn-outline">Все произведения</RouterLink>
+      </div>
+      <div v-if="announcements.length" class="stack">
+        <article v-for="work in announcements" :key="`announce-${work.id}`" class="card">
+          <div class="chips">
+            <span class="pill">{{ formatWorkSection(work.sectionCode) }}</span>
+            <span class="pill">{{ ratingLabel(work.averageRating, work.ratingsCount) }}</span>
+          </div>
+          <h3>
+            <RouterLink :to="buildWorkPageLocation(work)">{{ work.title }}</RouterLink>
+          </h3>
+          <div class="meta">
+            <RouterLink v-if="work.author?.login" :to="buildAuthorPageLocation(work.author)">{{ work.author?.displayName || work.author?.login }}</RouterLink>
+            <template v-else>{{ work.author?.displayName || work.author?.login }}</template>
+            · {{ formatDate(work.publishedAt || work.createdAt) }}
+          </div>
+          <div>{{ excerptText(work.excerpt || work.summary || work.body, 160) }}</div>
+        </article>
+      </div>
+      <div v-else class="empty-state">Анонсов пока нет.</div>
+    </div>
   </section>
 
   <section class="section-block">
@@ -160,7 +216,7 @@ const healthTone = computed(() => {
           <div>{{ excerptText(topic.body, 140) }}</div>
         </article>
       </div>
-      <div v-else class="empty-state">Форумные секции уже доступны, но тем пока нет. Их можно создать из фронта после входа.</div>
+      <div v-else class="empty-state">Пока нет новых тем на форуме.</div>
     </div>
   </section>
 
@@ -181,7 +237,7 @@ const healthTone = computed(() => {
           <div>{{ excerptText(contest.description, 140) }}</div>
         </article>
       </div>
-      <div v-else class="empty-state">Конкурсы пока не загружены в БД. Компонент уже работает с live GraphQL и корректно показывает пустое состояние.</div>
+      <div v-else class="empty-state">Сейчас активных конкурсов нет.</div>
     </div>
 
     <div class="section-block">
@@ -195,7 +251,7 @@ const healthTone = computed(() => {
           <div class="meta">{{ track.authorName || 'Автор не указан' }} · {{ ratingLabel(track.averageRating, track.ratingsCount) }}</div>
         </article>
       </div>
-      <div v-else class="empty-state">Треков пока нет, но страница уже читает данные из radioTracks(limit: 6).</div>
+      <div v-else class="empty-state">Треков пока нет.</div>
     </div>
   </section>
 </template>

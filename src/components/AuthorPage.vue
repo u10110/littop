@@ -3,18 +3,21 @@ import { computed, ref, watch } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 
 import { apolloClient } from '../lib/apollo.js';
-import { AUTHOR_QUERY, WORKS_QUERY } from '../lib/graphql.js';
+import { AUTHOR_DETAILS_QUERY, AUTHOR_QUERY } from '../lib/graphql.js';
 import { excerptText, formatDate, formatDateTime, formatWorkSection } from '../lib/format.js';
-import { buildWorkPageLocation, normalizeRouteParam } from '../lib/routes.js';
+import { buildAuthorPageLocation, buildWorkPageLocation, normalizeRouteParam } from '../lib/routes.js';
 import { setDocumentTitle } from '../lib/pageTitle.js';
 
 const route = useRoute();
 
 const author = ref(null);
 const authorWorks = ref([]);
+const writtenReviews = ref([]);
+const receivedReviews = ref([]);
 const pageLoading = ref(false);
 const worksLoading = ref(false);
 const pageError = ref('');
+const activeLedger = ref('works');
 
 const authorLogin = computed(() => normalizeRouteParam(route.params.login));
 const hasAuthor = computed(() => Boolean(author.value));
@@ -75,6 +78,40 @@ const workRows = computed(() => authorWorks.value.map((work, index) => {
   };
 }));
 
+const writtenReviewRows = computed(() => writtenReviews.value.map((item, index) => ({
+  ...item,
+  order: index + 1,
+  counterpartName: item.workAuthor?.displayName || item.workAuthor?.login || 'Автор не найден',
+  counterpartLink: item.workAuthor?.login ? buildAuthorPageLocation(item.workAuthor) : null,
+  metaLine: `Кому: ${item.workAuthor?.displayName || item.workAuthor?.login || 'автору'} · ${formatDateTime(item.updatedAt || item.createdAt)}`,
+})));
+
+const receivedReviewRows = computed(() => receivedReviews.value.map((item, index) => ({
+  ...item,
+  order: index + 1,
+  counterpartName: item.commentAuthor?.displayName || item.commentAuthor?.login || 'Автор не найден',
+  counterpartLink: item.commentAuthor?.login ? buildAuthorPageLocation(item.commentAuthor) : null,
+  metaLine: `От: ${item.commentAuthor?.displayName || item.commentAuthor?.login || 'автора'} · ${formatDateTime(item.updatedAt || item.createdAt)}`,
+})));
+
+const activeSectionTitle = computed(() => {
+  if (activeLedger.value === 'written') return 'Написанные отзывы';
+  if (activeLedger.value === 'received') return 'Полученные отзывы';
+  return 'Произведения';
+});
+
+const activeSectionEyebrow = computed(() => {
+  if (activeLedger.value === 'written') return 'Что автор пишет другим';
+  if (activeLedger.value === 'received') return 'Что пишут автору';
+  return 'Авторская лента';
+});
+
+const activeCount = computed(() => {
+  if (activeLedger.value === 'written') return writtenReviewRows.value.length;
+  if (activeLedger.value === 'received') return receivedReviewRows.value.length;
+  return workRows.value.length;
+});
+
 watch(authorLogin, (login) => {
   loadAuthorPage(login);
 }, { immediate: true });
@@ -98,7 +135,10 @@ watch([author, authorLogin, pageLoading, pageError], () => {
 async function loadAuthorPage(login) {
   author.value = null;
   authorWorks.value = [];
+  writtenReviews.value = [];
+  receivedReviews.value = [];
   pageError.value = '';
+  activeLedger.value = 'works';
 
   if (!login) {
     return;
@@ -116,7 +156,7 @@ async function loadAuthorPage(login) {
     author.value = data?.author ?? null;
 
     if (author.value?.id) {
-      await loadAuthorWorks(author.value.id);
+      await loadAuthorDetails(login, author.value.id);
     }
   } catch (queryError) {
     pageError.value = queryError.message;
@@ -125,25 +165,28 @@ async function loadAuthorPage(login) {
   }
 }
 
-async function loadAuthorWorks(authorId) {
+async function loadAuthorDetails(login, authorId) {
   worksLoading.value = true;
 
   try {
     const { data } = await apolloClient.query({
-      query: WORKS_QUERY,
+      query: AUTHOR_DETAILS_QUERY,
       variables: {
-        limit: 50,
-        offset: 0,
-        sectionCode: null,
-        search: null,
+        login,
         authorId,
       },
       fetchPolicy: 'network-only',
     });
+
+    author.value = data?.author ?? author.value;
     authorWorks.value = data?.works ?? [];
+    writtenReviews.value = data?.writtenReviews ?? [];
+    receivedReviews.value = data?.receivedReviews ?? [];
   } catch (queryError) {
     pageError.value = queryError.message;
     authorWorks.value = [];
+    writtenReviews.value = [];
+    receivedReviews.value = [];
   } finally {
     worksLoading.value = false;
   }
@@ -155,7 +198,7 @@ async function loadAuthorWorks(authorId) {
     <div class="section-head">
       <div>
         <h1>Страница автора</h1>
-        <p class="muted">Публичная авторская страница в литературной подаче, с большим фото и отдельной аватаркой автора.</p>
+        <p class="muted">Публичная авторская страница с произведениями, полученными отзывами и рецензиями, которые автор написал другим.</p>
       </div>
       <RouterLink class="btn btn-outline" to="/authors">← К списку авторов</RouterLink>
     </div>
@@ -205,6 +248,18 @@ async function loadAuthorWorks(authorId) {
             </div>
           </div>
 
+          <div class="stack">
+            <button class="btn" :class="activeLedger === 'works' ? 'btn-primary' : 'btn-outline'" type="button" @click="activeLedger = 'works'">
+              ПРОИЗВЕДЕНИЯ
+            </button>
+            <button class="btn" :class="activeLedger === 'written' ? 'btn-primary' : 'btn-outline'" type="button" @click="activeLedger = 'written'">
+              НАПИСАННЫЕ
+            </button>
+            <button class="btn" :class="activeLedger === 'received' ? 'btn-primary' : 'btn-outline'" type="button" @click="activeLedger = 'received'">
+              ПОЛУЧЕННЫЕ
+            </button>
+          </div>
+
           <a
             v-if="author.websiteUrl"
             class="author-portal-link"
@@ -230,13 +285,13 @@ async function loadAuthorWorks(authorId) {
         <section class="author-paper-card">
           <div class="section-head">
             <div>
-              <div class="author-paper-eyebrow">Авторская лента</div>
-              <h3 class="author-paper-title author-paper-title-sm">Произведения</h3>
+              <div class="author-paper-eyebrow">{{ activeSectionEyebrow }}</div>
+              <h3 class="author-paper-title author-paper-title-sm">{{ activeSectionTitle }}</h3>
             </div>
-            <span class="author-counter">{{ worksLoading ? 'обновляем…' : `${workRows.length} записей` }}</span>
+            <span class="author-counter">{{ worksLoading ? 'обновляем…' : `${activeCount} записей` }}</span>
           </div>
 
-          <ol v-if="workRows.length" class="author-works-ledger">
+          <ol v-if="activeLedger === 'works' && workRows.length" class="author-works-ledger">
             <li v-for="work in workRows" :key="work.id" class="author-works-ledger-item">
               <div class="author-work-order">{{ work.order }}.</div>
               <div class="author-work-body">
@@ -246,7 +301,50 @@ async function loadAuthorWorks(authorId) {
               </div>
             </li>
           </ol>
-          <div v-else-if="!worksLoading" class="empty-state author-empty-ledger">У этого автора пока нет опубликованных произведений.</div>
+
+          <ol v-else-if="activeLedger === 'written' && writtenReviewRows.length" class="author-works-ledger">
+            <li v-for="review in writtenReviewRows" :key="`written-${review.id}`" class="author-works-ledger-item">
+              <div class="author-work-order">{{ review.order }}.</div>
+              <div class="author-work-body">
+                <RouterLink class="author-work-title" :to="buildWorkPageLocation({ id: review.workId, slug: review.workSlug })">{{ review.workTitle }}</RouterLink>
+                <div class="author-work-meta">
+                  <template v-if="review.counterpartLink">
+                    Кому: <RouterLink :to="review.counterpartLink">{{ review.counterpartName }}</RouterLink>
+                  </template>
+                  <template v-else>
+                    {{ review.metaLine }}
+                  </template>
+                  <span v-if="review.counterpartLink"> · {{ formatDateTime(review.updatedAt || review.createdAt) }}</span>
+                </div>
+                <div class="author-work-excerpt">{{ excerptText(review.body, 260) }}</div>
+              </div>
+            </li>
+          </ol>
+
+          <ol v-else-if="activeLedger === 'received' && receivedReviewRows.length" class="author-works-ledger">
+            <li v-for="review in receivedReviewRows" :key="`received-${review.id}`" class="author-works-ledger-item">
+              <div class="author-work-order">{{ review.order }}.</div>
+              <div class="author-work-body">
+                <RouterLink class="author-work-title" :to="buildWorkPageLocation({ id: review.workId, slug: review.workSlug })">{{ review.workTitle }}</RouterLink>
+                <div class="author-work-meta">
+                  <template v-if="review.counterpartLink">
+                    От: <RouterLink :to="review.counterpartLink">{{ review.counterpartName }}</RouterLink>
+                  </template>
+                  <template v-else>
+                    {{ review.metaLine }}
+                  </template>
+                  <span v-if="review.counterpartLink"> · {{ formatDateTime(review.updatedAt || review.createdAt) }}</span>
+                </div>
+                <div class="author-work-excerpt">{{ excerptText(review.body, 260) }}</div>
+              </div>
+            </li>
+          </ol>
+
+          <div v-else-if="!worksLoading" class="empty-state author-empty-ledger">
+            <template v-if="activeLedger === 'works'">У этого автора пока нет опубликованных произведений.</template>
+            <template v-else-if="activeLedger === 'written'">Автор пока не написал отзывов другим авторам.</template>
+            <template v-else>Этому автору пока никто не написал отзывов.</template>
+          </div>
         </section>
       </div>
     </div>

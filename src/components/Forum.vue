@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { useQuery } from '@vue/apollo-composable';
 
 import ForumThreadView from './ForumThreadView.vue';
@@ -8,10 +8,12 @@ import { apolloClient } from '../lib/apollo.js';
 import { CREATE_FORUM_TOPIC_MUTATION, FORUM_OVERVIEW_QUERY, FORUM_TOPIC_QUERY } from '../lib/graphql.js';
 import { excerptText, formatDate } from '../lib/format.js';
 import { buildForumTopicLookupVariables, getAuthorDisplayName, getAuthorInitial } from '../lib/forum.js';
-import { buildAuthorPageLocation, buildForumTopicPageLocation } from '../lib/routes.js';
+import { buildAuthorPageLocation, buildForumTopicPageLocation, normalizeRouteParam } from '../lib/routes.js';
 import { useSession } from '../lib/session.js';
 
-const selectedSection = ref('');
+const route = useRoute();
+const router = useRouter();
+const selectedSection = ref(normalizeRouteParam(route.query.section));
 const selectedTopicId = ref(null);
 const topicDetail = ref(null);
 const topicDetailLoading = ref(false);
@@ -56,7 +58,22 @@ watch(sections, (items) => {
   }
 }, { immediate: true });
 
+watch(() => route.query.section, (rawSection) => {
+  const normalized = normalizeRouteParam(rawSection);
+  if (normalized !== selectedSection.value) {
+    selectedSection.value = normalized;
+  }
+}, { immediate: true });
+
 watch(selectedSection, (slug, previousSlug) => {
+  const normalizedRouteSection = normalizeRouteParam(route.query.section);
+  if (slug !== normalizedRouteSection) {
+    const nextQuery = { ...route.query };
+    if (slug) nextQuery.section = slug;
+    else delete nextQuery.section;
+    router.replace({ query: nextQuery });
+  }
+
   if (slug) {
     topicForm.value.sectionSlug = slug;
   }
@@ -214,7 +231,12 @@ async function submitTopic() {
     <div class="stack">
       <div class="section-head">
         <h2>Темы</h2>
-        <span class="pill">{{ loading ? 'загрузка…' : `${topics.length} тем` }}</span>
+        <div class="inline-actions">
+          <RouterLink v-if="isAuthenticated" class="btn btn-primary" to="/forum#forum-new-topic-form">
+            Добавить тему
+          </RouterLink>
+          <span class="pill">{{ loading ? 'загрузка…' : `${topics.length} тем` }}</span>
+        </div>
       </div>
 
       <div v-if="topics.length" class="stack">
@@ -254,10 +276,9 @@ async function submitTopic() {
       </div>
       <div v-else-if="!loading" class="empty-state">В выбранной секции пока нет тем.</div>
 
-      <article v-if="isAuthenticated" class="panel stack">
+      <article v-if="isAuthenticated" id="forum-new-topic-form" class="panel stack">
         <div class="section-head">
           <h2>Новая тема</h2>
-          <span class="pill good">mutation createForumTopic</span>
         </div>
 
         <form class="stack" @submit.prevent="submitTopic">
