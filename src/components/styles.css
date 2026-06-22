@@ -975,6 +975,138 @@ hr.divider {
   color: var(--muted);
 }
 
+.user-inline-link {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.user-inline-link:hover {
+  color: #74252d;
+}
+
+.forum-post-image {
+  width: min(100%, 420px);
+  max-height: 420px;
+  object-fit: cover;
+  border-radius: 16px;
+  border: 1px solid rgba(140, 47, 57, 0.16);
+  box-shadow: 0 14px 28px rgba(17, 24, 39, 0.08);
+}
+
+.forum-post-image-inline {
+  margin-top: 4px;
+}
+
+.authors-directory-panel {
+  background: linear-gradient(180deg, rgba(255, 251, 244, 0.92), rgba(255, 255, 255, 0.98));
+}
+
+.authors-letter-block {
+  gap: 8px;
+}
+
+.authors-letter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.authors-letter-btn {
+  min-width: 34px;
+  min-height: 34px;
+  border: 1px solid rgba(140, 47, 57, 0.18);
+  border-radius: 10px;
+  background: #fffaf4;
+  color: #5c4630;
+  cursor: pointer;
+}
+
+.authors-letter-btn.is-selected {
+  border-color: var(--accent);
+  background: rgba(140, 47, 57, 0.1);
+  color: var(--accent);
+}
+
+.authors-letter-btn.is-disabled,
+.authors-letter-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.authors-directory-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.authors-directory-card {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid #d8c8af;
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(255, 252, 247, 0.98), rgba(255, 248, 238, 0.94));
+  box-shadow: 0 18px 40px rgba(53, 35, 17, 0.08);
+}
+
+.authors-directory-portrait {
+  width: 90px;
+  height: 90px;
+  display: block;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(140, 47, 57, 0.16);
+  background: #f4efe8;
+}
+
+.authors-directory-portrait-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.authors-directory-portrait-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #5b2a2d;
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+.authors-directory-body {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.authors-directory-title {
+  margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.25rem;
+  color: #5b2a2d;
+}
+
+.authors-directory-login {
+  color: #7f6d57;
+}
+
+.authors-directory-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: #5c4630;
+  font-size: 0.94rem;
+}
+
+.authors-directory-bio {
+  color: #33271d;
+}
+
 @media (max-width: 980px) {
   .navwrap,
   .actions {
