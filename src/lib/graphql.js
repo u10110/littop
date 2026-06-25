@@ -473,6 +473,15 @@ export const UPDATE_MY_PROFILE_MUTATION = gql`
   }
 `;
 
+export const ADMIN_UPDATE_AUTHOR_PROFILE_MUTATION = gql`
+  ${AUTHOR_CARD_FIELDS}
+  mutation AdminUpdateAuthorProfile($authorId: ID!, $input: UpdateMyProfileInput!) {
+    adminUpdateAuthorProfile(authorId: $authorId, input: $input) {
+      ...AuthorCardFields
+    }
+  }
+`;
+
 export const TOUCH_PRESENCE_MUTATION = gql`
   ${USER_SESSION_FIELDS}
   mutation TouchPresence {
@@ -486,6 +495,15 @@ export const CREATE_WORK_MUTATION = gql`
   ${WORK_PREVIEW_FIELDS}
   mutation CreateWork($input: CreateWorkInput!) {
     createWork(input: $input) {
+      ...WorkPreviewFields
+    }
+  }
+`;
+
+export const ADMIN_CREATE_WORK_MUTATION = gql`
+  ${WORK_PREVIEW_FIELDS}
+  mutation AdminCreateWork($authorId: ID!, $input: CreateWorkInput!) {
+    adminCreateWork(authorId: $authorId, input: $input) {
       ...WorkPreviewFields
     }
   }
