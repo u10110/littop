@@ -27,10 +27,6 @@ const props = defineProps({
     type: Object,
     required: true,
   },
-  formAnchorId: {
-    type: String,
-    default: 'work-review-form',
-  },
 });
 
 const emit = defineEmits(['refresh']);
@@ -73,11 +69,7 @@ const currentUserId = computed(() => String(currentUser.value?.id || ''));
 const isAdmin = computed(() => currentUser.value?.role === 'admin');
 const workAuthorId = computed(() => String(props.work?.author?.id || ''));
 const isWorkOwner = computed(() => Boolean(currentUserId.value) && currentUserId.value === workAuthorId.value);
-const flatComments = computed(() => flattenThreadTree(comments.value, {
-  parentKey: 'parentCommentId',
-  rootSortDirection: 'desc',
-  childSortDirection: 'asc',
-}));
+const flatComments = computed(() => flattenThreadTree(comments.value, { parentKey: 'parentCommentId' }));
 
 onMounted(() => {
   bootstrapSession();
@@ -599,14 +591,10 @@ function ledgerSummary(ledger, noun) {
       </div>
     </div>
 
-    <div v-if="isAuthenticated" :id="props.formAnchorId" class="stack work-review-compose-card">
-      <div class="section-head">
-        <h3>Написать отзыв</h3>
-        <span class="pill">новый отзыв появится сверху</span>
-      </div>
+    <div v-if="isAuthenticated" class="stack">
       <form class="stack" @submit.prevent="submitRootComment">
         <div class="field">
-          <label for="root-work-review">Текст отзыва</label>
+          <label for="root-work-review">Новый отзыв</label>
           <textarea
             id="root-work-review"
             v-model="rootCommentBody"

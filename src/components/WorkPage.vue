@@ -58,7 +58,6 @@ const isOwner = computed(() => {
   return String(currentUser.value.id) === String(work.value.author.id);
 });
 const isAdmin = computed(() => currentUser.value?.role === 'admin');
-const canManageWork = computed(() => isOwner.value || isAdmin.value);
 const canActivateAnnouncement = computed(() => Boolean(isAdmin.value && work.value && !work.value.announcementActive));
 
 onMounted(() => {
@@ -280,7 +279,7 @@ async function softDeleteCurrentWork() {
     <div class="empty-state">Произведение не найдено.</div>
   </section>
 
-  <section v-else-if="work" class="stack work-public-layout">
+  <section v-else-if="work" class="stack">
     <article class="panel stack">
       <div class="chips">
         <span class="pill">{{ formatWorkSection(work.sectionCode) }}</span>
@@ -293,11 +292,9 @@ async function softDeleteCurrentWork() {
 
       <div class="section-head work-page-head-row">
         <div>
-          <h2 class="work-public-title">{{ work.title }}</h2>
-          <div class="meta work-public-meta">
-            <RouterLink v-if="work.author?.login" class="user-inline-link" :to="buildAuthorPageLocation(work.author)">{{ authorLabel(work.author) }}</RouterLink>
-            <template v-else>{{ authorLabel(work.author) }}</template>
-            <span>· {{ formatDate(work.publishedAt || work.createdAt) }}</span>
+          <h2>{{ work.title }}</h2>
+          <div class="meta">
+            {{ authorLabel(work.author) }} · {{ formatDate(work.publishedAt || work.createdAt) }}
           </div>
         </div>
         <div class="inline-actions">
@@ -318,7 +315,7 @@ async function softDeleteCurrentWork() {
             {{ work.announcementActive ? 'Уже в анонсах' : announcementBusy ? 'Добавляем…' : 'Анонс' }}
           </button>
           <button
-            v-if="canManageWork"
+            v-if="isOwner"
             class="btn btn-outline"
             type="button"
             :disabled="editBusy || deleteBusy"
@@ -327,7 +324,7 @@ async function softDeleteCurrentWork() {
             {{ editMode ? 'Отменить редактирование' : 'Редактировать произведение' }}
           </button>
           <button
-            v-if="canManageWork"
+            v-if="isOwner"
             class="btn btn-danger"
             type="button"
             :disabled="editBusy || deleteBusy"
@@ -381,19 +378,8 @@ async function softDeleteCurrentWork() {
       </form>
 
       <div v-else class="prewrap">{{ work.body || work.summary || work.excerpt || 'Текст пока не добавлен.' }}</div>
-
-      <div class="inline-actions work-review-cta-row">
-        <a class="btn btn-primary" href="#work-review-form">Написать отзыв</a>
-        <RouterLink
-          v-if="work.author?.login"
-          class="btn btn-outline"
-          :to="buildAuthorPageLocation(work.author)"
-        >
-          Все произведения автора
-        </RouterLink>
-      </div>
     </article>
 
-    <WorkDiscussionPanel :work="work" form-anchor-id="work-review-form" @refresh="refreshCurrentWork" />
+    <WorkDiscussionPanel :work="work" @refresh="refreshCurrentWork" />
   </section>
 </template>

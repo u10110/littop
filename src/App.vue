@@ -3,11 +3,16 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router';
 
 import {
+  AUTH_MODAL_RESET_MODE,
   SOCIAL_AUTH_CALLBACK_PATH,
   SOCIAL_AUTH_PROVIDERS,
   buildSocialAuthStartUrl,
   getGraphqlEndpoint,
+  isValidEmail,
+  normalizeEmail,
+  parseAuthModalParams,
   parseSocialAuthCallbackParams,
+  validatePassword,
 } from './lib/auth.js';
 import { useSession } from './lib/session.js';
 import { apolloClient } from './lib/apollo.js';
@@ -19,17 +24,25 @@ const route = useRoute();
 const router = useRouter();
 const authMode = ref('login');
 const authSuccess = ref('');
+const authLocalError = ref('');
 const socialAuthFeedback = ref('');
 const isAuthModalOpen = ref(false);
+const resetToken = ref('');
 const loginForm = ref({
-  identifier: '',
+  email: '',
   password: '',
 });
 const registerForm = ref({
   email: '',
-  login: '',
   password: '',
   displayName: '',
+});
+const forgotForm = ref({
+  email: '',
+});
+const resetForm = ref({
+  password: '',
+  confirmPassword: '',
 });
 const socialProviders = Object.values(SOCIAL_AUTH_PROVIDERS);
 
@@ -42,12 +55,27 @@ const {
   bootstrapped,
   login,
   register,
+  requestPasswordReset,
+  resetPassword,
   completeExternalAuthToken,
   logout,
   bootstrapSession,
 } = useSession();
 
 const displayName = computed(() => currentUser.value?.profile?.displayName || currentUser.value?.login || 'Автор');
+const visibleAuthError = computed(() => authLocalError.value || authError.value);
+const authModalTitle = computed(() => ({
+  login: 'Авторизация',
+  register: 'Регистрация',
+  forgot: 'Восстановление пароля',
+  reset: 'Новый пароль',
+}[authMode.value] || 'Авторизация'));
+const authModalSubtitle = computed(() => ({
+  login: 'Войди в аккаунт по почте.',
+  register: 'Создай профиль по email и сразу попади в personal.',
+  forgot: 'Укажи почту — на неё придёт ссылка на форму смены пароля.',
+  reset: 'Введи новый пароль дважды.',
+}[authMode.value] || 'Войди в аккаунт по почте.'));
 
 let successTimer = null;
 let presenceTimer = null;
@@ -65,6 +93,17 @@ function clearPresenceTimer() {
     clearInterval(presenceTimer);
     presenceTimer = null;
   }
+}
+
+function clearAuthLocalError() {
+  authLocalError.value = '';
+}
+
+function resetAuthForms() {
+  loginForm.value = { email: '', password: '' };
+  registerForm.value = { email: '', password: '', displayName: '' };
+  forgotForm.value = { email: '' };
+  resetForm.value = { password: '', confirmPassword: '' };
 }
 
 async function touchPresence() {
@@ -99,13 +138,34 @@ function setSuccessMessage(message) {
   }
 }
 
-function openAuthModal(mode = 'login') {
+function openAuthModal(mode = 'login', { token = '' } = {}) {
   authMode.value = mode;
+  resetToken.value = mode === 'reset' ? token.trim() : '';
+  clearAuthLocalError();
   isAuthModalOpen.value = true;
+}
+
+async function clearResetRouteState() {
+  if (!route.query?.auth && !route.query?.token) {
+    return;
+  }
+
+  const nextQuery = { ...route.query };
+  delete nextQuery.auth;
+  delete nextQuery.token;
+  await router.replace({
+    path: route.path,
+    query: nextQuery,
+    hash: route.hash,
+  });
 }
 
 function closeAuthModal() {
   isAuthModalOpen.value = false;
+  clearAuthLocalError();
+  if (route.query?.auth || route.query?.token) {
+    void clearResetRouteState();
+  }
 }
 
 function handleOpenAuthEvent(event) {
@@ -142,6 +202,24 @@ function startSocialAuth(provider, mode = 'login') {
     redirectTo: '/personal',
   });
   window.location.assign(authUrl);
+}
+
+function validateEmailOrShow(value) {
+  const email = normalizeEmail(value);
+  if (!isValidEmail(email)) {
+    authLocalError.value = 'Введите корректный email.';
+    return '';
+  }
+  return email;
+}
+
+function validatePasswordOrShow(value) {
+  const error = validatePassword(value);
+  if (error) {
+    authLocalError.value = error;
+    return '';
+  }
+  return String(value ?? '');
 }
 
 async function handleSocialAuthCallback() {
@@ -182,6 +260,17 @@ async function handleSocialAuthCallback() {
     socialAuthFeedback.value = `Не удалось завершить вход через ${providerLabel(provider)}.`;
   } finally {
     await router.replace(targetPath);
+  }
+}
+
+function handleAuthRouteState() {
+  if (route.path === SOCIAL_AUTH_CALLBACK_PATH) {
+    return;
+  }
+
+  const { mode, token } = parseAuthModalParams(window.location.search);
+  if (mode === AUTH_MODAL_RESET_MODE && token) {
+    openAuthModal('reset', { token });
   }
 }
 
@@ -226,6 +315,7 @@ watch(
   () => route.fullPath,
   () => {
     void handleSocialAuthCallback();
+    handleAuthRouteState();
   },
   { immediate: true },
 );
@@ -239,12 +329,20 @@ watch(
 );
 
 async function submitLogin() {
+  clearAuthLocalError();
+  const email = validateEmailOrShow(loginForm.value.email);
+  if (!email) return;
+  if (!loginForm.value.password) {
+    authLocalError.value = 'Введите пароль.';
+    return;
+  }
+
   try {
     await login({
-      identifier: loginForm.value.identifier.trim(),
+      email,
       password: loginForm.value.password,
     });
-    loginForm.value = { identifier: '', password: '' };
+    loginForm.value = { email: '', password: '' };
     setSuccessMessage('Вход выполнен. Модальное окно закрыто.');
     closeAuthModal();
   } catch {
@@ -253,15 +351,70 @@ async function submitLogin() {
 }
 
 async function submitRegister() {
+  clearAuthLocalError();
+  const displayNameValue = String(registerForm.value.displayName || '').trim();
+  if (!displayNameValue) {
+    authLocalError.value = 'Введите отображаемое имя.';
+    return;
+  }
+
+  const email = validateEmailOrShow(registerForm.value.email);
+  if (!email) return;
+
+  const password = validatePasswordOrShow(registerForm.value.password);
+  if (!password) return;
+
   try {
     await register({
-      email: registerForm.value.email.trim(),
-      login: registerForm.value.login.trim(),
-      password: registerForm.value.password,
-      displayName: registerForm.value.displayName.trim(),
+      email,
+      password,
+      displayName: displayNameValue,
     });
-    registerForm.value = { email: '', login: '', password: '', displayName: '' };
-    setSuccessMessage('Профиль создан. Модальное окно закрыто.');
+    registerForm.value = { email: '', password: '', displayName: '' };
+    setSuccessMessage('Профиль создан. Письмо отправлено на указанную почту.');
+    closeAuthModal();
+  } catch {
+    // Ошибка уже отдана в authError из session store.
+  }
+}
+
+async function submitForgotPassword() {
+  clearAuthLocalError();
+  const email = validateEmailOrShow(forgotForm.value.email);
+  if (!email) return;
+
+  try {
+    await requestPasswordReset(email);
+    forgotForm.value = { email: '' };
+    authMode.value = 'login';
+    setSuccessMessage('Письмо со ссылкой для восстановления отправлено.');
+  } catch {
+    // Ошибка уже отдана в authError из session store.
+  }
+}
+
+async function submitResetPassword() {
+  clearAuthLocalError();
+  if (!resetToken.value) {
+    authLocalError.value = 'Ссылка восстановления повреждена.';
+    return;
+  }
+
+  const password = validatePasswordOrShow(resetForm.value.password);
+  if (!password) return;
+  if (password !== resetForm.value.confirmPassword) {
+    authLocalError.value = 'Пароли не совпадают.';
+    return;
+  }
+
+  try {
+    await resetPassword({
+      token: resetToken.value,
+      password,
+    });
+    resetForm.value = { password: '', confirmPassword: '' };
+    await clearResetRouteState();
+    setSuccessMessage('Пароль обновлён. Вы вошли в аккаунт.');
     closeAuthModal();
   } catch {
     // Ошибка уже отдана в authError из session store.
@@ -320,20 +473,18 @@ async function submitLogout() {
       <div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
         <div class="section-head">
           <div class="stack compact-stack">
-            <h2 id="auth-modal-title">{{ authMode === 'login' ? 'Авторизация' : 'Регистрация' }}</h2>
-            <span class="meta">
-              {{ authMode === 'login' ? 'Войди в аккаунт, чтобы открыть personal и живые действия.' : 'Создай профиль и сразу попади в personal.' }}
-            </span>
+            <h2 id="auth-modal-title">{{ authModalTitle }}</h2>
+            <span class="meta">{{ authModalSubtitle }}</span>
           </div>
           <button class="btn btn-ghost modal-close" type="button" @click="closeAuthModal" aria-label="Закрыть">×</button>
         </div>
 
-        <div class="auth-toggle">
+        <div v-if="authMode === 'login' || authMode === 'register'" class="auth-toggle">
           <button
             class="btn"
             :class="authMode === 'login' ? 'btn-primary' : 'btn-outline'"
             type="button"
-            @click="authMode = 'login'"
+            @click="openAuthModal('login')"
           >
             Вход
           </button>
@@ -341,24 +492,32 @@ async function submitLogout() {
             class="btn"
             :class="authMode === 'register' ? 'btn-primary' : 'btn-outline'"
             type="button"
-            @click="authMode = 'register'"
+            @click="openAuthModal('register')"
           >
             Регистрация
           </button>
         </div>
 
-        <div v-if="authError" class="message error">{{ authError }}</div>
+        <div v-else class="inline-actions">
+          <button class="btn btn-outline" type="button" @click="openAuthModal('login')">Назад ко входу</button>
+          <button v-if="authMode !== 'register'" class="btn btn-outline" type="button" @click="openAuthModal('register')">Регистрация</button>
+        </div>
+
+        <div v-if="visibleAuthError" class="message error">{{ visibleAuthError }}</div>
 
         <form v-if="authMode === 'login'" class="auth-grid" @submit.prevent="submitLogin">
           <div class="field">
-            <label for="login-identifier">Email или логин</label>
-            <input id="login-identifier" v-model="loginForm.identifier" class="input" required />
+            <label for="login-email">Email</label>
+            <input id="login-email" v-model="loginForm.email" class="input" type="email" inputmode="email" autocomplete="email" required />
           </div>
           <div class="field">
             <label for="login-password">Пароль</label>
-            <input id="login-password" v-model="loginForm.password" class="input" type="password" required />
+            <input id="login-password" v-model="loginForm.password" class="input" type="password" autocomplete="current-password" required />
           </div>
-          <button class="btn btn-primary" type="submit" :disabled="authBusy">{{ authBusy ? 'Входим…' : 'Войти' }}</button>
+          <div class="inline-actions">
+            <button class="btn btn-primary" type="submit" :disabled="authBusy">{{ authBusy ? 'Входим…' : 'Войти' }}</button>
+            <button class="btn btn-ghost" type="button" @click="openAuthModal('forgot')">Забыли пароль?</button>
+          </div>
           <div class="social-auth-block">
             <div class="meta">Или войди через соцсеть</div>
             <div class="social-auth-grid">
@@ -375,22 +534,18 @@ async function submitLogout() {
           </div>
         </form>
 
-        <form v-else class="auth-grid" @submit.prevent="submitRegister">
+        <form v-else-if="authMode === 'register'" class="auth-grid" @submit.prevent="submitRegister">
           <div class="field">
             <label for="register-display-name">Отображаемое имя</label>
-            <input id="register-display-name" v-model="registerForm.displayName" class="input" required />
-          </div>
-          <div class="field">
-            <label for="register-login">Логин</label>
-            <input id="register-login" v-model="registerForm.login" class="input" required />
+            <input id="register-display-name" v-model="registerForm.displayName" class="input" autocomplete="name" required />
           </div>
           <div class="field">
             <label for="register-email">Email</label>
-            <input id="register-email" v-model="registerForm.email" class="input" type="email" required />
+            <input id="register-email" v-model="registerForm.email" class="input" type="email" inputmode="email" autocomplete="email" required />
           </div>
           <div class="field">
             <label for="register-password">Пароль</label>
-            <input id="register-password" v-model="registerForm.password" class="input" type="password" required />
+            <input id="register-password" v-model="registerForm.password" class="input" type="password" autocomplete="new-password" required />
           </div>
           <button class="btn btn-primary" type="submit" :disabled="authBusy">
             {{ authBusy ? 'Создаём профиль…' : 'Создать профиль' }}
@@ -409,6 +564,30 @@ async function submitLogout() {
               </button>
             </div>
           </div>
+        </form>
+
+        <form v-else-if="authMode === 'forgot'" class="auth-grid" @submit.prevent="submitForgotPassword">
+          <div class="field">
+            <label for="forgot-email">Почта для восстановления</label>
+            <input id="forgot-email" v-model="forgotForm.email" class="input" type="email" inputmode="email" autocomplete="email" required />
+          </div>
+          <button class="btn btn-primary" type="submit" :disabled="authBusy">
+            {{ authBusy ? 'Отправляем…' : 'Отправить письмо' }}
+          </button>
+        </form>
+
+        <form v-else class="auth-grid" @submit.prevent="submitResetPassword">
+          <div class="field">
+            <label for="reset-password">Новый пароль</label>
+            <input id="reset-password" v-model="resetForm.password" class="input" type="password" autocomplete="new-password" required />
+          </div>
+          <div class="field">
+            <label for="reset-password-confirm">Повтори пароль</label>
+            <input id="reset-password-confirm" v-model="resetForm.confirmPassword" class="input" type="password" autocomplete="new-password" required />
+          </div>
+          <button class="btn btn-primary" type="submit" :disabled="authBusy">
+            {{ authBusy ? 'Сохраняем…' : 'Сохранить новый пароль' }}
+          </button>
         </form>
       </div>
     </div>

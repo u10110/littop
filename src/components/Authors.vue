@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useQuery } from '@vue/apollo-composable';
 
@@ -11,15 +11,12 @@ const search = ref('');
 const onlyClassics = ref(false);
 const onlyFeatured = ref(false);
 const selectedLetter = ref('');
-const currentPage = ref(1);
-const pageSize = 40;
-const sortBy = ref('rating');
 
 const cyrillicLetters = ['А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ё', 'Ж', 'З', 'И', 'Й', 'К', 'Л', 'М', 'Н', 'О', 'П', 'Р', 'С', 'Т', 'У', 'Ф', 'Х', 'Ц', 'Ч', 'Ш', 'Щ', 'Э', 'Ю', 'Я'];
 const latinLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
 const queryVariables = computed(() => ({
-  limit: 1000,
+  limit: 200,
   offset: 0,
   search: search.value.trim() || null,
   classicsOnly: onlyClassics.value,
@@ -57,60 +54,17 @@ const filteredAuthors = computed(() => {
     : authors.value;
 
   return [...base].sort((left, right) => {
-    if (sortBy.value === 'newest') {
-      const rightTime = Date.parse(right?.registeredAt || '') || 0;
-      const leftTime = Date.parse(left?.registeredAt || '') || 0;
-      if (rightTime !== leftTime) {
-        return rightTime - leftTime;
-      }
-    }
-
-    if (sortBy.value === 'name') {
-      return String(left?.displayName || left?.login || '').localeCompare(String(right?.displayName || right?.login || ''), 'ru');
-    }
-
-    const ratingDiff = Number(right?.ratingTotal || 0) - Number(left?.ratingTotal || 0);
-    if (ratingDiff !== 0) {
-      return ratingDiff;
-    }
-
-    const worksDiff = Number(right?.worksCountCached || 0) - Number(left?.worksCountCached || 0);
-    if (worksDiff !== 0) {
-      return worksDiff;
-    }
-
     const rightTime = Date.parse(right?.registeredAt || '') || 0;
     const leftTime = Date.parse(left?.registeredAt || '') || 0;
     if (rightTime !== leftTime) {
       return rightTime - leftTime;
     }
-
     return String(left?.displayName || left?.login || '').localeCompare(String(right?.displayName || right?.login || ''), 'ru');
   });
 });
 
-const totalPages = computed(() => Math.max(1, Math.ceil(filteredAuthors.value.length / pageSize)));
-const pagedAuthors = computed(() => {
-  const safePage = Math.min(Math.max(currentPage.value, 1), totalPages.value);
-  const start = (safePage - 1) * pageSize;
-  return filteredAuthors.value.slice(start, start + pageSize);
-});
-const hasPrevPage = computed(() => currentPage.value > 1);
-const hasNextPage = computed(() => currentPage.value < totalPages.value);
-
-watch([search, onlyClassics, onlyFeatured, selectedLetter, sortBy], () => {
-  currentPage.value = 1;
-});
-
-watch(totalPages, (value) => {
-  if (currentPage.value > value) {
-    currentPage.value = value;
-  }
-});
-
 const availableLetters = computed(() => new Set(authors.value.map(authorLetter).filter(Boolean)));
 const authorsCountText = computed(() => loading.value ? 'загрузка…' : `${filteredAuthors.value.length} авторов`);
-const pageLabel = computed(() => `страница ${currentPage.value} из ${totalPages.value}`);
 </script>
 
 <template>
@@ -144,15 +98,6 @@ const pageLabel = computed(() => `страница ${currentPage.value} из ${t
       <label class="chip">
         <input v-model="onlyClassics" type="checkbox" />
         <span>Только классики</span>
-      </label>
-
-      <label class="chip">
-        <span>Сортировка</span>
-        <select v-model="sortBy" class="select authors-sort-select">
-          <option value="rating">По рейтингу</option>
-          <option value="newest">Сначала новые</option>
-          <option value="name">По имени</option>
-        </select>
       </label>
 
       <button class="btn btn-outline" type="button" @click="selectedLetter = ''">Все буквы</button>
@@ -191,17 +136,8 @@ const pageLabel = computed(() => `страница ${currentPage.value} из ${t
 
   <div v-if="error" class="message error">{{ error.message }}</div>
 
-  <section v-if="pagedAuthors.length" class="stack">
-    <div class="authors-pagination-bar">
-      <div class="meta">{{ pageLabel }} · по {{ pageSize }} авторов на страницу</div>
-      <div class="inline-actions">
-        <button class="btn btn-outline" type="button" :disabled="!hasPrevPage" @click="currentPage -= 1">← Назад</button>
-        <button class="btn btn-outline" type="button" :disabled="!hasNextPage" @click="currentPage += 1">Вперёд →</button>
-      </div>
-    </div>
-
-    <div class="authors-directory-grid authors-directory-grid-paged">
-      <article v-for="author in pagedAuthors" :key="author.id" class="authors-directory-card">
+  <section v-if="filteredAuthors.length" class="authors-directory-grid">
+    <article v-for="author in filteredAuthors" :key="author.id" class="authors-directory-card">
       <RouterLink class="authors-directory-portrait" :to="buildAuthorPageLocation(author)">
         <img v-if="author.avatarUrl" :src="author.avatarUrl" class="authors-directory-portrait-img" alt="Аватар автора" />
         <div v-else class="authors-directory-portrait-fallback">{{ authorInitial(author) }}</div>
@@ -227,15 +163,6 @@ const pageLabel = computed(() => `страница ${currentPage.value} из ${t
         </div>
       </div>
     </article>
-    </div>
-
-    <div class="authors-pagination-bar authors-pagination-bar-bottom">
-      <div class="meta">{{ pageLabel }}</div>
-      <div class="inline-actions">
-        <button class="btn btn-outline" type="button" :disabled="!hasPrevPage" @click="currentPage -= 1">← Назад</button>
-        <button class="btn btn-outline" type="button" :disabled="!hasNextPage" @click="currentPage += 1">Вперёд →</button>
-      </div>
-    </div>
   </section>
 
   <section v-else-if="!loading" class="panel stack">

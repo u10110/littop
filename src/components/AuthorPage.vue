@@ -1,17 +1,14 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 
 import { apolloClient } from '../lib/apollo.js';
-import { uploadProfileImage } from '../lib/profileImages.js';
-import { ADMIN_CREATE_WORK_MUTATION, ADMIN_UPDATE_AUTHOR_PROFILE_MUTATION, AUTHOR_DETAILS_QUERY, AUTHOR_QUERY } from '../lib/graphql.js';
+import { AUTHOR_DETAILS_QUERY, AUTHOR_QUERY } from '../lib/graphql.js';
 import { excerptText, formatDate, formatDateTime, formatWorkSection } from '../lib/format.js';
 import { buildAuthorPageLocation, buildWorkPageLocation, normalizeRouteParam } from '../lib/routes.js';
 import { setDocumentTitle } from '../lib/pageTitle.js';
-import { useSession } from '../lib/session.js';
 
 const route = useRoute();
-const { bootstrapSession, currentUser } = useSession();
 
 const author = ref(null);
 const authorWorks = ref([]);
@@ -21,44 +18,10 @@ const pageLoading = ref(false);
 const worksLoading = ref(false);
 const pageError = ref('');
 const activeLedger = ref('works');
-const adminProfileBusy = ref(false);
-const adminProfileStatus = ref('');
-const adminProfileError = ref('');
-const adminWorkBusy = ref(false);
-const adminWorkStatus = ref('');
-const adminWorkError = ref('');
-const adminImageBusy = ref(false);
-const adminImageStatus = ref('');
-const adminImageError = ref('');
-const adminProfileForm = ref({
-  displayName: '',
-  city: '',
-  websiteUrl: '',
-  bio: '',
-  avatarUrl: '',
-  coverImageUrl: '',
-});
-const adminWorkForm = ref({
-  sectionCode: 'poetry',
-  title: '',
-  summary: '',
-  body: '',
-  projectFormat: '',
-});
 
 const authorLogin = computed(() => normalizeRouteParam(route.params.login));
 const hasAuthor = computed(() => Boolean(author.value));
 const notFound = computed(() => !pageLoading.value && !pageError.value && Boolean(authorLogin.value) && !author.value);
-const isAdmin = computed(() => currentUser.value?.role === 'admin');
-const canManageClassic = computed(() => Boolean(isAdmin.value && author.value?.isClassic));
-const projectFormats = [
-  { value: '', label: 'Без уточнения' },
-  { value: 'song', label: 'Песня' },
-  { value: 'presentation', label: 'Презентация' },
-  { value: 'stage_production', label: 'Постановка' },
-  { value: 'screenplay', label: 'Киносценарий' },
-  { value: 'other', label: 'Другое' },
-];
 
 const authorInitial = computed(() => {
   const source = String(author.value?.displayName || author.value?.login || '').trim();
@@ -149,27 +112,6 @@ const activeCount = computed(() => {
   return workRows.value.length;
 });
 
-onMounted(() => {
-  bootstrapSession();
-});
-
-watch(author, (value) => {
-  adminProfileForm.value = {
-    displayName: value?.displayName || '',
-    city: value?.city || '',
-    websiteUrl: value?.websiteUrl || '',
-    bio: value?.bio || '',
-    avatarUrl: value?.avatarUrl || '',
-    coverImageUrl: value?.coverImageUrl || '',
-  };
-  adminProfileStatus.value = '';
-  adminProfileError.value = '';
-  adminImageStatus.value = '';
-  adminImageError.value = '';
-  adminWorkStatus.value = '';
-  adminWorkError.value = '';
-}, { immediate: true });
-
 watch(authorLogin, (login) => {
   loadAuthorPage(login);
 }, { immediate: true });
@@ -247,121 +189,6 @@ async function loadAuthorDetails(login, authorId) {
     receivedReviews.value = [];
   } finally {
     worksLoading.value = false;
-  }
-}
-
-function normalizeOptional(value) {
-  const normalized = typeof value === 'string' ? value.trim() : '';
-  return normalized || null;
-}
-
-function buildExcerpt(summary, body) {
-  const preferred = normalizeOptional(summary);
-  if (preferred) return preferred;
-  const normalizedBody = normalizeOptional(body);
-  if (!normalizedBody) return null;
-  return normalizedBody.slice(0, 280);
-}
-
-async function refreshAuthorDetails() {
-  if (!authorLogin.value || !author.value?.id) return;
-  await loadAuthorDetails(authorLogin.value, author.value.id);
-}
-
-async function submitAdminProfile() {
-  if (!author.value?.id || !canManageClassic.value) return;
-  adminProfileBusy.value = true;
-  adminProfileStatus.value = '';
-  adminProfileError.value = '';
-
-  try {
-    const { data } = await apolloClient.mutate({
-      mutation: ADMIN_UPDATE_AUTHOR_PROFILE_MUTATION,
-      variables: {
-        authorId: author.value.id,
-        input: {
-          displayName: adminProfileForm.value.displayName.trim(),
-          city: normalizeOptional(adminProfileForm.value.city),
-          websiteUrl: normalizeOptional(adminProfileForm.value.websiteUrl),
-          bio: normalizeOptional(adminProfileForm.value.bio),
-          avatarUrl: normalizeOptional(adminProfileForm.value.avatarUrl),
-          coverImageUrl: normalizeOptional(adminProfileForm.value.coverImageUrl),
-        },
-      },
-    });
-    author.value = data?.adminUpdateAuthorProfile ?? author.value;
-    adminProfileStatus.value = 'Страница классика обновлена.';
-    await refreshAuthorDetails();
-  } catch (error) {
-    adminProfileError.value = error.message;
-  } finally {
-    adminProfileBusy.value = false;
-  }
-}
-
-async function uploadAdminImage(kind, event) {
-  if (!canManageClassic.value) return;
-  const file = event?.target?.files?.[0] ?? null;
-  if (!file) return;
-
-  adminImageBusy.value = true;
-  adminImageStatus.value = '';
-  adminImageError.value = '';
-
-  try {
-    const imageUrl = await uploadProfileImage({ kind, file });
-    if (kind === 'avatar') {
-      adminProfileForm.value.avatarUrl = imageUrl;
-      adminImageStatus.value = 'Новая фотография-аватар загружена. Сохрани страницу классика, чтобы применить её.';
-    } else {
-      adminProfileForm.value.coverImageUrl = imageUrl;
-      adminImageStatus.value = 'Новое большое фото загружено. Сохрани страницу классика, чтобы применить его.';
-    }
-  } catch (error) {
-    adminImageError.value = error.message;
-  } finally {
-    adminImageBusy.value = false;
-    if (event?.target) {
-      event.target.value = '';
-    }
-  }
-}
-
-async function submitAdminWork() {
-  if (!author.value?.id || !canManageClassic.value) return;
-  adminWorkBusy.value = true;
-  adminWorkStatus.value = '';
-  adminWorkError.value = '';
-
-  try {
-    await apolloClient.mutate({
-      mutation: ADMIN_CREATE_WORK_MUTATION,
-      variables: {
-        authorId: author.value.id,
-        input: {
-          sectionCode: adminWorkForm.value.sectionCode,
-          title: adminWorkForm.value.title.trim(),
-          summary: normalizeOptional(adminWorkForm.value.summary),
-          body: normalizeOptional(adminWorkForm.value.body),
-          excerpt: buildExcerpt(adminWorkForm.value.summary, adminWorkForm.value.body),
-          projectFormat: adminWorkForm.value.sectionCode === 'project' ? normalizeOptional(adminWorkForm.value.projectFormat) : null,
-        },
-      },
-    });
-    adminWorkForm.value = {
-      sectionCode: 'poetry',
-      title: '',
-      summary: '',
-      body: '',
-      projectFormat: '',
-    };
-    activeLedger.value = 'works';
-    adminWorkStatus.value = 'Произведение для классика опубликовано.';
-    await refreshAuthorDetails();
-  } catch (error) {
-    adminWorkError.value = error.message;
-  } finally {
-    adminWorkBusy.value = false;
   }
 }
 </script>
@@ -453,114 +280,6 @@ async function submitAdminWork() {
           <div class="author-paper-text">
             {{ author.bio || 'Автор пока не добавил подробную биографию. Здесь будет литературная визитка, заметки о себе и авторские ссылки.' }}
           </div>
-        </article>
-
-        <article v-if="canManageClassic" class="panel stack">
-          <div class="section-head">
-            <div>
-              <div class="author-paper-eyebrow">Админ-режим классика</div>
-              <h3 class="author-paper-title author-paper-title-sm">Редактирование страницы и публикаций</h3>
-            </div>
-            <span class="pill warn">только для администратора</span>
-          </div>
-
-          <form class="stack" @submit.prevent="submitAdminProfile">
-            <div class="grid-2">
-              <div class="field">
-                <label for="classic-display-name">Имя автора</label>
-                <input id="classic-display-name" v-model="adminProfileForm.displayName" class="input" required />
-              </div>
-              <div class="field">
-                <label for="classic-city">Город</label>
-                <input id="classic-city" v-model="adminProfileForm.city" class="input" />
-              </div>
-            </div>
-
-            <div class="field">
-              <label for="classic-website">Ссылка автора</label>
-              <input id="classic-website" v-model="adminProfileForm.websiteUrl" class="input" placeholder="https://..." />
-            </div>
-
-            <div class="field">
-              <label for="classic-bio">Биография</label>
-              <textarea id="classic-bio" v-model="adminProfileForm.bio" class="textarea" />
-            </div>
-
-            <div class="profile-image-grid">
-              <div class="profile-image-card">
-                <strong>Аватар</strong>
-                <div class="field">
-                  <label for="classic-avatar-url">URL аватара</label>
-                  <input id="classic-avatar-url" v-model="adminProfileForm.avatarUrl" class="input" placeholder="https://..." />
-                </div>
-                <div class="field">
-                  <label for="classic-avatar-upload">Загрузить аватар</label>
-                  <input id="classic-avatar-upload" class="input" type="file" accept="image/*" :disabled="adminImageBusy" @change="uploadAdminImage('avatar', $event)" />
-                </div>
-              </div>
-
-              <div class="profile-image-card">
-                <strong>Большое фото</strong>
-                <div class="field">
-                  <label for="classic-cover-url">URL большого фото</label>
-                  <input id="classic-cover-url" v-model="adminProfileForm.coverImageUrl" class="input" placeholder="https://..." />
-                </div>
-                <div class="field">
-                  <label for="classic-cover-upload">Загрузить большое фото</label>
-                  <input id="classic-cover-upload" class="input" type="file" accept="image/*" :disabled="adminImageBusy" @change="uploadAdminImage('cover', $event)" />
-                </div>
-              </div>
-            </div>
-
-            <div v-if="adminImageStatus" class="message success">{{ adminImageStatus }}</div>
-            <div v-if="adminImageError" class="message error">{{ adminImageError }}</div>
-            <div class="inline-actions">
-              <button class="btn btn-primary" type="submit" :disabled="adminProfileBusy">{{ adminProfileBusy ? 'Сохраняем…' : 'Сохранить страницу классика' }}</button>
-            </div>
-            <div v-if="adminProfileStatus" class="message success">{{ adminProfileStatus }}</div>
-            <div v-if="adminProfileError" class="message error">{{ adminProfileError }}</div>
-          </form>
-
-          <form class="stack" @submit.prevent="submitAdminWork">
-            <div class="section-head">
-              <h3 class="author-paper-title author-paper-title-sm">Добавить произведение</h3>
-              <span class="pill">от имени классика</span>
-            </div>
-            <div class="grid-2">
-              <div class="field">
-                <label for="classic-work-section">Раздел</label>
-                <select id="classic-work-section" v-model="adminWorkForm.sectionCode" class="select">
-                  <option value="poetry">Поэзия</option>
-                  <option value="prose">Проза</option>
-                  <option value="project">Творческий проект</option>
-                </select>
-              </div>
-              <div v-if="adminWorkForm.sectionCode === 'project'" class="field">
-                <label for="classic-work-project-format">Формат проекта</label>
-                <select id="classic-work-project-format" v-model="adminWorkForm.projectFormat" class="select">
-                  <option v-for="option in projectFormats" :key="option.value || 'default'" :value="option.value">{{ option.label }}</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="field">
-              <label for="classic-work-title">Название произведения</label>
-              <input id="classic-work-title" v-model="adminWorkForm.title" class="input" required />
-            </div>
-            <div class="field">
-              <label for="classic-work-summary">Краткое описание</label>
-              <textarea id="classic-work-summary" v-model="adminWorkForm.summary" class="textarea" />
-            </div>
-            <div class="field">
-              <label for="classic-work-body">Текст произведения</label>
-              <textarea id="classic-work-body" v-model="adminWorkForm.body" class="textarea" />
-            </div>
-            <div class="inline-actions">
-              <button class="btn btn-primary" type="submit" :disabled="adminWorkBusy">{{ adminWorkBusy ? 'Публикуем…' : 'Опубликовать произведение' }}</button>
-            </div>
-            <div v-if="adminWorkStatus" class="message success">{{ adminWorkStatus }}</div>
-            <div v-if="adminWorkError" class="message error">{{ adminWorkError }}</div>
-          </form>
         </article>
 
         <section class="author-paper-card">

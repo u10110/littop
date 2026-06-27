@@ -12,8 +12,6 @@ export function buildThreadTree(items = [], options = {}) {
     idKey = 'id',
     parentKey = 'parentId',
     authorKey = 'author',
-    rootSortDirection = 'asc',
-    childSortDirection = 'asc',
   } = options;
 
   const nodes = Array.isArray(items)
@@ -41,21 +39,14 @@ export function buildThreadTree(items = [], options = {}) {
     }
   }
 
-  const sortWithDirection = (list, direction = 'asc') => {
-    list.sort((left, right) => {
-      const result = compareByCreatedAt(left, right);
-      return direction === 'desc' ? result * -1 : result;
-    });
-  };
-
-  const sortNodes = (list, direction = 'asc') => {
-    sortWithDirection(list, direction);
+  const sortNodes = (list) => {
+    list.sort(compareByCreatedAt);
     for (const item of list) {
-      sortNodes(item.children, childSortDirection);
+      sortNodes(item.children);
     }
   };
 
-  sortNodes(roots, rootSortDirection);
+  sortNodes(roots);
   return roots;
 }
 
