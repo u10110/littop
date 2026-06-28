@@ -44,7 +44,6 @@ export const WORK_PREVIEW_FIELDS = gql`
     dislikesCount
     likedByMe
     dislikedByMe
-    announcementActive
     publishedAt
     createdAt
     updatedAt
@@ -218,7 +217,7 @@ export const HOME_QUERY = gql`
     recentWorks: works(limit: 6) {
       ...WorkPreviewFields
     }
-    announcements: announcedWorks(limit: 12) {
+    announcements: works(limit: 12) {
       ...WorkPreviewFields
     }
     recentTopics: forumTopics(limit: 6) {
