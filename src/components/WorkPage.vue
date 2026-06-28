@@ -5,7 +5,6 @@ import { RouterLink, useRoute } from 'vue-router';
 import WorkDiscussionPanel from './WorkDiscussionPanel.vue';
 import { apolloClient } from '../lib/apollo.js';
 import {
-  ACTIVATE_WORK_ANNOUNCEMENT_MUTATION,
   DELETE_WORK_MUTATION,
   UPDATE_WORK_MUTATION,
   WORK_QUERY,
@@ -29,8 +28,6 @@ const editBusy = ref(false);
 const editStatus = ref('');
 const deleteBusy = ref(false);
 const deleteStatus = ref('');
-const announcementBusy = ref(false);
-const announcementStatus = ref('');
 const editForm = ref({
   sectionCode: 'poetry',
   title: '',
@@ -57,8 +54,6 @@ const isOwner = computed(() => {
   }
   return String(currentUser.value.id) === String(work.value.author.id);
 });
-const isAdmin = computed(() => currentUser.value?.role === 'admin');
-const canActivateAnnouncement = computed(() => Boolean(isAdmin.value && work.value && !work.value.announcementActive));
 
 onMounted(() => {
   bootstrapSession();
@@ -132,7 +127,6 @@ async function loadWorkPage(value) {
   workError.value = '';
   editStatus.value = '';
   deleteStatus.value = '';
-  announcementStatus.value = '';
   editMode.value = false;
 
   if (!value) {
@@ -196,6 +190,10 @@ async function submitWorkUpdate() {
           body: normalizeOptional(editForm.value.body),
           excerpt: buildExcerpt(editForm.value.summary, editForm.value.body),
           projectFormat: editForm.value.sectionCode === 'project' ? normalizeOptional(editForm.value.projectFormat) : null,
+          pdfUrl: work.value.pdfUrl || null,
+          pdfFileName: work.value.pdfFileName || null,
+          audioUrl: work.value.audioUrl || null,
+          audioFileName: work.value.audioFileName || null,
         },
       },
     });
@@ -206,26 +204,6 @@ async function submitWorkUpdate() {
     editStatus.value = mutationError.message;
   } finally {
     editBusy.value = false;
-  }
-}
-
-async function activateAnnouncement() {
-  if (!work.value || !canActivateAnnouncement.value) return;
-  announcementBusy.value = true;
-  announcementStatus.value = '';
-  try {
-    await apolloClient.mutate({
-      mutation: ACTIVATE_WORK_ANNOUNCEMENT_MUTATION,
-      variables: {
-        workId: work.value.id,
-      },
-    });
-    announcementStatus.value = 'Произведение добавлено в колонку «Анонсы».';
-    await refreshCurrentWork();
-  } catch (mutationError) {
-    announcementStatus.value = mutationError.message;
-  } finally {
-    announcementBusy.value = false;
   }
 }
 
@@ -286,6 +264,7 @@ async function softDeleteCurrentWork() {
         <span class="pill">{{ ratingLabel(work.averageRating, work.ratingsCount) }}</span>
         <span class="pill">отзывов: {{ work.commentsCount }}</span>
         <span class="pill">лайков: {{ work.likesCount }}</span>
+        <span class="pill">дизлайков: {{ work.dislikesCount }}</span>
         <span v-if="work.projectFormat" class="pill">{{ work.projectFormat }}</span>
         <span v-if="work.status && work.status !== 'published'" class="pill warn">{{ work.status }}</span>
       </div>
@@ -305,15 +284,7 @@ async function softDeleteCurrentWork() {
           >
             Страница автора
           </RouterLink>
-          <button
-            v-if="isAdmin"
-            class="btn btn-primary"
-            type="button"
-            :disabled="announcementBusy || work.announcementActive"
-            @click="activateAnnouncement"
-          >
-            {{ work.announcementActive ? 'Уже в анонсах' : announcementBusy ? 'Добавляем…' : 'Анонс' }}
-          </button>
+          <a class="btn btn-primary" href="#root-work-review">Написать отзыв</a>
           <button
             v-if="isOwner"
             class="btn btn-outline"
@@ -337,7 +308,6 @@ async function softDeleteCurrentWork() {
 
       <div v-if="editStatus" class="message" :class="editStatus.includes('сохранены') ? 'success' : 'error'">{{ editStatus }}</div>
       <div v-if="deleteStatus" class="message" :class="deleteStatus.includes('архив') ? 'success' : 'error'">{{ deleteStatus }}</div>
-      <div v-if="announcementStatus" class="message" :class="announcementStatus.includes('добавлено') ? 'success' : 'error'">{{ announcementStatus }}</div>
 
       <form v-if="editMode && isOwner" class="stack work-edit-form" @submit.prevent="submitWorkUpdate">
         <div class="field">
@@ -378,6 +348,29 @@ async function softDeleteCurrentWork() {
       </form>
 
       <div v-else class="prewrap">{{ work.body || work.summary || work.excerpt || 'Текст пока не добавлен.' }}</div>
+
+      <div v-if="work.pdfUrl || work.audioUrl" class="stack work-media-block">
+        <div class="section-head">
+          <h3>Материалы произведения</h3>
+          <span class="pill">вложения</span>
+        </div>
+
+        <div v-if="work.pdfUrl" class="stack media-preview-card">
+          <div class="inline-actions">
+            <strong>{{ work.pdfFileName || 'PDF-файл' }}</strong>
+            <a class="btn btn-outline btn-sm" :href="work.pdfUrl" target="_blank" rel="noopener noreferrer">Открыть PDF</a>
+          </div>
+          <iframe class="work-pdf-frame" :src="work.pdfUrl" title="PDF произведения" loading="lazy" />
+        </div>
+
+        <div v-if="work.audioUrl" class="stack media-preview-card">
+          <div class="inline-actions">
+            <strong>{{ work.audioFileName || 'Аудиофайл' }}</strong>
+            <a class="btn btn-outline btn-sm" :href="work.audioUrl" target="_blank" rel="noopener noreferrer">Скачать аудио</a>
+          </div>
+          <audio class="work-audio-player" :src="work.audioUrl" controls preload="metadata" />
+        </div>
+      </div>
     </article>
 
     <WorkDiscussionPanel :work="work" @refresh="refreshCurrentWork" />

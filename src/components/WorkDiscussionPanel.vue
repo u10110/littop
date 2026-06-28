@@ -9,6 +9,7 @@ import {
   DELETE_WORK_COMMENT_MUTATION,
   RATE_WORK_MUTATION,
   TOGGLE_WORK_COMMENT_LIKE_MUTATION,
+  TOGGLE_WORK_DISLIKE_MUTATION,
   TOGGLE_WORK_LIKE_MUTATION,
   UPDATE_WORK_COMMENT_MUTATION,
   WORK_COMMENT_LIKERS_QUERY,
@@ -47,7 +48,8 @@ const editBody = ref('');
 const ratingBusy = ref(false);
 const ratingStatus = ref('');
 const workLikeBusy = ref(false);
-const workLikeStatus = ref('');
+const workDislikeBusy = ref(false);
+const workReactionStatus = ref('');
 
 const workLikersOpen = ref(false);
 const workLikersBusy = ref(false);
@@ -93,7 +95,7 @@ function resetCommentForms() {
 
 function resetPanels() {
   ratingStatus.value = '';
-  workLikeStatus.value = '';
+  workReactionStatus.value = '';
   workLikersOpen.value = false;
   workLikers.value = [];
   readersOpen.value = false;
@@ -211,7 +213,7 @@ async function submitRating(rating) {
 async function toggleWorkLike() {
   if (!props.work?.id) return;
   workLikeBusy.value = true;
-  workLikeStatus.value = '';
+  workReactionStatus.value = '';
 
   try {
     const { data } = await apolloClient.mutate({
@@ -220,15 +222,36 @@ async function toggleWorkLike() {
         workId: props.work.id,
       },
     });
-    workLikeStatus.value = data?.toggleWorkLike?.likedByMe ? 'Лайк поставлен.' : 'Лайк убран.';
+    workReactionStatus.value = data?.toggleWorkLike?.likedByMe ? 'Лайк поставлен.' : 'Лайк убран.';
     if (workLikersOpen.value) {
       await loadWorkLikers();
     }
     await emitRefresh();
   } catch (mutationError) {
-    workLikeStatus.value = mutationError.message;
+    workReactionStatus.value = mutationError.message;
   } finally {
     workLikeBusy.value = false;
+  }
+}
+
+async function toggleWorkDislike() {
+  if (!props.work?.id) return;
+  workDislikeBusy.value = true;
+  workReactionStatus.value = '';
+
+  try {
+    const { data } = await apolloClient.mutate({
+      mutation: TOGGLE_WORK_DISLIKE_MUTATION,
+      variables: {
+        workId: props.work.id,
+      },
+    });
+    workReactionStatus.value = data?.toggleWorkDislike?.dislikedByMe ? 'Дизлайк поставлен.' : 'Дизлайк убран.';
+    await emitRefresh();
+  } catch (mutationError) {
+    workReactionStatus.value = mutationError.message;
+  } finally {
+    workDislikeBusy.value = false;
   }
 }
 
@@ -517,17 +540,29 @@ function ledgerSummary(ledger, noun) {
       </div>
 
       <div class="field">
-        <span class="label">Лайки произведения</span>
-        <div class="inline-actions">
+        <span class="label">Лайки и дизлайки произведения</span>
+        <div class="inline-actions work-reaction-row">
           <button
             v-if="isAuthenticated"
-            class="btn"
-            :class="work.likedByMe ? 'btn-primary' : 'btn-outline'"
+            class="btn work-reaction-button"
+            :class="work.likedByMe ? 'work-reaction-button-active' : 'btn-outline'"
             type="button"
-            :disabled="workLikeBusy"
+            :disabled="workLikeBusy || workDislikeBusy"
             @click="toggleWorkLike"
           >
-            {{ work.likedByMe ? 'Убрать лайк' : 'Лайкнуть произведение' }}
+            <span class="reaction-sprite reaction-sprite-like" aria-hidden="true" />
+            <span>{{ work.likesCount }}</span>
+          </button>
+          <button
+            v-if="isAuthenticated"
+            class="btn work-reaction-button"
+            :class="work.dislikedByMe ? 'work-reaction-button-active work-reaction-button-dislike' : 'btn-outline work-reaction-button-dislike'"
+            type="button"
+            :disabled="workLikeBusy || workDislikeBusy"
+            @click="toggleWorkDislike"
+          >
+            <span class="reaction-sprite reaction-sprite-dislike" aria-hidden="true" />
+            <span>{{ work.dislikesCount }}</span>
           </button>
           <button class="btn btn-outline" type="button" :disabled="workLikersBusy" @click="toggleWorkLikers">
             {{ workLikersOpen ? 'Скрыть список лайкнувших' : 'Кто лайкнул' }}
@@ -539,7 +574,7 @@ function ledgerSummary(ledger, noun) {
             {{ visitorsOpen ? 'Скрыть посетителей' : 'Списки посетителей страницы' }}
           </button>
         </div>
-        <div v-if="workLikeStatus" class="message" :class="workLikeStatus.includes('поставлен') || workLikeStatus.includes('убран') ? 'success' : 'error'">{{ workLikeStatus }}</div>
+        <div v-if="workReactionStatus" class="message" :class="workReactionStatus.includes('поставлен') || workReactionStatus.includes('убран') ? 'success' : 'error'">{{ workReactionStatus }}</div>
       </div>
 
       <div v-if="workLikersOpen" class="panel stack roster-panel">

@@ -1,7 +1,6 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import { useQuery } from '@vue/apollo-composable';
-import { RouterLink } from 'vue-router';
 
 import { apolloClient } from '../lib/apollo.js';
 import {
@@ -13,7 +12,6 @@ import {
 } from '../lib/graphql.js';
 import { formatDate } from '../lib/format.js';
 import { flattenForumPostTree, getAuthorDisplayName, getAuthorInitial } from '../lib/forum.js';
-import { buildForumTopicPageLocation } from '../lib/routes.js';
 import { useSession } from '../lib/session.js';
 
 const props = defineProps({
@@ -38,7 +36,6 @@ const { currentUser, isAuthenticated, bootstrapSession } = useSession();
 const threadBusy = ref(false);
 const threadStatus = ref('');
 const rootPostBody = ref('');
-const rootPostTextarea = ref(null);
 const replyTargetId = ref(null);
 const replyBody = ref('');
 const editPostId = ref(null);
@@ -110,16 +107,6 @@ function cancelTopicEdit() {
   topicEditMode.value = false;
   topicEditStatus.value = '';
   syncTopicEditForm();
-}
-
-function focusRootReplyForm() {
-  replyTargetId.value = null;
-  editPostId.value = null;
-  editBody.value = '';
-  queueMicrotask(() => {
-    rootPostTextarea.value?.focus?.();
-    rootPostTextarea.value?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
-  });
 }
 
 function isOwnPost(post) {
@@ -336,12 +323,6 @@ async function deletePost(post) {
           {{ topicEditMode ? 'Отменить редактирование темы' : 'Редактировать тему / секцию' }}
         </button>
       </div>
-      <div class="inline-actions">
-        <RouterLink class="btn btn-outline" :to="buildForumTopicPageLocation(topic)">Открыть тему</RouterLink>
-        <button v-if="isAuthenticated" class="btn btn-primary" type="button" :disabled="threadBusy" @click="focusRootReplyForm">
-          Ответить на тему
-        </button>
-      </div>
     </div>
 
     <div v-if="topicEditStatus" class="message" :class="topicEditStatus.includes('обновлена') ? 'success' : 'error'">
@@ -475,7 +456,7 @@ async function deletePost(post) {
     <form v-if="isAuthenticated" class="stack" @submit.prevent="submitRootPost">
       <div class="field">
         <label for="forum-root-post">Ответить в тему</label>
-        <textarea ref="rootPostTextarea" id="forum-root-post" v-model="rootPostBody" class="textarea" required placeholder="Твой ответ" />
+        <textarea id="forum-root-post" v-model="rootPostBody" class="textarea" required placeholder="Твой ответ" />
       </div>
       <button class="btn btn-primary" type="submit" :disabled="threadBusy">{{ threadBusy ? 'Публикуем…' : 'Опубликовать ответ' }}</button>
     </form>

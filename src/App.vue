@@ -3,46 +3,33 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router';
 
 import {
-  AUTH_MODAL_RESET_MODE,
   SOCIAL_AUTH_CALLBACK_PATH,
   SOCIAL_AUTH_PROVIDERS,
   buildSocialAuthStartUrl,
   getGraphqlEndpoint,
-  isValidEmail,
-  normalizeEmail,
-  parseAuthModalParams,
   parseSocialAuthCallbackParams,
-  validatePassword,
 } from './lib/auth.js';
 import { useSession } from './lib/session.js';
-import { apolloClient } from './lib/apollo.js';
-import { TOUCH_PRESENCE_MUTATION } from './lib/graphql.js';
-import { setDocumentTitle } from './lib/pageTitle.js';
 
 const endpoint = getGraphqlEndpoint();
 const route = useRoute();
 const router = useRouter();
 const authMode = ref('login');
 const authSuccess = ref('');
-const authLocalError = ref('');
 const socialAuthFeedback = ref('');
 const isAuthModalOpen = ref(false);
-const resetToken = ref('');
+const loginPasswordVisible = ref(false);
+const registerPasswordVisible = ref(false);
 const loginForm = ref({
-  email: '',
+  identifier: '',
   password: '',
 });
 const registerForm = ref({
   email: '',
+  login: '',
   password: '',
   displayName: '',
-});
-const forgotForm = ref({
-  email: '',
-});
-const resetForm = ref({
-  password: '',
-  confirmPassword: '',
+  acceptTerms: false,
 });
 const socialProviders = Object.values(SOCIAL_AUTH_PROVIDERS);
 
@@ -55,30 +42,14 @@ const {
   bootstrapped,
   login,
   register,
-  requestPasswordReset,
-  resetPassword,
   completeExternalAuthToken,
   logout,
   bootstrapSession,
 } = useSession();
 
 const displayName = computed(() => currentUser.value?.profile?.displayName || currentUser.value?.login || 'Автор');
-const visibleAuthError = computed(() => authLocalError.value || authError.value);
-const authModalTitle = computed(() => ({
-  login: 'Авторизация',
-  register: 'Регистрация',
-  forgot: 'Восстановление пароля',
-  reset: 'Новый пароль',
-}[authMode.value] || 'Авторизация'));
-const authModalSubtitle = computed(() => ({
-  login: 'Войди в аккаунт по почте.',
-  register: 'Создай профиль по email и сразу попади в personal.',
-  forgot: 'Укажи почту — на неё придёт ссылка на форму смены пароля.',
-  reset: 'Введи новый пароль дважды.',
-}[authMode.value] || 'Войди в аккаунт по почте.'));
 
 let successTimer = null;
-let presenceTimer = null;
 let lastHandledSocialCallback = '';
 
 function clearSuccessTimer() {
@@ -86,45 +57,6 @@ function clearSuccessTimer() {
     clearTimeout(successTimer);
     successTimer = null;
   }
-}
-
-function clearPresenceTimer() {
-  if (presenceTimer) {
-    clearInterval(presenceTimer);
-    presenceTimer = null;
-  }
-}
-
-function clearAuthLocalError() {
-  authLocalError.value = '';
-}
-
-function resetAuthForms() {
-  loginForm.value = { email: '', password: '' };
-  registerForm.value = { email: '', password: '', displayName: '' };
-  forgotForm.value = { email: '' };
-  resetForm.value = { password: '', confirmPassword: '' };
-}
-
-async function touchPresence() {
-  if (!isAuthenticated.value) return;
-  try {
-    await apolloClient.mutate({
-      mutation: TOUCH_PRESENCE_MUTATION,
-      fetchPolicy: 'no-cache',
-    });
-  } catch {
-    // Молча пропускаем: presence не должен ломать UI.
-  }
-}
-
-function startPresenceHeartbeat() {
-  clearPresenceTimer();
-  if (!isAuthenticated.value) return;
-  void touchPresence();
-  presenceTimer = setInterval(() => {
-    void touchPresence();
-  }, 60_000);
 }
 
 function setSuccessMessage(message) {
@@ -138,34 +70,15 @@ function setSuccessMessage(message) {
   }
 }
 
-function openAuthModal(mode = 'login', { token = '' } = {}) {
+function openAuthModal(mode = 'login') {
   authMode.value = mode;
-  resetToken.value = mode === 'reset' ? token.trim() : '';
-  clearAuthLocalError();
   isAuthModalOpen.value = true;
-}
-
-async function clearResetRouteState() {
-  if (!route.query?.auth && !route.query?.token) {
-    return;
-  }
-
-  const nextQuery = { ...route.query };
-  delete nextQuery.auth;
-  delete nextQuery.token;
-  await router.replace({
-    path: route.path,
-    query: nextQuery,
-    hash: route.hash,
-  });
 }
 
 function closeAuthModal() {
   isAuthModalOpen.value = false;
-  clearAuthLocalError();
-  if (route.query?.auth || route.query?.token) {
-    void clearResetRouteState();
-  }
+  loginPasswordVisible.value = false;
+  registerPasswordVisible.value = false;
 }
 
 function handleOpenAuthEvent(event) {
@@ -202,24 +115,6 @@ function startSocialAuth(provider, mode = 'login') {
     redirectTo: '/personal',
   });
   window.location.assign(authUrl);
-}
-
-function validateEmailOrShow(value) {
-  const email = normalizeEmail(value);
-  if (!isValidEmail(email)) {
-    authLocalError.value = 'Введите корректный email.';
-    return '';
-  }
-  return email;
-}
-
-function validatePasswordOrShow(value) {
-  const error = validatePassword(value);
-  if (error) {
-    authLocalError.value = error;
-    return '';
-  }
-  return String(value ?? '');
 }
 
 async function handleSocialAuthCallback() {
@@ -263,17 +158,6 @@ async function handleSocialAuthCallback() {
   }
 }
 
-function handleAuthRouteState() {
-  if (route.path === SOCIAL_AUTH_CALLBACK_PATH) {
-    return;
-  }
-
-  const { mode, token } = parseAuthModalParams(window.location.search);
-  if (mode === AUTH_MODAL_RESET_MODE && token) {
-    openAuthModal('reset', { token });
-  }
-}
-
 onMounted(() => {
   bootstrapSession();
   window.addEventListener('littop:open-auth', handleOpenAuthEvent);
@@ -281,7 +165,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   clearSuccessTimer();
-  clearPresenceTimer();
   window.removeEventListener('littop:open-auth', handleOpenAuthEvent);
   document.body.style.overflow = '';
 });
@@ -304,45 +187,24 @@ watch(isAuthenticated, (value) => {
   if (value && isAuthModalOpen.value) {
     closeAuthModal();
   }
-  if (value) {
-    startPresenceHeartbeat();
-  } else {
-    clearPresenceTimer();
-  }
-}, { immediate: true });
+});
 
 watch(
   () => route.fullPath,
   () => {
     void handleSocialAuthCallback();
-    handleAuthRouteState();
-  },
-  { immediate: true },
-);
-
-watch(
-  () => route.meta?.title,
-  (title) => {
-    setDocumentTitle(typeof title === 'string' ? title : 'Литопотам');
   },
   { immediate: true },
 );
 
 async function submitLogin() {
-  clearAuthLocalError();
-  const email = validateEmailOrShow(loginForm.value.email);
-  if (!email) return;
-  if (!loginForm.value.password) {
-    authLocalError.value = 'Введите пароль.';
-    return;
-  }
-
   try {
     await login({
-      email,
+      identifier: loginForm.value.identifier.trim(),
       password: loginForm.value.password,
     });
-    loginForm.value = { email: '', password: '' };
+    loginForm.value = { identifier: '', password: '' };
+    loginPasswordVisible.value = false;
     setSuccessMessage('Вход выполнен. Модальное окно закрыто.');
     closeAuthModal();
   } catch {
@@ -351,70 +213,17 @@ async function submitLogin() {
 }
 
 async function submitRegister() {
-  clearAuthLocalError();
-  const displayNameValue = String(registerForm.value.displayName || '').trim();
-  if (!displayNameValue) {
-    authLocalError.value = 'Введите отображаемое имя.';
-    return;
-  }
-
-  const email = validateEmailOrShow(registerForm.value.email);
-  if (!email) return;
-
-  const password = validatePasswordOrShow(registerForm.value.password);
-  if (!password) return;
-
   try {
     await register({
-      email,
-      password,
-      displayName: displayNameValue,
+      email: registerForm.value.email.trim(),
+      login: registerForm.value.login.trim(),
+      password: registerForm.value.password,
+      displayName: registerForm.value.displayName.trim(),
+      acceptTerms: Boolean(registerForm.value.acceptTerms),
     });
-    registerForm.value = { email: '', password: '', displayName: '' };
-    setSuccessMessage('Профиль создан. Письмо отправлено на указанную почту.');
-    closeAuthModal();
-  } catch {
-    // Ошибка уже отдана в authError из session store.
-  }
-}
-
-async function submitForgotPassword() {
-  clearAuthLocalError();
-  const email = validateEmailOrShow(forgotForm.value.email);
-  if (!email) return;
-
-  try {
-    await requestPasswordReset(email);
-    forgotForm.value = { email: '' };
-    authMode.value = 'login';
-    setSuccessMessage('Письмо со ссылкой для восстановления отправлено.');
-  } catch {
-    // Ошибка уже отдана в authError из session store.
-  }
-}
-
-async function submitResetPassword() {
-  clearAuthLocalError();
-  if (!resetToken.value) {
-    authLocalError.value = 'Ссылка восстановления повреждена.';
-    return;
-  }
-
-  const password = validatePasswordOrShow(resetForm.value.password);
-  if (!password) return;
-  if (password !== resetForm.value.confirmPassword) {
-    authLocalError.value = 'Пароли не совпадают.';
-    return;
-  }
-
-  try {
-    await resetPassword({
-      token: resetToken.value,
-      password,
-    });
-    resetForm.value = { password: '', confirmPassword: '' };
-    await clearResetRouteState();
-    setSuccessMessage('Пароль обновлён. Вы вошли в аккаунт.');
+    registerForm.value = { email: '', login: '', password: '', displayName: '', acceptTerms: false };
+    registerPasswordVisible.value = false;
+    setSuccessMessage('Профиль создан. Модальное окно закрыто.');
     closeAuthModal();
   } catch {
     // Ошибка уже отдана в authError из session store.
@@ -432,6 +241,7 @@ async function submitLogout() {
     <div class="navwrap">
       <div class="logo-block">
         <div class="logo">Литопотам</div>
+        <div class="logo-subtitle">Vue 3 + Vue Apollo + GraphQL backend</div>
       </div>
 
       <nav class="nav" aria-label="Главное меню">
@@ -473,18 +283,20 @@ async function submitLogout() {
       <div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
         <div class="section-head">
           <div class="stack compact-stack">
-            <h2 id="auth-modal-title">{{ authModalTitle }}</h2>
-            <span class="meta">{{ authModalSubtitle }}</span>
+            <h2 id="auth-modal-title">{{ authMode === 'login' ? 'Авторизация' : 'Регистрация' }}</h2>
+            <span class="meta">
+              {{ authMode === 'login' ? 'Войди в аккаунт, чтобы открыть personal и живые действия.' : 'Создай профиль и сразу попади в personal.' }}
+            </span>
           </div>
           <button class="btn btn-ghost modal-close" type="button" @click="closeAuthModal" aria-label="Закрыть">×</button>
         </div>
 
-        <div v-if="authMode === 'login' || authMode === 'register'" class="auth-toggle">
+        <div class="auth-toggle">
           <button
             class="btn"
             :class="authMode === 'login' ? 'btn-primary' : 'btn-outline'"
             type="button"
-            @click="openAuthModal('login')"
+            @click="authMode = 'login'"
           >
             Вход
           </button>
@@ -492,32 +304,41 @@ async function submitLogout() {
             class="btn"
             :class="authMode === 'register' ? 'btn-primary' : 'btn-outline'"
             type="button"
-            @click="openAuthModal('register')"
+            @click="authMode = 'register'"
           >
             Регистрация
           </button>
         </div>
 
-        <div v-else class="inline-actions">
-          <button class="btn btn-outline" type="button" @click="openAuthModal('login')">Назад ко входу</button>
-          <button v-if="authMode !== 'register'" class="btn btn-outline" type="button" @click="openAuthModal('register')">Регистрация</button>
-        </div>
-
-        <div v-if="visibleAuthError" class="message error">{{ visibleAuthError }}</div>
+        <div v-if="authError" class="message error">{{ authError }}</div>
 
         <form v-if="authMode === 'login'" class="auth-grid" @submit.prevent="submitLogin">
           <div class="field">
-            <label for="login-email">Email</label>
-            <input id="login-email" v-model="loginForm.email" class="input" type="email" inputmode="email" autocomplete="email" required />
+            <label for="login-identifier">Email или логин</label>
+            <input id="login-identifier" v-model="loginForm.identifier" class="input" required />
           </div>
           <div class="field">
             <label for="login-password">Пароль</label>
-            <input id="login-password" v-model="loginForm.password" class="input" type="password" autocomplete="current-password" required />
+            <div class="password-input-row">
+              <input
+                id="login-password"
+                v-model="loginForm.password"
+                class="input"
+                :type="loginPasswordVisible ? 'text' : 'password'"
+                required
+              />
+              <button
+                class="btn btn-outline password-toggle"
+                type="button"
+                :aria-pressed="loginPasswordVisible"
+                :aria-label="loginPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'"
+                @click="loginPasswordVisible = !loginPasswordVisible"
+              >
+                {{ loginPasswordVisible ? '🙈' : '👁️' }}
+              </button>
+            </div>
           </div>
-          <div class="inline-actions">
-            <button class="btn btn-primary" type="submit" :disabled="authBusy">{{ authBusy ? 'Входим…' : 'Войти' }}</button>
-            <button class="btn btn-ghost" type="button" @click="openAuthModal('forgot')">Забыли пароль?</button>
-          </div>
+          <button class="btn btn-primary" type="submit" :disabled="authBusy">{{ authBusy ? 'Входим…' : 'Войти' }}</button>
           <div class="social-auth-block">
             <div class="meta">Или войди через соцсеть</div>
             <div class="social-auth-grid">
@@ -534,19 +355,47 @@ async function submitLogout() {
           </div>
         </form>
 
-        <form v-else-if="authMode === 'register'" class="auth-grid" @submit.prevent="submitRegister">
+        <form v-else class="auth-grid" @submit.prevent="submitRegister">
           <div class="field">
             <label for="register-display-name">Отображаемое имя</label>
-            <input id="register-display-name" v-model="registerForm.displayName" class="input" autocomplete="name" required />
+            <input id="register-display-name" v-model="registerForm.displayName" class="input" required />
+          </div>
+          <div class="field">
+            <label for="register-login">Логин</label>
+            <input id="register-login" v-model="registerForm.login" class="input" required />
           </div>
           <div class="field">
             <label for="register-email">Email</label>
-            <input id="register-email" v-model="registerForm.email" class="input" type="email" inputmode="email" autocomplete="email" required />
+            <input id="register-email" v-model="registerForm.email" class="input" type="email" required />
           </div>
           <div class="field">
             <label for="register-password">Пароль</label>
-            <input id="register-password" v-model="registerForm.password" class="input" type="password" autocomplete="new-password" required />
+            <div class="password-input-row">
+              <input
+                id="register-password"
+                v-model="registerForm.password"
+                class="input"
+                :type="registerPasswordVisible ? 'text' : 'password'"
+                required
+              />
+              <button
+                class="btn btn-outline password-toggle"
+                type="button"
+                :aria-pressed="registerPasswordVisible"
+                :aria-label="registerPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'"
+                @click="registerPasswordVisible = !registerPasswordVisible"
+              >
+                {{ registerPasswordVisible ? '🙈' : '👁️' }}
+              </button>
+            </div>
           </div>
+          <label class="terms-check">
+            <input v-model="registerForm.acceptTerms" type="checkbox" required />
+            <span>
+              Я принимаю
+              <RouterLink class="terms-link" to="/terms" target="_blank">Пользовательское соглашение</RouterLink>
+            </span>
+          </label>
           <button class="btn btn-primary" type="submit" :disabled="authBusy">
             {{ authBusy ? 'Создаём профиль…' : 'Создать профиль' }}
           </button>
@@ -564,30 +413,6 @@ async function submitLogout() {
               </button>
             </div>
           </div>
-        </form>
-
-        <form v-else-if="authMode === 'forgot'" class="auth-grid" @submit.prevent="submitForgotPassword">
-          <div class="field">
-            <label for="forgot-email">Почта для восстановления</label>
-            <input id="forgot-email" v-model="forgotForm.email" class="input" type="email" inputmode="email" autocomplete="email" required />
-          </div>
-          <button class="btn btn-primary" type="submit" :disabled="authBusy">
-            {{ authBusy ? 'Отправляем…' : 'Отправить письмо' }}
-          </button>
-        </form>
-
-        <form v-else class="auth-grid" @submit.prevent="submitResetPassword">
-          <div class="field">
-            <label for="reset-password">Новый пароль</label>
-            <input id="reset-password" v-model="resetForm.password" class="input" type="password" autocomplete="new-password" required />
-          </div>
-          <div class="field">
-            <label for="reset-password-confirm">Повтори пароль</label>
-            <input id="reset-password-confirm" v-model="resetForm.confirmPassword" class="input" type="password" autocomplete="new-password" required />
-          </div>
-          <button class="btn btn-primary" type="submit" :disabled="authBusy">
-            {{ authBusy ? 'Сохраняем…' : 'Сохранить новый пароль' }}
-          </button>
         </form>
       </div>
     </div>

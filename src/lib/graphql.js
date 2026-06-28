@@ -33,12 +33,17 @@ export const WORK_PREVIEW_FIELDS = gql`
     sectionCode
     genreSlug
     projectFormat
+    pdfUrl
+    pdfFileName
+    audioUrl
+    audioFileName
     commentsCount
     ratingsCount
     averageRating
     likesCount
+    dislikesCount
     likedByMe
-    announcementActive
+    dislikedByMe
     publishedAt
     createdAt
     updatedAt
@@ -102,26 +107,6 @@ export const FORUM_POST_FIELDS = gql`
     createdAt
     updatedAt
     author {
-      ...AuthorCardFields
-    }
-  }
-  ${AUTHOR_CARD_FIELDS}
-`;
-
-export const AUTHOR_REVIEW_FEED_ITEM_FIELDS = gql`
-  fragment AuthorReviewFeedItemFields on AuthorReviewFeedItem {
-    id
-    body
-    status
-    createdAt
-    updatedAt
-    workId
-    workTitle
-    workSlug
-    commentAuthor {
-      ...AuthorCardFields
-    }
-    workAuthor {
       ...AuthorCardFields
     }
   }
@@ -206,19 +191,10 @@ export const HOME_QUERY = gql`
     classicAuthors: authors(limit: 6, classicsOnly: true) {
       ...AuthorCardFields
     }
-    onlineAuthors(limit: 6) {
-      ...AuthorCardFields
-    }
     recentWorks: works(limit: 6) {
       ...WorkPreviewFields
     }
-    announcements: announcedWorks(limit: 12) {
-      ...WorkPreviewFields
-    }
     recentTopics: forumTopics(limit: 6) {
-      ...ForumTopicPreviewFields
-    }
-    editorColumnTopics: forumTopics(sectionSlug: "editor-column", limit: 1) {
       ...ForumTopicPreviewFields
     }
     contests(limit: 6) {
@@ -260,19 +236,12 @@ export const AUTHOR_QUERY = gql`
 export const AUTHOR_DETAILS_QUERY = gql`
   ${AUTHOR_CARD_FIELDS}
   ${WORK_PREVIEW_FIELDS}
-  ${AUTHOR_REVIEW_FEED_ITEM_FIELDS}
   query AuthorDetails($login: String!, $authorId: ID!) {
     author(login: $login) {
       ...AuthorCardFields
     }
     works(authorId: $authorId, limit: 6) {
       ...WorkPreviewFields
-    }
-    writtenReviews: authorWrittenWorkComments(authorId: $authorId, limit: 50) {
-      ...AuthorReviewFeedItemFields
-    }
-    receivedReviews: authorReceivedWorkComments(authorId: $authorId, limit: 50) {
-      ...AuthorReviewFeedItemFields
     }
   }
 `;
@@ -337,21 +306,6 @@ export const WORK_READERS_QUERY = gql`
         viewer {
           ...AuthorCardFields
         }
-      }
-    }
-  }
-`;
-
-export const WORK_VIEWERS_QUERY = gql`
-  ${AUTHOR_CARD_FIELDS}
-  query WorkViewers($workId: ID!, $limit: Int!) {
-    workViewers(workId: $workId, limit: $limit) {
-      id
-      workId
-      viewerUserId
-      viewedAt
-      viewer {
-        ...AuthorCardFields
       }
     }
   }
@@ -464,37 +418,10 @@ export const REGISTER_MUTATION = gql`
   }
 `;
 
-export const REQUEST_PASSWORD_RESET_MUTATION = gql`
-  mutation RequestPasswordReset($email: String!) {
-    requestPasswordReset(email: $email)
-  }
-`;
-
-export const RESET_PASSWORD_MUTATION = gql`
-  ${USER_SESSION_FIELDS}
-  mutation ResetPassword($token: String!, $password: String!) {
-    resetPassword(token: $token, password: $password) {
-      token
-      user {
-        ...UserSessionFields
-      }
-    }
-  }
-`;
-
 export const UPDATE_MY_PROFILE_MUTATION = gql`
   ${USER_SESSION_FIELDS}
   mutation UpdateMyProfile($input: UpdateMyProfileInput!) {
     updateMyProfile(input: $input) {
-      ...UserSessionFields
-    }
-  }
-`;
-
-export const TOUCH_PRESENCE_MUTATION = gql`
-  ${USER_SESSION_FIELDS}
-  mutation TouchPresence {
-    touchPresence {
       ...UserSessionFields
     }
   }
@@ -527,19 +454,19 @@ export const DELETE_WORK_MUTATION = gql`
   }
 `;
 
-export const ACTIVATE_WORK_ANNOUNCEMENT_MUTATION = gql`
+export const TOGGLE_WORK_LIKE_MUTATION = gql`
   ${WORK_PREVIEW_FIELDS}
-  mutation ActivateWorkAnnouncement($workId: ID!) {
-    activateWorkAnnouncement(workId: $workId) {
+  mutation ToggleWorkLike($workId: ID!) {
+    toggleWorkLike(workId: $workId) {
       ...WorkPreviewFields
     }
   }
 `;
 
-export const TOGGLE_WORK_LIKE_MUTATION = gql`
+export const TOGGLE_WORK_DISLIKE_MUTATION = gql`
   ${WORK_PREVIEW_FIELDS}
-  mutation ToggleWorkLike($workId: ID!) {
-    toggleWorkLike(workId: $workId) {
+  mutation ToggleWorkDislike($workId: ID!) {
+    toggleWorkDislike(workId: $workId) {
       ...WorkPreviewFields
     }
   }

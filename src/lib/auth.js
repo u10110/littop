@@ -1,8 +1,5 @@
 export const TOKEN_STORAGE_KEY = 'littop.auth.token';
 export const SOCIAL_AUTH_CALLBACK_PATH = '/auth/callback';
-export const AUTH_MODAL_QUERY_KEY = 'auth';
-export const AUTH_MODAL_RESET_MODE = 'reset';
-export const MIN_PASSWORD_LENGTH = 8;
 export const SOCIAL_AUTH_PROVIDERS = {
   vk: {
     code: 'vk',
@@ -43,24 +40,6 @@ export function resolveBackendBaseUrl(graphqlEndpoint = getGraphqlEndpoint()) {
   }
 }
 
-export function normalizeEmail(value) {
-  return typeof value === 'string' ? value.trim().toLowerCase() : '';
-}
-
-export function isValidEmail(value) {
-  const email = normalizeEmail(value);
-  if (!email) return false;
-  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(email);
-}
-
-export function validatePassword(value) {
-  const password = String(value ?? '');
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    return `Пароль должен содержать минимум ${MIN_PASSWORD_LENGTH} символов.`;
-  }
-  return '';
-}
-
 export function buildSocialAuthCallbackUrl({
   currentOrigin = globalThis.location?.origin || 'http://localhost:5173',
   redirectTo = '/personal',
@@ -81,18 +60,6 @@ export function buildSocialAuthCallbackUrl({
     url.searchParams.set('redirect', redirectTo);
   }
 
-  return url.toString();
-}
-
-export function buildPasswordResetUrl({
-  currentOrigin = globalThis.location?.origin || 'http://localhost:5173',
-  token = '',
-} = {}) {
-  const url = new URL('/', currentOrigin);
-  url.searchParams.set(AUTH_MODAL_QUERY_KEY, AUTH_MODAL_RESET_MODE);
-  if (token) {
-    url.searchParams.set('token', token);
-  }
   return url.toString();
 }
 
@@ -136,18 +103,6 @@ export function parseSocialAuthCallbackParams(searchParamsLike) {
     provider: pick('provider'),
     mode: pick('mode') || 'login',
     redirectTo: pick('redirect', 'next', 'returnTo') || '/personal',
-  };
-}
-
-export function parseAuthModalParams(searchParamsLike) {
-  const params = searchParamsLike instanceof URLSearchParams
-    ? searchParamsLike
-    : new URLSearchParams(searchParamsLike || '');
-
-  const mode = params.get(AUTH_MODAL_QUERY_KEY);
-  return {
-    mode: typeof mode === 'string' ? mode.trim() : '',
-    token: typeof params.get('token') === 'string' ? params.get('token').trim() : '',
   };
 }
 

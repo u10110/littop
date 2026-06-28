@@ -17,7 +17,6 @@ const {
   profileError,
   bootstrapSession,
   saveProfile,
-  closeAccount,
 } = useSession();
 
 const profile = computed(() => currentUser.value?.profile ?? null);
@@ -28,7 +27,6 @@ const myWorksLink = computed(() => ({
 }));
 const myAuthorPageLink = computed(() => buildAuthorPageLocation(currentUser.value?.login || ''));
 const profileSuccess = ref('');
-const accountClosureStatus = ref('');
 const publishStatus = ref('');
 const audioBusy = ref(false);
 const audioError = ref('');
@@ -213,19 +211,6 @@ async function submitProfileImage(kind) {
     profileImageBusy.value = false;
   }
 }
-
-async function submitAccountClosure() {
-  const confirmed = globalThis.confirm?.('Закрыть аккаунт автора? Публикации будут сняты с витрины, а сессия завершится.') ?? true;
-  if (!confirmed) return;
-
-  accountClosureStatus.value = '';
-  try {
-    await closeAccount();
-    accountClosureStatus.value = 'Аккаунт закрыт. Сессия завершена.';
-  } catch {
-    // Текст уже лежит в profileError.
-  }
-}
 </script>
 
 <template>
@@ -262,10 +247,7 @@ async function submitAccountClosure() {
       <section class="stats-grid">
         <article class="card stat">
           <span class="meta">Автор</span>
-          <span class="value">
-            <RouterLink v-if="currentUser?.login" class="user-inline-link" :to="myAuthorPageLink">{{ displayName }}</RouterLink>
-            <template v-else>{{ displayName }}</template>
-          </span>
+          <span class="value">{{ displayName }}</span>
           <span class="note">@{{ currentUser?.login }}</span>
         </article>
         <article class="card stat">
@@ -464,7 +446,7 @@ async function submitAccountClosure() {
             <RouterLink class="btn btn-primary" :to="myWorksLink">Мои произведения</RouterLink>
             <a class="btn btn-outline" href="#publish-work">Добавить публикацию</a>
             <a class="btn btn-outline" href="#upload-audio">Добавить аудио</a>
-            <RouterLink v-if="currentUser?.login" class="btn btn-outline" :to="myAuthorPageLink">Авторская страница</RouterLink>
+            <RouterLink v-if="currentUser?.login" class="btn btn-outline" :to="myAuthorPageLink">Моя страница автора</RouterLink>
             <RouterLink class="btn btn-outline" to="/radio">Радио</RouterLink>
             <RouterLink class="btn btn-outline" to="/works">Все произведения</RouterLink>
             <RouterLink class="btn btn-outline" to="/authors">Авторы</RouterLink>
@@ -472,24 +454,6 @@ async function submitAccountClosure() {
           </div>
           <div class="note">
             Кнопка «Мои произведения» открывает каталог сразу с фильтром <code>?mine=1</code> из адресной строки.
-          </div>
-        </article>
-      </section>
-
-      <section class="layout-columns personal-layout">
-        <article class="panel">
-          <div class="section-head">
-            <h2>Закрытие аккаунта</h2>
-            <span class="pill warn">soft delete</span>
-          </div>
-          <div class="note">
-            Аккаунт автора будет закрыт: сессия завершится, произведения уйдут в архив, а форумные записи будут скрыты.
-          </div>
-          <div v-if="accountClosureStatus" class="message success">{{ accountClosureStatus }}</div>
-          <div class="inline-actions">
-            <button class="btn btn-danger" type="button" :disabled="profileBusy" @click="submitAccountClosure">
-              {{ profileBusy ? 'Закрываем…' : 'Закрыть аккаунт' }}
-            </button>
           </div>
         </article>
       </section>

@@ -5,18 +5,14 @@ import {
   TOKEN_STORAGE_KEY,
   SOCIAL_AUTH_CALLBACK_PATH,
   buildAuthHeaders,
-  buildPasswordResetUrl,
   buildSocialAuthCallbackUrl,
   buildSocialAuthStartUrl,
   clearStoredToken,
   getStoredToken,
-  isValidEmail,
-  parseAuthModalParams,
   parseSocialAuthCallbackParams,
   resolveBackendBaseUrl,
   resolveGraphqlEndpoint,
   setStoredToken,
-  validatePassword,
 } from './auth.js';
 
 function createStorage() {
@@ -83,29 +79,6 @@ test('parseSocialAuthCallbackParams extracts token, provider and redirect target
       redirectTo: '/personal',
     },
   );
-});
-
-test('password reset helpers build URL and parse modal state', () => {
-  const resetUrl = buildPasswordResetUrl({
-    currentOrigin: 'https://frontend.example.com',
-    token: 'reset-token-123',
-  });
-  assert.equal(resetUrl, 'https://frontend.example.com/?auth=reset&token=reset-token-123');
-
-  assert.deepEqual(
-    parseAuthModalParams('?auth=reset&token=reset-token-123'),
-    {
-      mode: 'reset',
-      token: 'reset-token-123',
-    },
-  );
-});
-
-test('email and password validators reject malformed values', () => {
-  assert.equal(isValidEmail('reader@example.com'), true);
-  assert.equal(isValidEmail('reader@'), false);
-  assert.equal(validatePassword('1234567'), 'Пароль должен содержать минимум 8 символов.');
-  assert.equal(validatePassword('12345678'), '');
 });
 
 test('token helpers persist and clear auth token in provided storage', () => {
