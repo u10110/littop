@@ -138,7 +138,9 @@ const healthTone = computed(() => {
           </div>
           <h3>{{ topic.title }}</h3>
           <div class="meta">
-            {{ topic.author?.displayName || topic.author?.login }} · {{ formatDate(topic.lastPostAt || topic.createdAt) }}
+            <RouterLink v-if="topic.author?.login" :to="buildAuthorPageLocation(topic.author)">{{ topic.author?.displayName || topic.author?.login }}</RouterLink>
+            <template v-else>{{ topic.author?.displayName || topic.author?.login }}</template>
+            · {{ formatDate(topic.lastPostAt || topic.createdAt) }}
           </div>
           <div>{{ excerptText(topic.body, 140) }}</div>
         </article>

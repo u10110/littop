@@ -9,6 +9,7 @@ import {
   getGraphqlEndpoint,
   parseSocialAuthCallbackParams,
 } from './lib/auth.js';
+import { buildAuthorPageLocation } from './lib/routes.js';
 import { useSession } from './lib/session.js';
 
 const endpoint = getGraphqlEndpoint();
@@ -251,14 +252,15 @@ async function submitLogout() {
         <RouterLink to="/contests">Конкурсы</RouterLink>
         <RouterLink to="/radio">Радио</RouterLink>
         <RouterLink to="/forum">Форум</RouterLink>
-        <RouterLink to="/personal">Мой кабинет</RouterLink>
+        <RouterLink v-if="isAuthenticated" to="/personal">Мой кабинет</RouterLink>
       </nav>
 
       <div class="actions">
         <div v-if="isAuthenticated" class="auth-box user-card">
           <div class="stack">
             <div class="section-head">
-              <strong>{{ displayName }}</strong>
+              <RouterLink v-if="currentUser?.login" class="nav-author-link" :to="buildAuthorPageLocation(currentUser.login)">{{ displayName }}</RouterLink>
+              <strong v-else>{{ displayName }}</strong>
               <span class="pill good">онлайн</span>
             </div>
             <div class="meta">@{{ currentUser?.login }} · {{ currentUser?.email }}</div>

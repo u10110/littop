@@ -8,7 +8,7 @@ import { apolloClient } from '../lib/apollo.js';
 import { CREATE_FORUM_TOPIC_MUTATION, FORUM_OVERVIEW_QUERY, FORUM_TOPIC_QUERY } from '../lib/graphql.js';
 import { excerptText, formatDate } from '../lib/format.js';
 import { buildForumTopicLookupVariables, getAuthorDisplayName, getAuthorInitial } from '../lib/forum.js';
-import { buildForumTopicPageLocation } from '../lib/routes.js';
+import { buildAuthorPageLocation, buildForumTopicPageLocation } from '../lib/routes.js';
 import { useSession } from '../lib/session.js';
 
 const selectedSection = ref('');
@@ -243,7 +243,9 @@ async function submitTopic() {
                 </RouterLink>
               </div>
               <div class="meta">
-                {{ authorLabel(topic.author) }} · {{ formatDate(topic.lastPostAt || topic.createdAt) }}
+                <RouterLink v-if="topic.author?.login" :to="buildAuthorPageLocation(topic.author)" @click.stop>{{ authorLabel(topic.author) }}</RouterLink>
+                <template v-else>{{ authorLabel(topic.author) }}</template>
+                · {{ formatDate(topic.lastPostAt || topic.createdAt) }}
               </div>
               <div>{{ excerptText(topic.body, 160) }}</div>
             </div>

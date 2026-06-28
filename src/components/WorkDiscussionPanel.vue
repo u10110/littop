@@ -584,7 +584,8 @@ function ledgerSummary(ledger, noun) {
         </div>
         <div v-if="workLikers.length" class="list-grid">
           <article v-for="liker in workLikers" :key="liker.id" class="inline-card compact-stack">
-            <strong>{{ authorLabel(liker) }}</strong>
+            <RouterLink v-if="liker.login" :to="buildAuthorPageLocation(liker)"><strong>{{ authorLabel(liker) }}</strong></RouterLink>
+            <strong v-else>{{ authorLabel(liker) }}</strong>
             <div class="meta">{{ liker.city || 'Без города' }}</div>
             <RouterLink v-if="liker.login" class="btn btn-outline btn-sm" :to="buildAuthorPageLocation(liker)">Страница автора</RouterLink>
           </article>
@@ -600,7 +601,8 @@ function ledgerSummary(ledger, noun) {
         <div class="note">{{ ledgerSummary(readersLedger, 'читателей') }}</div>
         <div v-if="readersLedger.viewers.length" class="list-grid">
           <article v-for="viewer in readersLedger.viewers" :key="viewer.id" class="inline-card compact-stack">
-            <strong>{{ authorLabel(viewer.viewer) }}</strong>
+            <RouterLink v-if="viewer.viewer?.login" :to="buildAuthorPageLocation(viewer.viewer)"><strong>{{ authorLabel(viewer.viewer) }}</strong></RouterLink>
+            <strong v-else>{{ authorLabel(viewer.viewer) }}</strong>
             <div class="meta">{{ formatDate(viewer.viewedAt) }}</div>
             <RouterLink v-if="viewer.viewer?.login" class="btn btn-outline btn-sm" :to="buildAuthorPageLocation(viewer.viewer)">Страница автора</RouterLink>
           </article>
@@ -616,7 +618,8 @@ function ledgerSummary(ledger, noun) {
         <div class="note">{{ ledgerSummary(visitorsLedger, 'посетителей') }}</div>
         <div v-if="visitorsLedger.visitors.length" class="list-grid">
           <article v-for="visitor in visitorsLedger.visitors" :key="visitor.id" class="inline-card compact-stack">
-            <strong>{{ authorLabel(visitor.viewer) }}</strong>
+            <RouterLink v-if="visitor.viewer?.login" :to="buildAuthorPageLocation(visitor.viewer)"><strong>{{ authorLabel(visitor.viewer) }}</strong></RouterLink>
+            <strong v-else>{{ authorLabel(visitor.viewer) }}</strong>
             <div class="meta">{{ visitor.workTitle || 'Другая публикация автора' }}</div>
             <div class="meta">{{ formatDate(visitor.viewedAt) }}</div>
             <RouterLink v-if="visitor.viewer?.login" class="btn btn-outline btn-sm" :to="buildAuthorPageLocation(visitor.viewer)">Страница автора</RouterLink>
@@ -669,12 +672,17 @@ function ledgerSummary(ledger, noun) {
 
         <div class="comment-item-body">
           <div class="forum-post-author-line">
-            <strong>{{ authorLabel(comment.author) }}</strong>
+            <RouterLink v-if="comment.author?.login" :to="buildAuthorPageLocation(comment.author)"><strong>{{ authorLabel(comment.author) }}</strong></RouterLink>
+            <strong v-else>{{ authorLabel(comment.author) }}</strong>
             <span v-if="comment.author?.city" class="meta">· {{ comment.author.city }}</span>
             <span class="meta">· {{ formatDate(comment.updatedAt || comment.createdAt) }}</span>
             <RouterLink v-if="comment.author?.login" class="meta" :to="buildAuthorPageLocation(comment.author)">страница автора</RouterLink>
           </div>
-          <div v-if="comment.replyToAuthor" class="forum-reply-note">Ответ пользователю: {{ authorLabel(comment.replyToAuthor) }}</div>
+          <div v-if="comment.replyToAuthor" class="forum-reply-note">
+            Ответ пользователю:
+            <RouterLink v-if="comment.replyToAuthor?.login" :to="buildAuthorPageLocation(comment.replyToAuthor)">{{ authorLabel(comment.replyToAuthor) }}</RouterLink>
+            <template v-else>{{ authorLabel(comment.replyToAuthor) }}</template>
+          </div>
           <div class="comment-body prewrap">{{ comment.body }}</div>
 
           <div class="inline-actions forum-post-actions">

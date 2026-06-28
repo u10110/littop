@@ -256,7 +256,11 @@ function clearFilters() {
             <span class="pill">дизлайков: {{ work.dislikesCount }}</span>
           </div>
           <h3>{{ work.title }}</h3>
-          <div class="meta">{{ work.author?.displayName || work.author?.login }} · {{ formatDate(work.publishedAt || work.createdAt) }}</div>
+          <div class="meta">
+            <RouterLink v-if="work.author?.login" :to="buildAuthorPageLocation(work.author)" @click.stop>{{ work.author?.displayName || work.author?.login }}</RouterLink>
+            <template v-else>{{ work.author?.displayName || work.author?.login }}</template>
+            · {{ formatDate(work.publishedAt || work.createdAt) }}
+          </div>
           <div>{{ excerptText(work.summary || work.excerpt || work.body, 180) }}</div>
           <div class="inline-actions">
             <RouterLink class="btn btn-outline" :to="buildWorkPageLocation(work)" @click.stop>Страница произведения</RouterLink>
@@ -275,7 +279,9 @@ function clearFilters() {
         </div>
 
         <div class="meta">
-          {{ selectedWork.author?.displayName || selectedWork.author?.login }} · {{ formatDate(selectedWork.publishedAt || selectedWork.createdAt) }}
+          <RouterLink v-if="selectedWork.author?.login" :to="buildAuthorPageLocation(selectedWork.author)">{{ selectedWork.author?.displayName || selectedWork.author?.login }}</RouterLink>
+          <template v-else>{{ selectedWork.author?.displayName || selectedWork.author?.login }}</template>
+          · {{ formatDate(selectedWork.publishedAt || selectedWork.createdAt) }}
         </div>
         <div class="chips">
           <span class="pill">{{ ratingLabel(selectedWork.averageRating, selectedWork.ratingsCount) }}</span>

@@ -247,7 +247,8 @@ async function submitProfileImage(kind) {
       <section class="stats-grid">
         <article class="card stat">
           <span class="meta">Автор</span>
-          <span class="value">{{ displayName }}</span>
+          <RouterLink v-if="currentUser?.login" class="value" :to="myAuthorPageLink">{{ displayName }}</RouterLink>
+          <span v-else class="value">{{ displayName }}</span>
           <span class="note">@{{ currentUser?.login }}</span>
         </article>
         <article class="card stat">
@@ -285,7 +286,8 @@ async function submitProfileImage(kind) {
             </div>
             <div class="inline-card">
               <div class="meta">Отображаемое имя</div>
-              <strong>{{ displayName }}</strong>
+              <RouterLink v-if="currentUser?.login" :to="myAuthorPageLink"><strong>{{ displayName }}</strong></RouterLink>
+              <strong v-else>{{ displayName }}</strong>
             </div>
             <div class="inline-card">
               <div class="meta">Город</div>

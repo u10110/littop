@@ -124,7 +124,9 @@ async function loadAuthorDetails(login) {
           @click="selectedAuthorLogin = author.login"
         >
           <div class="section-head">
-            <h3>{{ author.displayName }}</h3>
+            <h3>
+              <RouterLink :to="buildAuthorPageLocation(author)" @click.stop>{{ author.displayName }}</RouterLink>
+            </h3>
             <div class="chips">
               <span v-if="author.isFeatured" class="pill good">витрина</span>
               <span v-if="author.isClassic" class="pill warn">классик</span>
@@ -147,7 +149,9 @@ async function loadAuthorDetails(login) {
     <div class="stack">
       <article v-if="selectedAuthor" class="panel stack">
         <div class="section-head">
-          <h2>{{ selectedAuthor.displayName }}</h2>
+          <h2>
+            <RouterLink :to="buildAuthorPageLocation(selectedAuthor)">{{ selectedAuthor.displayName }}</RouterLink>
+          </h2>
           <span class="pill">@{{ selectedAuthor.login }}</span>
         </div>
 

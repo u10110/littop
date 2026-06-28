@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
+import { RouterLink } from 'vue-router';
 import { useQuery } from '@vue/apollo-composable';
 
 import { apolloClient } from '../lib/apollo.js';
@@ -12,6 +13,7 @@ import {
 } from '../lib/graphql.js';
 import { formatDate } from '../lib/format.js';
 import { flattenForumPostTree, getAuthorDisplayName, getAuthorInitial } from '../lib/forum.js';
+import { buildAuthorPageLocation } from '../lib/routes.js';
 import { useSession } from '../lib/session.js';
 
 const props = defineProps({
@@ -310,7 +312,9 @@ async function deletePost(post) {
         </div>
         <h2>{{ topic.title }}</h2>
         <div class="meta">
-          {{ authorLabel(topic.author) }} · {{ formatDate(topic.createdAt) }}
+          <RouterLink v-if="topic.author?.login" :to="buildAuthorPageLocation(topic.author)">{{ authorLabel(topic.author) }}</RouterLink>
+          <template v-else>{{ authorLabel(topic.author) }}</template>
+          · {{ formatDate(topic.createdAt) }}
         </div>
       </div>
       <div v-if="canManageTopic" class="inline-actions">
@@ -357,7 +361,8 @@ async function deletePost(post) {
       </div>
       <div class="forum-topic-opening-body">
         <div class="forum-post-author-line">
-          <strong>{{ authorLabel(topic.author) }}</strong>
+          <RouterLink v-if="topic.author?.login" :to="buildAuthorPageLocation(topic.author)"><strong>{{ authorLabel(topic.author) }}</strong></RouterLink>
+          <strong v-else>{{ authorLabel(topic.author) }}</strong>
           <span v-if="topic.author?.city" class="meta">· {{ topic.author.city }}</span>
         </div>
         <div class="prewrap">{{ topic.body || 'Текст темы не указан.' }}</div>
@@ -390,11 +395,16 @@ async function deletePost(post) {
 
         <div class="forum-thread-post-body">
           <div class="forum-post-author-line">
-            <strong>{{ authorLabel(post.author) }}</strong>
+            <RouterLink v-if="post.author?.login" :to="buildAuthorPageLocation(post.author)"><strong>{{ authorLabel(post.author) }}</strong></RouterLink>
+            <strong v-else>{{ authorLabel(post.author) }}</strong>
             <span v-if="post.author?.city" class="meta">· {{ post.author.city }}</span>
             <span class="meta">· {{ formatDate(post.updatedAt || post.createdAt) }}</span>
           </div>
-          <div v-if="post.replyToAuthor" class="forum-reply-note">Ответ пользователю: {{ authorLabel(post.replyToAuthor) }}</div>
+          <div v-if="post.replyToAuthor" class="forum-reply-note">
+            Ответ пользователю:
+            <RouterLink v-if="post.replyToAuthor?.login" :to="buildAuthorPageLocation(post.replyToAuthor)">{{ authorLabel(post.replyToAuthor) }}</RouterLink>
+            <template v-else>{{ authorLabel(post.replyToAuthor) }}</template>
+          </div>
           <div class="post-body prewrap">{{ post.body }}</div>
 
           <div class="inline-actions forum-post-actions">

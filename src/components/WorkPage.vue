@@ -273,7 +273,9 @@ async function softDeleteCurrentWork() {
         <div>
           <h2>{{ work.title }}</h2>
           <div class="meta">
-            {{ authorLabel(work.author) }} · {{ formatDate(work.publishedAt || work.createdAt) }}
+            <RouterLink v-if="work.author?.login" :to="buildAuthorPageLocation(work.author)">{{ authorLabel(work.author) }}</RouterLink>
+            <template v-else>{{ authorLabel(work.author) }}</template>
+            · {{ formatDate(work.publishedAt || work.createdAt) }}
           </div>
         </div>
         <div class="inline-actions">
