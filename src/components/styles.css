@@ -1107,6 +1107,118 @@ hr.divider {
   color: #33271d;
 }
 
+.nav-author-link,
+.user-inline-link {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.password-input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.password-toggle {
+  min-width: 52px;
+  padding-inline: 10px;
+}
+
+.terms-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.terms-check input {
+  margin-top: 4px;
+}
+
+.terms-link {
+  font-weight: 600;
+}
+
+.terms-page {
+  gap: 10px;
+}
+
+.terms-panel,
+.terms-section {
+  gap: 12px;
+}
+
+.media-upload-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.media-upload-card,
+.media-preview-card,
+.work-media-block {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface-alt);
+}
+
+.work-pdf-frame {
+  width: 100%;
+  min-height: 520px;
+  border: 1px solid rgba(140, 47, 57, 0.14);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.work-audio-player {
+  width: 100%;
+}
+
+.work-reaction-row {
+  flex-wrap: wrap;
+}
+
+.work-reaction-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 88px;
+  justify-content: center;
+}
+
+.work-reaction-button-active {
+  border-color: rgba(140, 47, 57, 0.45);
+  background: rgba(140, 47, 57, 0.08);
+  color: var(--accent);
+}
+
+.work-reaction-button-dislike.work-reaction-button-active {
+  border-color: rgba(179, 56, 48, 0.45);
+  color: #b33830;
+}
+
+.reaction-sprite {
+  display: inline-block;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background-image: url('https://sevristudio.ucoz.site/_bl/0/67820233.webp');
+  background-repeat: no-repeat;
+  background-size: 200% 100%;
+  box-shadow: inset 0 0 0 1px rgba(140, 47, 57, 0.08);
+}
+
+.reaction-sprite-like {
+  background-position: left center;
+}
+
+.reaction-sprite-dislike {
+  background-position: right center;
+}
+
 @media (max-width: 980px) {
   .navwrap,
   .actions {

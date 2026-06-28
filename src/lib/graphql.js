@@ -33,11 +33,17 @@ export const WORK_PREVIEW_FIELDS = gql`
     sectionCode
     genreSlug
     projectFormat
+    pdfUrl
+    pdfFileName
+    audioUrl
+    audioFileName
     commentsCount
     ratingsCount
     averageRating
     likesCount
+    dislikesCount
     likedByMe
+    dislikedByMe
     announcementActive
     publishedAt
     createdAt
@@ -540,6 +546,15 @@ export const TOGGLE_WORK_LIKE_MUTATION = gql`
   ${WORK_PREVIEW_FIELDS}
   mutation ToggleWorkLike($workId: ID!) {
     toggleWorkLike(workId: $workId) {
+      ...WorkPreviewFields
+    }
+  }
+`;
+
+export const TOGGLE_WORK_DISLIKE_MUTATION = gql`
+  ${WORK_PREVIEW_FIELDS}
+  mutation ToggleWorkDislike($workId: ID!) {
+    toggleWorkDislike(workId: $workId) {
       ...WorkPreviewFields
     }
   }

@@ -303,7 +303,8 @@ async function submitAccountClosure() {
             </div>
             <div class="inline-card">
               <div class="meta">Отображаемое имя</div>
-              <strong>{{ displayName }}</strong>
+              <RouterLink v-if="currentUser?.login" class="user-inline-link" :to="myAuthorPageLink"><strong>{{ displayName }}</strong></RouterLink>
+              <strong v-else>{{ displayName }}</strong>
             </div>
             <div class="inline-card">
               <div class="meta">Город</div>

@@ -9,6 +9,7 @@ import {
   DELETE_WORK_COMMENT_MUTATION,
   RATE_WORK_MUTATION,
   TOGGLE_WORK_COMMENT_LIKE_MUTATION,
+  TOGGLE_WORK_DISLIKE_MUTATION,
   TOGGLE_WORK_LIKE_MUTATION,
   UPDATE_WORK_COMMENT_MUTATION,
   WORK_COMMENT_LIKERS_QUERY,
@@ -47,7 +48,8 @@ const editBody = ref('');
 const ratingBusy = ref(false);
 const ratingStatus = ref('');
 const workLikeBusy = ref(false);
-const workLikeStatus = ref('');
+const workDislikeBusy = ref(false);
+const workReactionStatus = ref('');
 
 const workLikersOpen = ref(false);
 const workLikersBusy = ref(false);
@@ -93,7 +95,7 @@ function resetCommentForms() {
 
 function resetPanels() {
   ratingStatus.value = '';
-  workLikeStatus.value = '';
+  workReactionStatus.value = '';
   workLikersOpen.value = false;
   workLikers.value = [];
   readersOpen.value = false;
@@ -211,7 +213,7 @@ async function submitRating(rating) {
 async function toggleWorkLike() {
   if (!props.work?.id) return;
   workLikeBusy.value = true;
-  workLikeStatus.value = '';
+  workReactionStatus.value = '';
 
   try {
     const { data } = await apolloClient.mutate({
@@ -220,15 +222,36 @@ async function toggleWorkLike() {
         workId: props.work.id,
       },
     });
-    workLikeStatus.value = data?.toggleWorkLike?.likedByMe ? 'Лайк поставлен.' : 'Лайк убран.';
+    workReactionStatus.value = data?.toggleWorkLike?.likedByMe ? 'Лайк поставлен.' : 'Лайк убран.';
     if (workLikersOpen.value) {
       await loadWorkLikers();
     }
     await emitRefresh();
   } catch (mutationError) {
-    workLikeStatus.value = mutationError.message;
+    workReactionStatus.value = mutationError.message;
   } finally {
     workLikeBusy.value = false;
+  }
+}
+
+async function toggleWorkDislike() {
+  if (!props.work?.id) return;
+  workDislikeBusy.value = true;
+  workReactionStatus.value = '';
+
+  try {
+    const { data } = await apolloClient.mutate({
+      mutation: TOGGLE_WORK_DISLIKE_MUTATION,
+      variables: {
+        workId: props.work.id,
+      },
+    });
+    workReactionStatus.value = data?.toggleWorkDislike?.dislikedByMe ? 'Дизлайк поставлен.' : 'Дизлайк убран.';
+    await emitRefresh();
+  } catch (mutationError) {
+    workReactionStatus.value = mutationError.message;
+  } finally {
+    workDislikeBusy.value = false;
   }
 }
 
@@ -490,11 +513,12 @@ function ledgerSummary(ledger, noun) {
 <template>
   <section class="panel stack">
     <div class="section-head">
-      <h3>Отзывы и реакции</h3>
-      <div class="chips">
-        <span class="pill">отзывов: {{ work.commentsCount }}</span>
-        <span class="pill">лайков: {{ work.likesCount }}</span>
-      </div>
+    <h3>Отзывы и реакции</h3>
+    <div class="chips">
+      <span class="pill">отзывов: {{ work.commentsCount }}</span>
+      <span class="pill">лайков: {{ work.likesCount }}</span>
+      <span class="pill">дизлайков: {{ work.dislikesCount }}</span>
+    </div>
     </div>
 
     <div class="stack">
@@ -517,17 +541,29 @@ function ledgerSummary(ledger, noun) {
       </div>
 
       <div class="field">
-        <span class="label">Лайки произведения</span>
-        <div class="inline-actions">
+        <span class="label">Лайки и дизлайки произведения</span>
+        <div class="inline-actions work-reaction-row">
           <button
             v-if="isAuthenticated"
-            class="btn"
-            :class="work.likedByMe ? 'btn-primary' : 'btn-outline'"
+            class="btn work-reaction-button"
+            :class="work.likedByMe ? 'work-reaction-button-active' : 'btn-outline'"
             type="button"
-            :disabled="workLikeBusy"
+            :disabled="workLikeBusy || workDislikeBusy"
             @click="toggleWorkLike"
           >
-            {{ work.likedByMe ? 'Убрать лайк' : 'Лайкнуть произведение' }}
+            <span class="reaction-sprite reaction-sprite-like" aria-hidden="true" />
+            <span>{{ work.likesCount }}</span>
+          </button>
+          <button
+            v-if="isAuthenticated"
+            class="btn work-reaction-button"
+            :class="work.dislikedByMe ? 'work-reaction-button-active work-reaction-button-dislike' : 'btn-outline work-reaction-button-dislike'"
+            type="button"
+            :disabled="workLikeBusy || workDislikeBusy"
+            @click="toggleWorkDislike"
+          >
+            <span class="reaction-sprite reaction-sprite-dislike" aria-hidden="true" />
+            <span>{{ work.dislikesCount }}</span>
           </button>
           <button class="btn btn-outline" type="button" :disabled="workLikersBusy" @click="toggleWorkLikers">
             {{ workLikersOpen ? 'Скрыть список лайкнувших' : 'Кто лайкнул' }}
@@ -539,7 +575,7 @@ function ledgerSummary(ledger, noun) {
             {{ visitorsOpen ? 'Скрыть посетителей' : 'Списки посетителей страницы' }}
           </button>
         </div>
-        <div v-if="workLikeStatus" class="message" :class="workLikeStatus.includes('поставлен') || workLikeStatus.includes('убран') ? 'success' : 'error'">{{ workLikeStatus }}</div>
+        <div v-if="workReactionStatus" class="message" :class="workReactionStatus.includes('поставлен') || workReactionStatus.includes('убран') ? 'success' : 'error'">{{ workReactionStatus }}</div>
       </div>
 
       <div v-if="workLikersOpen" class="panel stack roster-panel">
@@ -549,7 +585,8 @@ function ledgerSummary(ledger, noun) {
         </div>
         <div v-if="workLikers.length" class="list-grid">
           <article v-for="liker in workLikers" :key="liker.id" class="inline-card compact-stack">
-            <strong>{{ authorLabel(liker) }}</strong>
+            <RouterLink v-if="liker.login" :to="buildAuthorPageLocation(liker)"><strong>{{ authorLabel(liker) }}</strong></RouterLink>
+            <strong v-else>{{ authorLabel(liker) }}</strong>
             <div class="meta">{{ liker.city || 'Без города' }}</div>
             <RouterLink v-if="liker.login" class="btn btn-outline btn-sm" :to="buildAuthorPageLocation(liker)">Страница автора</RouterLink>
           </article>
@@ -565,7 +602,8 @@ function ledgerSummary(ledger, noun) {
         <div class="note">{{ ledgerSummary(readersLedger, 'читателей') }}</div>
         <div v-if="readersLedger.viewers.length" class="list-grid">
           <article v-for="viewer in readersLedger.viewers" :key="viewer.id" class="inline-card compact-stack">
-            <strong>{{ authorLabel(viewer.viewer) }}</strong>
+            <RouterLink v-if="viewer.viewer?.login" :to="buildAuthorPageLocation(viewer.viewer)"><strong>{{ authorLabel(viewer.viewer) }}</strong></RouterLink>
+            <strong v-else>{{ authorLabel(viewer.viewer) }}</strong>
             <div class="meta">{{ formatDate(viewer.viewedAt) }}</div>
             <RouterLink v-if="viewer.viewer?.login" class="btn btn-outline btn-sm" :to="buildAuthorPageLocation(viewer.viewer)">Страница автора</RouterLink>
           </article>
@@ -581,7 +619,8 @@ function ledgerSummary(ledger, noun) {
         <div class="note">{{ ledgerSummary(visitorsLedger, 'посетителей') }}</div>
         <div v-if="visitorsLedger.visitors.length" class="list-grid">
           <article v-for="visitor in visitorsLedger.visitors" :key="visitor.id" class="inline-card compact-stack">
-            <strong>{{ authorLabel(visitor.viewer) }}</strong>
+            <RouterLink v-if="visitor.viewer?.login" :to="buildAuthorPageLocation(visitor.viewer)"><strong>{{ authorLabel(visitor.viewer) }}</strong></RouterLink>
+            <strong v-else>{{ authorLabel(visitor.viewer) }}</strong>
             <div class="meta">{{ visitor.workTitle || 'Другая публикация автора' }}</div>
             <div class="meta">{{ formatDate(visitor.viewedAt) }}</div>
             <RouterLink v-if="visitor.viewer?.login" class="btn btn-outline btn-sm" :to="buildAuthorPageLocation(visitor.viewer)">Страница автора</RouterLink>
@@ -634,12 +673,17 @@ function ledgerSummary(ledger, noun) {
 
         <div class="comment-item-body">
           <div class="forum-post-author-line">
-            <strong>{{ authorLabel(comment.author) }}</strong>
+            <RouterLink v-if="comment.author?.login" :to="buildAuthorPageLocation(comment.author)"><strong>{{ authorLabel(comment.author) }}</strong></RouterLink>
+            <strong v-else>{{ authorLabel(comment.author) }}</strong>
             <span v-if="comment.author?.city" class="meta">· {{ comment.author.city }}</span>
             <span class="meta">· {{ formatDate(comment.updatedAt || comment.createdAt) }}</span>
             <RouterLink v-if="comment.author?.login" class="meta" :to="buildAuthorPageLocation(comment.author)">страница автора</RouterLink>
           </div>
-          <div v-if="comment.replyToAuthor" class="forum-reply-note">Ответ пользователю: {{ authorLabel(comment.replyToAuthor) }}</div>
+          <div v-if="comment.replyToAuthor" class="forum-reply-note">
+            Ответ пользователю:
+            <RouterLink v-if="comment.replyToAuthor?.login" :to="buildAuthorPageLocation(comment.replyToAuthor)">{{ authorLabel(comment.replyToAuthor) }}</RouterLink>
+            <template v-else>{{ authorLabel(comment.replyToAuthor) }}</template>
+          </div>
           <div class="comment-body prewrap">{{ comment.body }}</div>
 
           <div class="inline-actions forum-post-actions">

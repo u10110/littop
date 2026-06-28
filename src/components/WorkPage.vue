@@ -196,6 +196,10 @@ async function submitWorkUpdate() {
           body: normalizeOptional(editForm.value.body),
           excerpt: buildExcerpt(editForm.value.summary, editForm.value.body),
           projectFormat: editForm.value.sectionCode === 'project' ? normalizeOptional(editForm.value.projectFormat) : null,
+          pdfUrl: work.value.pdfUrl || null,
+          pdfFileName: work.value.pdfFileName || null,
+          audioUrl: work.value.audioUrl || null,
+          audioFileName: work.value.audioFileName || null,
         },
       },
     });
@@ -286,6 +290,7 @@ async function softDeleteCurrentWork() {
         <span class="pill">{{ ratingLabel(work.averageRating, work.ratingsCount) }}</span>
         <span class="pill">отзывов: {{ work.commentsCount }}</span>
         <span class="pill">лайков: {{ work.likesCount }}</span>
+        <span class="pill">дизлайков: {{ work.dislikesCount }}</span>
         <span v-if="work.projectFormat" class="pill">{{ work.projectFormat }}</span>
         <span v-if="work.status && work.status !== 'published'" class="pill warn">{{ work.status }}</span>
       </div>
@@ -294,7 +299,9 @@ async function softDeleteCurrentWork() {
         <div>
           <h2>{{ work.title }}</h2>
           <div class="meta">
-            {{ authorLabel(work.author) }} · {{ formatDate(work.publishedAt || work.createdAt) }}
+            <RouterLink v-if="work.author?.login" :to="buildAuthorPageLocation(work.author)">{{ authorLabel(work.author) }}</RouterLink>
+            <template v-else>{{ authorLabel(work.author) }}</template>
+            · {{ formatDate(work.publishedAt || work.createdAt) }}
           </div>
         </div>
         <div class="inline-actions">
@@ -305,6 +312,7 @@ async function softDeleteCurrentWork() {
           >
             Страница автора
           </RouterLink>
+          <a class="btn btn-primary" href="#root-work-review">Написать отзыв</a>
           <button
             v-if="isAdmin"
             class="btn btn-primary"
@@ -378,6 +386,29 @@ async function softDeleteCurrentWork() {
       </form>
 
       <div v-else class="prewrap">{{ work.body || work.summary || work.excerpt || 'Текст пока не добавлен.' }}</div>
+
+      <div v-if="work.pdfUrl || work.audioUrl" class="stack work-media-block">
+        <div class="section-head">
+          <h3>Материалы произведения</h3>
+          <span class="pill">вложения</span>
+        </div>
+
+        <div v-if="work.pdfUrl" class="stack media-preview-card">
+          <div class="inline-actions">
+            <strong>{{ work.pdfFileName || 'PDF-файл' }}</strong>
+            <a class="btn btn-outline btn-sm" :href="work.pdfUrl" target="_blank" rel="noopener noreferrer">Открыть PDF</a>
+          </div>
+          <iframe class="work-pdf-frame" :src="work.pdfUrl" title="PDF произведения" loading="lazy" />
+        </div>
+
+        <div v-if="work.audioUrl" class="stack media-preview-card">
+          <div class="inline-actions">
+            <strong>{{ work.audioFileName || 'Аудиофайл' }}</strong>
+            <a class="btn btn-outline btn-sm" :href="work.audioUrl" target="_blank" rel="noopener noreferrer">Скачать аудио</a>
+          </div>
+          <audio class="work-audio-player" :src="work.audioUrl" controls preload="metadata" />
+        </div>
+      </div>
     </article>
 
     <WorkDiscussionPanel :work="work" @refresh="refreshCurrentWork" />

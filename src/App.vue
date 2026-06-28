@@ -18,6 +18,7 @@ import { useSession } from './lib/session.js';
 import { apolloClient } from './lib/apollo.js';
 import { TOUCH_PRESENCE_MUTATION } from './lib/graphql.js';
 import { setDocumentTitle } from './lib/pageTitle.js';
+import { buildAuthorPageLocation } from './lib/routes.js';
 
 const endpoint = getGraphqlEndpoint();
 const route = useRoute();
@@ -27,15 +28,21 @@ const authSuccess = ref('');
 const authLocalError = ref('');
 const socialAuthFeedback = ref('');
 const isAuthModalOpen = ref(false);
+const loginPasswordVisible = ref(false);
+const registerPasswordVisible = ref(false);
+const resetPasswordVisible = ref(false);
+const resetConfirmPasswordVisible = ref(false);
 const resetToken = ref('');
 const loginForm = ref({
-  email: '',
+  identifier: '',
   password: '',
 });
 const registerForm = ref({
   email: '',
+  login: '',
   password: '',
   displayName: '',
+  acceptTerms: false,
 });
 const forgotForm = ref({
   email: '',
@@ -100,10 +107,14 @@ function clearAuthLocalError() {
 }
 
 function resetAuthForms() {
-  loginForm.value = { email: '', password: '' };
-  registerForm.value = { email: '', password: '', displayName: '' };
+  loginForm.value = { identifier: '', password: '' };
+  registerForm.value = { email: '', login: '', password: '', displayName: '', acceptTerms: false };
   forgotForm.value = { email: '' };
   resetForm.value = { password: '', confirmPassword: '' };
+  loginPasswordVisible.value = false;
+  registerPasswordVisible.value = false;
+  resetPasswordVisible.value = false;
+  resetConfirmPasswordVisible.value = false;
 }
 
 async function touchPresence() {
@@ -163,6 +174,10 @@ async function clearResetRouteState() {
 function closeAuthModal() {
   isAuthModalOpen.value = false;
   clearAuthLocalError();
+  loginPasswordVisible.value = false;
+  registerPasswordVisible.value = false;
+  resetPasswordVisible.value = false;
+  resetConfirmPasswordVisible.value = false;
   if (route.query?.auth || route.query?.token) {
     void clearResetRouteState();
   }
@@ -330,8 +345,11 @@ watch(
 
 async function submitLogin() {
   clearAuthLocalError();
-  const email = validateEmailOrShow(loginForm.value.email);
-  if (!email) return;
+  const identifier = String(loginForm.value.identifier || '').trim();
+  if (!identifier) {
+    authLocalError.value = 'Введите email или логин.';
+    return;
+  }
   if (!loginForm.value.password) {
     authLocalError.value = 'Введите пароль.';
     return;
@@ -339,10 +357,11 @@ async function submitLogin() {
 
   try {
     await login({
-      email,
+      identifier,
       password: loginForm.value.password,
     });
-    loginForm.value = { email: '', password: '' };
+    loginForm.value = { identifier: '', password: '' };
+    loginPasswordVisible.value = false;
     setSuccessMessage('Вход выполнен. Модальное окно закрыто.');
     closeAuthModal();
   } catch {
@@ -358,20 +377,34 @@ async function submitRegister() {
     return;
   }
 
+  const loginValue = String(registerForm.value.login || '').trim();
+  if (!loginValue) {
+    authLocalError.value = 'Введите логин.';
+    return;
+  }
+
   const email = validateEmailOrShow(registerForm.value.email);
   if (!email) return;
 
   const password = validatePasswordOrShow(registerForm.value.password);
   if (!password) return;
 
+  if (!registerForm.value.acceptTerms) {
+    authLocalError.value = 'Нужно принять Пользовательское соглашение.';
+    return;
+  }
+
   try {
     await register({
       email,
+      login: loginValue,
       password,
       displayName: displayNameValue,
+      acceptTerms: true,
     });
-    registerForm.value = { email: '', password: '', displayName: '' };
-    setSuccessMessage('Профиль создан. Письмо отправлено на указанную почту.');
+    registerForm.value = { email: '', login: '', password: '', displayName: '', acceptTerms: false };
+    registerPasswordVisible.value = false;
+    setSuccessMessage('Профиль создан. Модальное окно закрыто.');
     closeAuthModal();
   } catch {
     // Ошибка уже отдана в authError из session store.
@@ -441,14 +474,15 @@ async function submitLogout() {
         <RouterLink to="/contests">Конкурсы</RouterLink>
         <RouterLink to="/radio">Радио</RouterLink>
         <RouterLink to="/forum">Форум</RouterLink>
-        <RouterLink to="/personal">Мой кабинет</RouterLink>
+        <RouterLink v-if="isAuthenticated" to="/personal">Мой кабинет</RouterLink>
       </nav>
 
       <div class="actions">
         <div v-if="isAuthenticated" class="auth-box user-card">
           <div class="stack">
             <div class="section-head">
-              <strong>{{ displayName }}</strong>
+              <RouterLink v-if="currentUser?.login" class="nav-author-link" :to="buildAuthorPageLocation(currentUser.login)">{{ displayName }}</RouterLink>
+              <strong v-else>{{ displayName }}</strong>
               <span class="pill good">онлайн</span>
             </div>
             <div class="meta">@{{ currentUser?.login }} · {{ currentUser?.email }}</div>
@@ -507,12 +541,30 @@ async function submitLogout() {
 
         <form v-if="authMode === 'login'" class="auth-grid" @submit.prevent="submitLogin">
           <div class="field">
-            <label for="login-email">Email</label>
-            <input id="login-email" v-model="loginForm.email" class="input" type="email" inputmode="email" autocomplete="email" required />
+            <label for="login-identifier">Email или логин</label>
+            <input id="login-identifier" v-model="loginForm.identifier" class="input" autocomplete="username email" required />
           </div>
           <div class="field">
             <label for="login-password">Пароль</label>
-            <input id="login-password" v-model="loginForm.password" class="input" type="password" autocomplete="current-password" required />
+            <div class="password-input-row">
+              <input
+                id="login-password"
+                v-model="loginForm.password"
+                class="input"
+                :type="loginPasswordVisible ? 'text' : 'password'"
+                autocomplete="current-password"
+                required
+              />
+              <button
+                class="btn btn-outline password-toggle"
+                type="button"
+                :aria-pressed="loginPasswordVisible"
+                :aria-label="loginPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'"
+                @click="loginPasswordVisible = !loginPasswordVisible"
+              >
+                {{ loginPasswordVisible ? '🙈' : '👁️' }}
+              </button>
+            </div>
           </div>
           <div class="inline-actions">
             <button class="btn btn-primary" type="submit" :disabled="authBusy">{{ authBusy ? 'Входим…' : 'Войти' }}</button>
@@ -540,13 +592,42 @@ async function submitLogout() {
             <input id="register-display-name" v-model="registerForm.displayName" class="input" autocomplete="name" required />
           </div>
           <div class="field">
+            <label for="register-login">Логин</label>
+            <input id="register-login" v-model="registerForm.login" class="input" autocomplete="username" required />
+          </div>
+          <div class="field">
             <label for="register-email">Email</label>
             <input id="register-email" v-model="registerForm.email" class="input" type="email" inputmode="email" autocomplete="email" required />
           </div>
           <div class="field">
             <label for="register-password">Пароль</label>
-            <input id="register-password" v-model="registerForm.password" class="input" type="password" autocomplete="new-password" required />
+            <div class="password-input-row">
+              <input
+                id="register-password"
+                v-model="registerForm.password"
+                class="input"
+                :type="registerPasswordVisible ? 'text' : 'password'"
+                autocomplete="new-password"
+                required
+              />
+              <button
+                class="btn btn-outline password-toggle"
+                type="button"
+                :aria-pressed="registerPasswordVisible"
+                :aria-label="registerPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'"
+                @click="registerPasswordVisible = !registerPasswordVisible"
+              >
+                {{ registerPasswordVisible ? '🙈' : '👁️' }}
+              </button>
+            </div>
           </div>
+          <label class="terms-check">
+            <input v-model="registerForm.acceptTerms" type="checkbox" required />
+            <span>
+              Я принимаю
+              <RouterLink class="terms-link" to="/terms" target="_blank">Пользовательское соглашение</RouterLink>
+            </span>
+          </label>
           <button class="btn btn-primary" type="submit" :disabled="authBusy">
             {{ authBusy ? 'Создаём профиль…' : 'Создать профиль' }}
           </button>
@@ -579,11 +660,21 @@ async function submitLogout() {
         <form v-else class="auth-grid" @submit.prevent="submitResetPassword">
           <div class="field">
             <label for="reset-password">Новый пароль</label>
-            <input id="reset-password" v-model="resetForm.password" class="input" type="password" autocomplete="new-password" required />
+            <div class="password-input-row">
+              <input id="reset-password" v-model="resetForm.password" class="input" :type="resetPasswordVisible ? 'text' : 'password'" autocomplete="new-password" required />
+              <button class="btn btn-outline password-toggle" type="button" :aria-pressed="resetPasswordVisible" :aria-label="resetPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'" @click="resetPasswordVisible = !resetPasswordVisible">
+                {{ resetPasswordVisible ? '🙈' : '👁️' }}
+              </button>
+            </div>
           </div>
           <div class="field">
             <label for="reset-password-confirm">Повтори пароль</label>
-            <input id="reset-password-confirm" v-model="resetForm.confirmPassword" class="input" type="password" autocomplete="new-password" required />
+            <div class="password-input-row">
+              <input id="reset-password-confirm" v-model="resetForm.confirmPassword" class="input" :type="resetConfirmPasswordVisible ? 'text' : 'password'" autocomplete="new-password" required />
+              <button class="btn btn-outline password-toggle" type="button" :aria-pressed="resetConfirmPasswordVisible" :aria-label="resetConfirmPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'" @click="resetConfirmPasswordVisible = !resetConfirmPasswordVisible">
+                {{ resetConfirmPasswordVisible ? '🙈' : '👁️' }}
+              </button>
+            </div>
           </div>
           <button class="btn btn-primary" type="submit" :disabled="authBusy">
             {{ authBusy ? 'Сохраняем…' : 'Сохранить новый пароль' }}

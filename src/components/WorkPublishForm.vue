@@ -3,12 +3,19 @@ import { ref } from 'vue';
 
 import { apolloClient } from '../lib/apollo.js';
 import { CREATE_WORK_MUTATION } from '../lib/graphql.js';
+import { getWorkMediaMeta, uploadWorkMedia } from '../lib/workMedia.js';
 
 const emit = defineEmits(['created']);
 
 const createBusy = ref(false);
 const createStatus = ref('');
 const createError = ref('');
+const pdfInput = ref(null);
+const audioInput = ref(null);
+const selectedPdfFile = ref(null);
+const selectedAudioFile = ref(null);
+const uploadedPdf = ref({ url: '', fileName: '' });
+const uploadedAudio = ref({ url: '', fileName: '' });
 const createForm = ref({
   sectionCode: 'poetry',
   title: '',
@@ -26,9 +33,49 @@ const projectFormats = [
   { value: 'other', label: 'Другое' },
 ];
 
+const pdfMeta = getWorkMediaMeta('pdf');
+const audioMeta = getWorkMediaMeta('audio');
+
 function normalizeOptional(value) {
   const normalized = typeof value === 'string' ? value.trim() : '';
   return normalized || null;
+}
+
+function buildExcerpt(summary, body) {
+  const preferred = normalizeOptional(summary);
+  if (preferred) return preferred;
+  const normalizedBody = normalizeOptional(body);
+  if (!normalizedBody) return null;
+  return normalizedBody.slice(0, 280);
+}
+
+function resetAttachedFiles() {
+  selectedPdfFile.value = null;
+  selectedAudioFile.value = null;
+  uploadedPdf.value = { url: '', fileName: '' };
+  uploadedAudio.value = { url: '', fileName: '' };
+  if (pdfInput.value) pdfInput.value.value = '';
+  if (audioInput.value) audioInput.value.value = '';
+}
+
+function handlePdfChange(event) {
+  selectedPdfFile.value = event?.target?.files?.[0] ?? null;
+  uploadedPdf.value = { url: '', fileName: '' };
+}
+
+function handleAudioChange(event) {
+  selectedAudioFile.value = event?.target?.files?.[0] ?? null;
+  uploadedAudio.value = { url: '', fileName: '' };
+}
+
+async function ensureUploadedAsset(kind, selectedFileRef, uploadedRef) {
+  if (!selectedFileRef.value) {
+    return uploadedRef.value;
+  }
+  const uploaded = await uploadWorkMedia({ kind, file: selectedFileRef.value });
+  uploadedRef.value = uploaded;
+  selectedFileRef.value = null;
+  return uploaded;
 }
 
 async function submitCreateWork() {
@@ -37,6 +84,11 @@ async function submitCreateWork() {
   createError.value = '';
 
   try {
+    const [pdfAsset, audioAsset] = await Promise.all([
+      ensureUploadedAsset('pdf', selectedPdfFile, uploadedPdf),
+      ensureUploadedAsset('audio', selectedAudioFile, uploadedAudio),
+    ]);
+
     const { data } = await apolloClient.mutate({
       mutation: CREATE_WORK_MUTATION,
       variables: {
@@ -45,8 +97,12 @@ async function submitCreateWork() {
           title: createForm.value.title.trim(),
           summary: normalizeOptional(createForm.value.summary),
           body: normalizeOptional(createForm.value.body),
-          excerpt: normalizeOptional(createForm.value.summary),
+          excerpt: buildExcerpt(createForm.value.summary, createForm.value.body),
           projectFormat: createForm.value.sectionCode === 'project' ? normalizeOptional(createForm.value.projectFormat) : null,
+          pdfUrl: normalizeOptional(pdfAsset?.url),
+          pdfFileName: normalizeOptional(pdfAsset?.fileName),
+          audioUrl: normalizeOptional(audioAsset?.url),
+          audioFileName: normalizeOptional(audioAsset?.fileName),
         },
       },
     });
@@ -59,6 +115,7 @@ async function submitCreateWork() {
       body: '',
       projectFormat: '',
     };
+    resetAttachedFiles();
     createStatus.value = 'Произведение опубликовано.';
     emit('created', createdWork);
   } catch (mutationError) {
@@ -77,7 +134,7 @@ async function submitCreateWork() {
     </div>
 
     <div class="note">
-      Новая публикация теперь создаётся прямо из кабинета автора. После сохранения её можно сразу открыть через ссылку
+      Теперь к произведению можно сразу прикрепить PDF и аудиофайл. После сохранения публикацию можно открыть через ссылку
       «Мои произведения».
     </div>
 
@@ -111,6 +168,38 @@ async function submitCreateWork() {
       <div class="field">
         <label for="create-body">Текст</label>
         <textarea id="create-body" v-model="createForm.body" class="textarea" placeholder="Полный текст произведения" />
+      </div>
+
+      <div class="media-upload-grid">
+        <div class="field media-upload-card">
+          <label for="create-pdf">PDF-файл</label>
+          <input
+            id="create-pdf"
+            ref="pdfInput"
+            class="input"
+            type="file"
+            :accept="pdfMeta.accept"
+            @change="handlePdfChange"
+          />
+          <div class="meta">Подходит для рукописи, презентации или приложения к произведению.</div>
+          <div v-if="selectedPdfFile" class="pill">Выбран: {{ selectedPdfFile.name }}</div>
+          <div v-else-if="uploadedPdf.fileName" class="pill good">Загружен: {{ uploadedPdf.fileName }}</div>
+        </div>
+
+        <div class="field media-upload-card">
+          <label for="create-audio">Аудиофайл</label>
+          <input
+            id="create-audio"
+            ref="audioInput"
+            class="input"
+            type="file"
+            :accept="audioMeta.accept"
+            @change="handleAudioChange"
+          />
+          <div class="meta">Можно приложить чтение, песню, демо или озвучку произведения.</div>
+          <div v-if="selectedAudioFile" class="pill">Выбран: {{ selectedAudioFile.name }}</div>
+          <div v-else-if="uploadedAudio.fileName" class="pill good">Загружен: {{ uploadedAudio.fileName }}</div>
+        </div>
       </div>
 
       <button class="btn btn-primary" type="submit" :disabled="createBusy">
