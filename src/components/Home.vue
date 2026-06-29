@@ -70,8 +70,8 @@ const healthTone = computed(() => {
     </article>
   </section>
 
-  <section class="layout-columns">
-    <div class="section-block">
+  <section class="layout-columns home-top-columns">
+    <div class="section-block editor-column-block">
       <div class="section-head">
         <h2>Колонка редактора</h2>
         <RouterLink to="/forum?section=editor-column" class="btn btn-outline">Все статьи</RouterLink>

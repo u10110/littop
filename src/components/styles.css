@@ -1270,3 +1270,20 @@ hr.divider {
     border-radius: 18px;
   }
 }
+
+
+.home-top-columns {
+  align-items: stretch;
+}
+
+.editor-column-block {
+  grid-template-rows: auto 1fr;
+}
+
+.editor-column-card {
+  height: 100%;
+}
+
+.editor-column-card .inline-actions {
+  margin-top: auto;
+}
