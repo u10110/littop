@@ -1,6 +1,8 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
+import { useQuery } from '@vue/apollo-composable';
+
 
 import { apolloClient } from '../lib/apollo.js';
 import {
