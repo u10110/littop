@@ -9,6 +9,7 @@ import Radio from '../components/Radio.vue';
 import Forum from '../components/Forum.vue';
 import ForumTopicPage from '../components/ForumTopicPage.vue';
 import Personal from '../components/Personal.vue';
+import PrivateMessages from '../components/PrivateMessages.vue';
 import SocialAuthCallback from '../components/SocialAuthCallback.vue';
 import TermsAgreement from '../components/TermsAgreement.vue';
 
@@ -23,6 +24,7 @@ const routes = [
   { path: '/forum', name: 'forum', component: Forum },
   { path: '/forum/:slugOrId', name: 'forum-topic-public', component: ForumTopicPage },
   { path: '/personal', name: 'personal', component: Personal },
+  { path: '/messages', name: 'private-messages', component: PrivateMessages },
   { path: '/terms', name: 'terms', component: TermsAgreement },
   { path: '/auth/callback', name: 'social-auth-callback', component: SocialAuthCallback },
 ];

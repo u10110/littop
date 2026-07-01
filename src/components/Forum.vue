@@ -257,6 +257,7 @@ async function submitTopic() {
                 <span class="pill">{{ topic.sectionSlug }}</span>
                 <span v-if="topic.isPinned" class="pill warn">закреп</span>
                 <span class="pill">ответов: {{ topic.repliesCount }}</span>
+                <span class="pill">просмотров: {{ topic.viewsCount }}</span>
               </div>
               <div class="section-head forum-topic-card-title-row">
                 <h3>{{ topic.title }}</h3>
@@ -267,9 +268,8 @@ async function submitTopic() {
               <div class="meta">
                 <RouterLink v-if="topic.author?.login" class="user-inline-link" :to="buildAuthorPageLocation(topic.author)">{{ authorLabel(topic.author) }}</RouterLink>
                 <template v-else>{{ authorLabel(topic.author) }}</template>
-                · {{ formatDate(topic.lastPostAt || topic.createdAt) }}
+                · создана {{ formatDate(topic.createdAt) }}
               </div>
-              <div>{{ excerptText(topic.body, 160) }}</div>
             </div>
           </div>
         </article>

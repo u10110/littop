@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useQuery } from '@vue/apollo-composable';
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router';
 
 import {
@@ -16,7 +17,8 @@ import {
 } from './lib/auth.js';
 import { useSession } from './lib/session.js';
 import { apolloClient } from './lib/apollo.js';
-import { TOUCH_PRESENCE_MUTATION } from './lib/graphql.js';
+import { SITE_CHROME_QUERY, TOUCH_PRESENCE_MUTATION } from './lib/graphql.js';
+import { formatBirthday, formatDateTime } from './lib/format.js';
 import { setDocumentTitle } from './lib/pageTitle.js';
 import { buildAuthorPageLocation } from './lib/routes.js';
 
@@ -52,18 +54,22 @@ const resetForm = ref({
   confirmPassword: '',
 });
 const socialProviders = Object.values(SOCIAL_AUTH_PROVIDERS);
+const isUserCardOpen = ref(false);
+const { result: siteChromeResult } = useQuery(SITE_CHROME_QUERY, null, { fetchPolicy: 'cache-and-network' });
 
 const {
   currentUser,
   isAuthenticated,
   authBusy,
   authError,
+  authMeta,
   bootstrapError,
   bootstrapped,
   login,
   register,
   requestPasswordReset,
   resetPassword,
+  reopenClosedAccount,
   completeExternalAuthToken,
   logout,
   bootstrapSession,
@@ -71,6 +77,16 @@ const {
 
 const displayName = computed(() => currentUser.value?.profile?.displayName || currentUser.value?.login || 'Автор');
 const visibleAuthError = computed(() => authLocalError.value || authError.value);
+const canReopenClosedAccount = computed(() => authMode.value === 'login' && authMeta.value?.code === 'ACCOUNT_REOPEN_AVAILABLE' && String(loginForm.value.identifier || '').trim() && String(loginForm.value.password || '').trim());
+const reopenUntilLabel = computed(() => formatDateTime(authMeta.value?.reopenUntil));
+const footerOnlineAuthors = computed(() => siteChromeResult.value?.onlineAuthors ?? []);
+const footerTodayVisitors = computed(() => siteChromeResult.value?.todayVisitors ?? []);
+const footerBirthdayAuthors = computed(() => siteChromeResult.value?.birthdayAuthors ?? []);
+const footerPresenceSections = computed(() => ([
+  { key: 'online', title: 'Кто сейчас находится в сети', items: footerOnlineAuthors.value, meta: (author) => author?.isOnline ? 'онлайн' : '' },
+  { key: 'today', title: 'Кто сегодня заходил на сайт', items: footerTodayVisitors.value, meta: (author) => author?.lastSeenAt ? formatDateTime(author.lastSeenAt) : '' },
+  { key: 'birthday', title: 'У кого день рождения', items: footerBirthdayAuthors.value, meta: (author) => author?.birthDate ? formatBirthday(author.birthDate) : '' },
+]).filter((section) => section.items.length));
 const authModalTitle = computed(() => ({
   login: 'Авторизация',
   register: 'Регистрация',
@@ -151,6 +167,7 @@ function setSuccessMessage(message) {
 
 function openAuthModal(mode = 'login', { token = '' } = {}) {
   authMode.value = mode;
+  isUserCardOpen.value = false;
   resetToken.value = mode === 'reset' ? token.trim() : '';
   clearAuthLocalError();
   isAuthModalOpen.value = true;
@@ -173,6 +190,7 @@ async function clearResetRouteState() {
 
 function closeAuthModal() {
   isAuthModalOpen.value = false;
+  isUserCardOpen.value = false;
   clearAuthLocalError();
   loginPasswordVisible.value = false;
   registerPasswordVisible.value = false;
@@ -189,6 +207,10 @@ function handleOpenAuthEvent(event) {
 
 function providerLabel(providerCode) {
   return SOCIAL_AUTH_PROVIDERS[providerCode]?.label || 'соцсеть';
+}
+
+function toggleUserCard() {
+  isUserCardOpen.value = !isUserCardOpen.value;
 }
 
 function resolveRedirectTarget(rawValue) {
@@ -329,6 +351,7 @@ watch(isAuthenticated, (value) => {
 watch(
   () => route.fullPath,
   () => {
+    isUserCardOpen.value = false;
     void handleSocialAuthCallback();
     handleAuthRouteState();
   },
@@ -366,6 +389,28 @@ async function submitLogin() {
     closeAuthModal();
   } catch {
     // Ошибка уже отдана в authError из session store.
+  }
+}
+
+async function submitReopenClosedAccount() {
+  clearAuthLocalError();
+  const identifier = String(loginForm.value.identifier || '').trim();
+  if (!identifier || !loginForm.value.password) {
+    authLocalError.value = 'Сначала введи логин/email и пароль.';
+    return;
+  }
+
+  try {
+    await reopenClosedAccount({
+      identifier,
+      password: loginForm.value.password,
+    });
+    loginForm.value = { identifier: '', password: '' };
+    loginPasswordVisible.value = false;
+    setSuccessMessage('Аккаунт снова открыт. Вы вошли автоматически.');
+    closeAuthModal();
+  } catch {
+    // Ошибка уже отдана в authError/session.
   }
 }
 
@@ -455,6 +500,7 @@ async function submitResetPassword() {
 }
 
 async function submitLogout() {
+  isUserCardOpen.value = false;
   await logout();
   setSuccessMessage('Сессия завершена.');
 }
@@ -475,22 +521,27 @@ async function submitLogout() {
         <RouterLink to="/radio">Радио</RouterLink>
         <RouterLink to="/forum">Форум</RouterLink>
         <RouterLink v-if="isAuthenticated" to="/personal">Мой кабинет</RouterLink>
+        <RouterLink v-if="isAuthenticated" to="/messages">Личные сообщения</RouterLink>
       </nav>
 
       <div class="actions">
-        <div v-if="isAuthenticated" class="auth-box user-card">
-          <div class="stack">
-            <div class="section-head">
-              <RouterLink v-if="currentUser?.login" class="nav-author-link" :to="buildAuthorPageLocation(currentUser.login)">{{ displayName }}</RouterLink>
-              <strong v-else>{{ displayName }}</strong>
-              <span class="pill good">онлайн</span>
+        <div v-if="isAuthenticated" class="user-menu-wrap">
+          <button class="btn btn-outline user-menu-trigger" type="button" @click="toggleUserCard">👤 {{ displayName }}</button>
+          <div v-if="isUserCardOpen" class="auth-box user-card user-card-popup">
+            <div class="stack">
+              <div class="section-head">
+                <RouterLink v-if="currentUser?.login" class="nav-author-link" :to="buildAuthorPageLocation(currentUser.login)">{{ displayName }}</RouterLink>
+                <strong v-else>{{ displayName }}</strong>
+                <span class="pill good">онлайн</span>
+              </div>
+              <div class="meta">@{{ currentUser?.login }} · {{ currentUser?.email }}</div>
+              <div class="meta">Роль: {{ currentUser?.role }} · статус: {{ currentUser?.status }}</div>
             </div>
-            <div class="meta">@{{ currentUser?.login }} · {{ currentUser?.email }}</div>
-            <div class="meta">Роль: {{ currentUser?.role }} · статус: {{ currentUser?.status }}</div>
-          </div>
-          <div class="inline-actions">
-            <RouterLink class="btn btn-outline" to="/personal">Мой кабинет</RouterLink>
-            <button class="btn btn-outline" type="button" @click="submitLogout">Выйти</button>
+            <div class="inline-actions">
+              <RouterLink class="btn btn-outline" to="/personal">Мой кабинет</RouterLink>
+              <RouterLink class="btn btn-outline" to="/messages">Личные сообщения</RouterLink>
+              <button class="btn btn-outline" type="button" @click="submitLogout">Выйти</button>
+            </div>
           </div>
         </div>
 
@@ -569,6 +620,12 @@ async function submitLogout() {
           <div class="inline-actions">
             <button class="btn btn-primary" type="submit" :disabled="authBusy">{{ authBusy ? 'Входим…' : 'Войти' }}</button>
             <button class="btn btn-ghost" type="button" @click="openAuthModal('forgot')">Забыли пароль?</button>
+          </div>
+          <div v-if="canReopenClosedAccount" class="message warn">
+            <div>Аккаунт закрыт, но его ещё можно открыть{{ reopenUntilLabel && reopenUntilLabel !== '—' ? ` до ${reopenUntilLabel}` : '' }}.</div>
+            <div class="inline-actions">
+              <button class="btn btn-primary" type="button" :disabled="authBusy" @click="submitReopenClosedAccount">Открыть аккаунт</button>
+            </div>
           </div>
           <div class="social-auth-block">
             <div class="meta">Или войди через соцсеть</div>
@@ -692,8 +749,24 @@ async function submitLogout() {
 
     <RouterView />
 
-    <footer class="footer">
-      Фронт подключён к backend через Apollo Client. Текущий endpoint: <code>{{ endpoint }}</code>
+    <footer class="footer footer-extended">
+      <div v-if="footerPresenceSections.length" class="footer-presence-grid">
+        <article v-for="section in footerPresenceSections" :key="section.key" class="footer-presence-card">
+          <h3>{{ section.title }}</h3>
+          <div class="stack">
+            <RouterLink
+              v-for="author in section.items"
+              :key="`${section.key}-${author.id}`"
+              class="footer-presence-link"
+              :to="buildAuthorPageLocation(author)"
+            >
+              <strong>{{ author.displayName || author.login }}</strong>
+              <span class="meta">@{{ author.login }}<template v-if="section.meta(author)"> · {{ section.meta(author) }}</template></span>
+            </RouterLink>
+          </div>
+        </article>
+      </div>
+      <div class="meta" align="right">littop 2026 &copy;</div>
     </footer>
   </main>
 </template>

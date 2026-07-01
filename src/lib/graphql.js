@@ -11,6 +11,7 @@ export const AUTHOR_CARD_FIELDS = gql`
     coverImageUrl
     city
     websiteUrl
+    birthDate
     ratingTotal
     worksCountCached
     isClassic
@@ -103,6 +104,7 @@ export const FORUM_POST_FIELDS = gql`
     userId
     parentPostId
     body
+    imageUrl
     status
     createdAt
     updatedAt
@@ -185,6 +187,7 @@ export const USER_SESSION_FIELDS = gql`
       coverImageUrl
       city
       websiteUrl
+      birthDate
       ratingTotal
       worksCountCached
       isClassic
@@ -240,6 +243,21 @@ export const ME_QUERY = gql`
   query CurrentUser {
     me {
       ...UserSessionFields
+    }
+  }
+`;
+
+export const SITE_CHROME_QUERY = gql`
+  ${AUTHOR_CARD_FIELDS}
+  query SiteChrome {
+    onlineAuthors(limit: 8) {
+      ...AuthorCardFields
+    }
+    todayVisitors(limit: 8) {
+      ...AuthorCardFields
+    }
+    birthdayAuthors(limit: 8) {
+      ...AuthorCardFields
     }
   }
 `;
@@ -475,6 +493,18 @@ export const REQUEST_PASSWORD_RESET_MUTATION = gql`
   }
 `;
 
+export const REOPEN_CLOSED_ACCOUNT_MUTATION = gql`
+  ${USER_SESSION_FIELDS}
+  mutation ReopenClosedAccount($input: LoginInput!) {
+    reopenClosedAccount(input: $input) {
+      token
+      user {
+        ...UserSessionFields
+      }
+    }
+  }
+`;
+
 export const RESET_PASSWORD_MUTATION = gql`
   ${USER_SESSION_FIELDS}
   mutation ResetPassword($token: String!, $password: String!) {
@@ -493,6 +523,12 @@ export const UPDATE_MY_PROFILE_MUTATION = gql`
     updateMyProfile(input: $input) {
       ...UserSessionFields
     }
+  }
+`;
+
+export const CLOSE_MY_ACCOUNT_MUTATION = gql`
+  mutation CloseMyAccount {
+    closeMyAccount
   }
 `;
 
@@ -644,10 +680,19 @@ export const UPDATE_FORUM_TOPIC_MUTATION = gql`
   }
 `;
 
+export const INCREMENT_FORUM_TOPIC_VIEWS_MUTATION = gql`
+  ${FORUM_TOPIC_PREVIEW_FIELDS}
+  mutation IncrementForumTopicViews($topicId: ID!) {
+    incrementForumTopicViews(topicId: $topicId) {
+      ...ForumTopicPreviewFields
+    }
+  }
+`;
+
 export const CREATE_FORUM_POST_MUTATION = gql`
   ${FORUM_POST_FIELDS}
-  mutation CreateForumPost($topicId: ID!, $body: String!, $parentPostId: ID) {
-    createForumPost(topicId: $topicId, body: $body, parentPostId: $parentPostId) {
+  mutation CreateForumPost($topicId: ID!, $body: String!, $parentPostId: ID, $imageUrl: String) {
+    createForumPost(topicId: $topicId, body: $body, parentPostId: $parentPostId, imageUrl: $imageUrl) {
       ...ForumPostFields
     }
   }
@@ -655,8 +700,8 @@ export const CREATE_FORUM_POST_MUTATION = gql`
 
 export const UPDATE_FORUM_POST_MUTATION = gql`
   ${FORUM_POST_FIELDS}
-  mutation UpdateForumPost($postId: ID!, $body: String!) {
-    updateForumPost(postId: $postId, body: $body) {
+  mutation UpdateForumPost($postId: ID!, $body: String!, $imageUrl: String) {
+    updateForumPost(postId: $postId, body: $body, imageUrl: $imageUrl) {
       ...ForumPostFields
     }
   }
@@ -668,5 +713,71 @@ export const DELETE_FORUM_POST_MUTATION = gql`
     deleteForumPost(postId: $postId) {
       ...ForumPostFields
     }
+  }
+`;
+
+
+export const PRIVATE_DIALOGS_QUERY = gql`
+  ${AUTHOR_CARD_FIELDS}
+  query PrivateDialogs($limit: Int!) {
+    privateDialogs(limit: $limit) {
+      peerUserId
+      lastMessageBody
+      lastMessageAt
+      unreadCount
+      peer {
+        ...AuthorCardFields
+      }
+    }
+  }
+`;
+
+export const PRIVATE_MESSAGES_QUERY = gql`
+  ${AUTHOR_CARD_FIELDS}
+  query PrivateMessages($withLogin: String, $withUserId: ID, $limit: Int!) {
+    privateMessages(withLogin: $withLogin, withUserId: $withUserId, limit: $limit) {
+      id
+      senderUserId
+      recipientUserId
+      body
+      status
+      createdAt
+      updatedAt
+      readAt
+      sender {
+        ...AuthorCardFields
+      }
+      recipient {
+        ...AuthorCardFields
+      }
+    }
+  }
+`;
+
+export const SEND_PRIVATE_MESSAGE_MUTATION = gql`
+  ${AUTHOR_CARD_FIELDS}
+  mutation SendPrivateMessage($recipientLogin: String, $recipientUserId: ID, $body: String!) {
+    sendPrivateMessage(recipientLogin: $recipientLogin, recipientUserId: $recipientUserId, body: $body) {
+      id
+      senderUserId
+      recipientUserId
+      body
+      status
+      createdAt
+      updatedAt
+      readAt
+      sender {
+        ...AuthorCardFields
+      }
+      recipient {
+        ...AuthorCardFields
+      }
+    }
+  }
+`;
+
+export const MARK_PRIVATE_MESSAGES_READ_MUTATION = gql`
+  mutation MarkPrivateMessagesRead($withLogin: String, $withUserId: ID) {
+    markPrivateMessagesRead(withLogin: $withLogin, withUserId: $withUserId)
   }
 `;

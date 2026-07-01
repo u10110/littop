@@ -13,6 +13,7 @@ import {
   UPDATE_FORUM_TOPIC_MUTATION,
 } from '../lib/graphql.js';
 import { formatDate } from '../lib/format.js';
+import { uploadForumPostImage } from '../lib/forumImages.js';
 import { flattenForumPostTree, getAuthorDisplayName, getAuthorInitial } from '../lib/forum.js';
 import { buildAuthorPageLocation, buildForumTopicPageLocation } from '../lib/routes.js';
 import { useSession } from '../lib/session.js';
@@ -39,11 +40,14 @@ const { currentUser, isAuthenticated, bootstrapSession } = useSession();
 const threadBusy = ref(false);
 const threadStatus = ref('');
 const rootPostBody = ref('');
+const rootPostImageFile = ref(null);
 const rootPostTextarea = ref(null);
 const replyTargetId = ref(null);
 const replyBody = ref('');
+const replyImageFile = ref(null);
 const editPostId = ref(null);
 const editBody = ref('');
+const editImageFile = ref(null);
 
 const topicEditMode = ref(false);
 const topicEditBusy = ref(false);
@@ -84,10 +88,13 @@ watch(sections, () => {
 
 function resetComposer() {
   rootPostBody.value = '';
+  rootPostImageFile.value = null;
   replyTargetId.value = null;
   replyBody.value = '';
+  replyImageFile.value = null;
   editPostId.value = null;
   editBody.value = '';
+  editImageFile.value = null;
   threadStatus.value = '';
 }
 
@@ -134,27 +141,33 @@ function canDeletePost(post) {
 function startReply(post) {
   replyTargetId.value = post?.id ?? null;
   replyBody.value = '';
+  replyImageFile.value = null;
   editPostId.value = null;
   editBody.value = '';
+  editImageFile.value = null;
   threadStatus.value = '';
 }
 
 function cancelReply() {
   replyTargetId.value = null;
   replyBody.value = '';
+  replyImageFile.value = null;
 }
 
 function startEdit(post) {
   editPostId.value = post?.id ?? null;
   editBody.value = String(post?.body || '');
+  editImageFile.value = null;
   replyTargetId.value = null;
   replyBody.value = '';
+  replyImageFile.value = null;
   threadStatus.value = '';
 }
 
 function cancelEdit() {
   editPostId.value = null;
   editBody.value = '';
+  editImageFile.value = null;
 }
 
 function authorLabel(author) {
@@ -169,6 +182,25 @@ function depthStyle(depth) {
   return {
     '--forum-depth': Math.min(Math.max(Number(depth) || 0, 0), 6),
   };
+}
+
+function handleRootImageChange(event) {
+  rootPostImageFile.value = event?.target?.files?.[0] ?? null;
+}
+
+function handleReplyImageChange(event) {
+  replyImageFile.value = event?.target?.files?.[0] ?? null;
+}
+
+function handleEditImageChange(event) {
+  editImageFile.value = event?.target?.files?.[0] ?? null;
+}
+
+async function resolveUploadedImageUrl(file, fallbackUrl = null) {
+  if (file instanceof File) {
+    return uploadForumPostImage({ file });
+  }
+  return fallbackUrl;
 }
 
 async function submitTopicEdit() {
@@ -207,16 +239,19 @@ async function submitRootPost() {
   threadStatus.value = '';
 
   try {
+    const imageUrl = await resolveUploadedImageUrl(rootPostImageFile.value);
     await apolloClient.mutate({
       mutation: CREATE_FORUM_POST_MUTATION,
       variables: {
         topicId: props.topic.id,
         body,
         parentPostId: null,
+        imageUrl,
       },
     });
     rootPostBody.value = '';
-    threadStatus.value = 'Ответ опубликован.';
+    rootPostImageFile.value = null;
+    threadStatus.value = imageUrl ? 'Ответ с изображением опубликован.' : 'Ответ опубликован.';
     emit('refresh');
   } catch (mutationError) {
     threadStatus.value = mutationError.message;
@@ -234,17 +269,20 @@ async function submitReply(post) {
   threadStatus.value = '';
 
   try {
+    const imageUrl = await resolveUploadedImageUrl(replyImageFile.value);
     await apolloClient.mutate({
       mutation: CREATE_FORUM_POST_MUTATION,
       variables: {
         topicId: props.topic.id,
         body,
         parentPostId: post.id,
+        imageUrl,
       },
     });
     replyBody.value = '';
+    replyImageFile.value = null;
     replyTargetId.value = null;
-    threadStatus.value = 'Комментарий к сообщению добавлен.';
+    threadStatus.value = imageUrl ? 'Комментарий с изображением добавлен.' : 'Комментарий к сообщению добавлен.';
     emit('refresh');
   } catch (mutationError) {
     threadStatus.value = mutationError.message;
@@ -262,15 +300,18 @@ async function submitEdit(post) {
   threadStatus.value = '';
 
   try {
+    const imageUrl = await resolveUploadedImageUrl(editImageFile.value, post.imageUrl || null);
     await apolloClient.mutate({
       mutation: UPDATE_FORUM_POST_MUTATION,
       variables: {
         postId: post.id,
         body,
+        imageUrl,
       },
     });
     editPostId.value = null;
     editBody.value = '';
+    editImageFile.value = null;
     threadStatus.value = 'Сообщение обновлено.';
     emit('refresh');
   } catch (mutationError) {
@@ -320,7 +361,6 @@ async function deletePost(post) {
         <div class="chips">
           <span class="pill">{{ topic.sectionSlug }}</span>
           <span v-if="topic.isPinned" class="pill warn">закреп</span>
-          <span class="pill">ответов: {{ topic.posts?.length || 0 }}</span>
         </div>
         <h2>{{ topic.title }}</h2>
         <div class="meta">
@@ -424,6 +464,7 @@ async function deletePost(post) {
             <template v-else>{{ authorLabel(post.replyToAuthor) }}</template>
           </div>
           <div class="post-body prewrap">{{ post.body }}</div>
+          <img v-if="post.imageUrl" :src="post.imageUrl" class="forum-post-image" alt="изображение сообщения" />
 
           <div class="inline-actions forum-post-actions">
             <button
@@ -460,6 +501,10 @@ async function deletePost(post) {
               <label :for="`reply-post-${post.id}`">Ответить на сообщение</label>
               <textarea :id="`reply-post-${post.id}`" v-model="replyBody" class="textarea" required placeholder="Твой ответ" />
             </div>
+            <div class="field">
+              <label :for="`reply-image-${post.id}`">Изображение</label>
+              <input :id="`reply-image-${post.id}`" class="input" type="file" accept="image/*" @change="handleReplyImageChange" />
+            </div>
             <div class="inline-actions">
               <button class="btn btn-primary" type="submit" :disabled="threadBusy">{{ threadBusy ? 'Публикуем…' : 'Опубликовать ответ' }}</button>
               <button class="btn btn-outline" type="button" :disabled="threadBusy" @click="cancelReply">Отмена</button>
@@ -470,6 +515,11 @@ async function deletePost(post) {
             <div class="field">
               <label :for="`edit-post-${post.id}`">Редактировать сообщение</label>
               <textarea :id="`edit-post-${post.id}`" v-model="editBody" class="textarea" required />
+            </div>
+            <div class="field">
+              <label :for="`edit-image-${post.id}`">Новое изображение</label>
+              <input :id="`edit-image-${post.id}`" class="input" type="file" accept="image/*" @change="handleEditImageChange" />
+              <div v-if="post.imageUrl" class="meta">Если файл не выбрать, текущая картинка сохранится.</div>
             </div>
             <div class="inline-actions">
               <button class="btn btn-primary" type="submit" :disabled="threadBusy">{{ threadBusy ? 'Сохраняем…' : 'Сохранить' }}</button>
@@ -485,6 +535,10 @@ async function deletePost(post) {
       <div class="field">
         <label for="forum-root-post">Ответить в тему</label>
         <textarea ref="rootPostTextarea" id="forum-root-post" v-model="rootPostBody" class="textarea" required placeholder="Твой ответ" />
+      </div>
+      <div class="field">
+        <label for="forum-root-image">Изображение</label>
+        <input id="forum-root-image" class="input" type="file" accept="image/*" @change="handleRootImageChange" />
       </div>
       <button class="btn btn-primary" type="submit" :disabled="threadBusy">{{ threadBusy ? 'Публикуем…' : 'Опубликовать ответ' }}</button>
     </form>

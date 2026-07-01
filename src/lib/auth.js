@@ -198,3 +198,14 @@ export function extractGraphqlErrorMessage(error, fallback = 'Не удалос�
 
   return fallback;
 }
+
+
+export function extractGraphqlErrorInfo(error) {
+  const graphQLError = error?.graphQLErrors?.[0] || error?.networkError?.result?.errors?.[0] || null;
+  return {
+    code: graphQLError?.extensions?.code || '',
+    reopenUntil: graphQLError?.extensions?.reopenUntil || '',
+    login: graphQLError?.extensions?.login || '',
+    message: graphQLError?.message || '',
+  };
+}

@@ -1,8 +1,10 @@
 <script setup>
 import { ref } from 'vue';
 
+import RichTextEditor from './RichTextEditor.vue';
 import { apolloClient } from '../lib/apollo.js';
 import { CREATE_WORK_MUTATION } from '../lib/graphql.js';
+import { isRichTextEmpty, sanitizeRichTextHtml, stripHtml } from '../lib/richText.js';
 import { getWorkMediaMeta, uploadWorkMedia } from '../lib/workMedia.js';
 
 const emit = defineEmits(['created']);
@@ -20,7 +22,7 @@ const createForm = ref({
   sectionCode: 'poetry',
   title: '',
   summary: '',
-  body: '',
+  body: '<p></p>',
   projectFormat: '',
 });
 
@@ -41,10 +43,15 @@ function normalizeOptional(value) {
   return normalized || null;
 }
 
+function normalizeBody(value) {
+  const normalized = sanitizeRichTextHtml(value);
+  return isRichTextEmpty(normalized) ? null : normalized;
+}
+
 function buildExcerpt(summary, body) {
   const preferred = normalizeOptional(summary);
   if (preferred) return preferred;
-  const normalizedBody = normalizeOptional(body);
+  const normalizedBody = stripHtml(body);
   if (!normalizedBody) return null;
   return normalizedBody.slice(0, 280);
 }
@@ -96,7 +103,7 @@ async function submitCreateWork() {
           sectionCode: createForm.value.sectionCode,
           title: createForm.value.title.trim(),
           summary: normalizeOptional(createForm.value.summary),
-          body: normalizeOptional(createForm.value.body),
+          body: normalizeBody(createForm.value.body),
           excerpt: buildExcerpt(createForm.value.summary, createForm.value.body),
           projectFormat: createForm.value.sectionCode === 'project' ? normalizeOptional(createForm.value.projectFormat) : null,
           pdfUrl: normalizeOptional(pdfAsset?.url),
@@ -112,7 +119,7 @@ async function submitCreateWork() {
       sectionCode: 'poetry',
       title: '',
       summary: '',
-      body: '',
+      body: '<p></p>',
       projectFormat: '',
     };
     resetAttachedFiles();
@@ -134,8 +141,7 @@ async function submitCreateWork() {
     </div>
 
     <div class="note">
-      Теперь к произведению можно сразу прикрепить PDF и аудиофайл. После сохранения публикацию можно открыть через ссылку
-      «Мои произведения».
+      Теперь в форме есть редактор: можно менять шрифт, размер текста, делать выделение и прикреплять PDF / аудио.
     </div>
 
     <form class="stack" @submit.prevent="submitCreateWork">
@@ -165,10 +171,12 @@ async function submitCreateWork() {
         <textarea id="create-summary" v-model="createForm.summary" class="textarea" placeholder="2–3 предложения о публикации" />
       </div>
 
-      <div class="field">
-        <label for="create-body">Текст</label>
-        <textarea id="create-body" v-model="createForm.body" class="textarea" placeholder="Полный текст произведения" />
-      </div>
+      <RichTextEditor
+        v-model="createForm.body"
+        editor-id="create-body"
+        label="Текст произведения"
+        placeholder="Полный текст произведения"
+      />
 
       <div class="media-upload-grid">
         <div class="field media-upload-card">

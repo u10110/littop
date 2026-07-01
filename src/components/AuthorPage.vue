@@ -5,7 +5,7 @@ import { RouterLink, useRoute } from 'vue-router';
 import { apolloClient } from '../lib/apollo.js';
 import { uploadProfileImage } from '../lib/profileImages.js';
 import { ADMIN_CREATE_WORK_MUTATION, ADMIN_UPDATE_AUTHOR_PROFILE_MUTATION, AUTHOR_DETAILS_QUERY, AUTHOR_QUERY } from '../lib/graphql.js';
-import { excerptText, formatDate, formatDateTime, formatWorkSection } from '../lib/format.js';
+import { excerptText, formatBirthday, formatDate, formatDateTime, formatWorkSection } from '../lib/format.js';
 import { buildAuthorPageLocation, buildWorkPageLocation, normalizeRouteParam } from '../lib/routes.js';
 import { setDocumentTitle } from '../lib/pageTitle.js';
 import { useSession } from '../lib/session.js';
@@ -51,6 +51,7 @@ const hasAuthor = computed(() => Boolean(author.value));
 const notFound = computed(() => !pageLoading.value && !pageError.value && Boolean(authorLogin.value) && !author.value);
 const isAdmin = computed(() => currentUser.value?.role === 'admin');
 const canManageClassic = computed(() => Boolean(isAdmin.value && author.value?.isClassic));
+const canMessageAuthor = computed(() => Boolean(currentUser.value?.login && author.value?.login && currentUser.value.login !== author.value.login));
 const projectFormats = [
   { value: '', label: 'Без уточнения' },
   { value: 'song', label: 'Песня' },
@@ -84,6 +85,10 @@ const authorFacts = computed(() => {
 
   if (author.value.city) {
     facts.push({ label: 'Город', value: author.value.city });
+  }
+
+  if (author.value.birthDate) {
+    facts.push({ label: 'День рождения', value: formatBirthday(author.value.birthDate) });
   }
 
   if (author.value.isFeatured) {
@@ -422,6 +427,7 @@ async function submitAdminWork() {
           </div>
 
           <div class="stack">
+            <RouterLink v-if="canMessageAuthor" class="btn btn-outline" :to="{ path: '/messages', query: { with: author.login } }">Написать личное сообщение</RouterLink>
             <button class="btn" :class="activeLedger === 'works' ? 'btn-primary' : 'btn-outline'" type="button" @click="activeLedger = 'works'">
               ПРОИЗВЕДЕНИЯ
             </button>

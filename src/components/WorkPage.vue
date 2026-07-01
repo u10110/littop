@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 
 import WorkDiscussionPanel from './WorkDiscussionPanel.vue';
+import RichTextEditor from './RichTextEditor.vue';
 import { apolloClient } from '../lib/apollo.js';
 import {
   ACTIVATE_WORK_ANNOUNCEMENT_MUTATION,
@@ -13,6 +14,7 @@ import {
 import { formatDate, formatWorkSection, ratingLabel } from '../lib/format.js';
 import { getAuthorDisplayName } from '../lib/forum.js';
 import { buildAuthorPageLocation, normalizeRouteParam } from '../lib/routes.js';
+import { isRichTextEmpty, renderRichTextHtml, sanitizeRichTextHtml, stripHtml } from '../lib/richText.js';
 import { useSession } from '../lib/session.js';
 
 const route = useRoute();
@@ -35,7 +37,7 @@ const editForm = ref({
   sectionCode: 'poetry',
   title: '',
   summary: '',
-  body: '',
+  body: '<p></p>',
   projectFormat: '',
 });
 let workRequestVersion = 0;
@@ -59,6 +61,7 @@ const isOwner = computed(() => {
 });
 const isAdmin = computed(() => currentUser.value?.role === 'admin');
 const canActivateAnnouncement = computed(() => Boolean(isAdmin.value && work.value && !work.value.announcementActive));
+const renderedWorkBody = computed(() => renderRichTextHtml(work.value?.body || work.value?.summary || work.value?.excerpt || ''));
 
 onMounted(() => {
   bootstrapSession();
@@ -94,7 +97,7 @@ function syncEditForm(sourceWork = work.value) {
     sectionCode: sourceWork?.sectionCode || 'poetry',
     title: sourceWork?.title || '',
     summary: sourceWork?.summary || sourceWork?.excerpt || '',
-    body: sourceWork?.body || '',
+    body: sourceWork?.body || '<p></p>',
     projectFormat: sourceWork?.projectFormat || '',
   };
 }
@@ -104,10 +107,15 @@ function normalizeOptional(value) {
   return normalized || null;
 }
 
+function normalizeBody(value) {
+  const normalized = sanitizeRichTextHtml(value);
+  return isRichTextEmpty(normalized) ? null : normalized;
+}
+
 function buildExcerpt(summary, body) {
   const preferred = normalizeOptional(summary);
   if (preferred) return preferred;
-  const normalizedBody = normalizeOptional(body);
+  const normalizedBody = stripHtml(body);
   if (!normalizedBody) return null;
   return normalizedBody.slice(0, 280);
 }
@@ -193,7 +201,7 @@ async function submitWorkUpdate() {
           sectionCode: editForm.value.sectionCode,
           title: editForm.value.title.trim(),
           summary: normalizeOptional(editForm.value.summary),
-          body: normalizeOptional(editForm.value.body),
+          body: normalizeBody(editForm.value.body),
           excerpt: buildExcerpt(editForm.value.summary, editForm.value.body),
           projectFormat: editForm.value.sectionCode === 'project' ? normalizeOptional(editForm.value.projectFormat) : null,
           pdfUrl: work.value.pdfUrl || null,
@@ -374,10 +382,12 @@ async function softDeleteCurrentWork() {
           <textarea id="edit-work-summary" v-model="editForm.summary" class="textarea" placeholder="2–3 предложения о публикации" />
         </div>
 
-        <div class="field">
-          <label for="edit-work-body">Текст</label>
-          <textarea id="edit-work-body" v-model="editForm.body" class="textarea" placeholder="Полный текст произведения" />
-        </div>
+        <RichTextEditor
+          v-model="editForm.body"
+          editor-id="edit-work-body"
+          label="Текст"
+          placeholder="Полный текст произведения"
+        />
 
         <div class="inline-actions">
           <button class="btn btn-primary" type="submit" :disabled="editBusy">{{ editBusy ? 'Сохраняем…' : 'Сохранить' }}</button>
@@ -385,7 +395,8 @@ async function softDeleteCurrentWork() {
         </div>
       </form>
 
-      <div v-else class="prewrap">{{ work.body || work.summary || work.excerpt || 'Текст пока не добавлен.' }}</div>
+      <div v-if="renderedWorkBody" class="work-body rich-text-rendered" v-html="renderedWorkBody" />
+      <div v-else class="prewrap">Текст пока не добавлен.</div>
 
       <div v-if="work.pdfUrl || work.audioUrl" class="stack work-media-block">
         <div class="section-head">

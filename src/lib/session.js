@@ -3,6 +3,7 @@ import { computed, reactive } from 'vue';
 import { apolloClient } from './apollo.js';
 import {
   clearStoredToken,
+  extractGraphqlErrorInfo,
   extractGraphqlErrorMessage,
   getStoredToken,
   setStoredToken,
@@ -13,7 +14,9 @@ import {
   REGISTER_MUTATION,
   REQUEST_PASSWORD_RESET_MUTATION,
   RESET_PASSWORD_MUTATION,
+  REOPEN_CLOSED_ACCOUNT_MUTATION,
   UPDATE_MY_PROFILE_MUTATION,
+  CLOSE_MY_ACCOUNT_MUTATION,
 } from './graphql.js';
 
 const state = reactive({
@@ -22,6 +25,7 @@ const state = reactive({
   bootstrapped: false,
   authBusy: false,
   authError: '',
+  authMeta: null,
   profileBusy: false,
   profileError: '',
   bootstrapError: '',
@@ -84,9 +88,11 @@ export function useSession() {
         mutation: LOGIN_MUTATION,
         variables: { input },
       });
+      state.authMeta = null;
       await finishAuth(data?.login?.token ?? '');
       return data?.login?.user ?? null;
     } catch (error) {
+      state.authMeta = extractGraphqlErrorInfo(error);
       state.authError = extractGraphqlErrorMessage(error, 'Не удалось войти.');
       throw error;
     } finally {
@@ -97,6 +103,7 @@ export function useSession() {
   async function register(input) {
     state.authBusy = true;
     state.authError = '';
+    state.authMeta = null;
     try {
       const { data } = await apolloClient.mutate({
         mutation: REGISTER_MUTATION,
@@ -115,6 +122,7 @@ export function useSession() {
   async function requestPasswordReset(email) {
     state.authBusy = true;
     state.authError = '';
+    state.authMeta = null;
     try {
       const { data } = await apolloClient.mutate({
         mutation: REQUEST_PASSWORD_RESET_MUTATION,
@@ -132,6 +140,7 @@ export function useSession() {
   async function resetPassword({ token, password }) {
     state.authBusy = true;
     state.authError = '';
+    state.authMeta = null;
     try {
       const { data } = await apolloClient.mutate({
         mutation: RESET_PASSWORD_MUTATION,
@@ -141,6 +150,26 @@ export function useSession() {
       return data?.resetPassword?.user ?? null;
     } catch (error) {
       state.authError = extractGraphqlErrorMessage(error, 'Не удалось сохранить новый пароль.');
+      throw error;
+    } finally {
+      state.authBusy = false;
+    }
+  }
+
+  async function reopenClosedAccount(input) {
+    state.authBusy = true;
+    state.authError = '';
+    try {
+      const { data } = await apolloClient.mutate({
+        mutation: REOPEN_CLOSED_ACCOUNT_MUTATION,
+        variables: { input },
+      });
+      state.authMeta = null;
+      await finishAuth(data?.reopenClosedAccount?.token ?? '');
+      return data?.reopenClosedAccount?.user ?? null;
+    } catch (error) {
+      state.authMeta = extractGraphqlErrorInfo(error);
+      state.authError = extractGraphqlErrorMessage(error, 'Не удалось открыть аккаунт.');
       throw error;
     } finally {
       state.authBusy = false;
@@ -165,9 +194,27 @@ export function useSession() {
     }
   }
 
+  async function closeAccount() {
+    state.profileBusy = true;
+    state.profileError = '';
+    try {
+      const { data } = await apolloClient.mutate({
+        mutation: CLOSE_MY_ACCOUNT_MUTATION,
+      });
+      await logout();
+      return Boolean(data?.closeMyAccount);
+    } catch (error) {
+      state.profileError = extractGraphqlErrorMessage(error, 'Не удалось закрыть аккаунт.');
+      throw error;
+    } finally {
+      state.profileBusy = false;
+    }
+  }
+
   async function completeExternalAuthToken(token) {
     state.authBusy = true;
     state.authError = '';
+    state.authMeta = null;
     try {
       await finishAuth(token);
       return state.currentUser;
@@ -184,6 +231,7 @@ export function useSession() {
     state.token = '';
     state.currentUser = null;
     state.authError = '';
+    state.authMeta = null;
     state.profileError = '';
     state.bootstrapError = '';
     state.bootstrapped = true;
@@ -197,6 +245,7 @@ export function useSession() {
     isAuthenticated: computed(() => Boolean(state.currentUser && state.token)),
     authBusy: computed(() => state.authBusy),
     authError: computed(() => state.authError),
+    authMeta: computed(() => state.authMeta),
     profileBusy: computed(() => state.profileBusy),
     profileError: computed(() => state.profileError),
     bootstrapError: computed(() => state.bootstrapError),
@@ -205,7 +254,9 @@ export function useSession() {
     register,
     requestPasswordReset,
     resetPassword,
+    reopenClosedAccount,
     saveProfile,
+    closeAccount,
     completeExternalAuthToken,
     logout,
     bootstrapSession,

@@ -1,3 +1,5 @@
+import { stripHtml } from './richText.js';
+
 const workSectionLabels = {
   poetry: 'Поэзия',
   prose: 'Проза',
@@ -64,10 +66,20 @@ export function formatContestScope(scope) {
 }
 
 export function excerptText(value, maxLength = 180) {
-  const normalized = typeof value === 'string' ? value.trim() : '';
+  const normalized = stripHtml(value);
   if (!normalized) return 'Текст пока не добавлен.';
   if (normalized.length <= maxLength) return normalized;
   return `${normalized.slice(0, maxLength).trimEnd()}…`;
+}
+
+export function formatBirthday(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+  }).format(date);
 }
 
 export function ratingLabel(value, count) {

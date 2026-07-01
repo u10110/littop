@@ -1,13 +1,17 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
+import JSZip from 'jszip';
 
 import WorkPublishForm from './WorkPublishForm.vue';
 import { useSession } from '../lib/session.js';
-import { formatDate, formatDateTime } from '../lib/format.js';
+import { apolloClient } from '../lib/apollo.js';
+import { formatBirthday, formatDate, formatDateTime } from '../lib/format.js';
 import { filenameToTrackTitle, probeAudioDuration, uploadRadioTrack } from '../lib/radio.js';
 import { uploadProfileImage } from '../lib/profileImages.js';
 import { buildAuthorPageLocation } from '../lib/routes.js';
+import { WORKS_QUERY } from '../lib/graphql.js';
+import { renderRichTextHtml, stripHtml } from '../lib/richText.js';
 
 const {
   currentUser,
@@ -31,6 +35,8 @@ const profileSuccess = ref('');
 const accountClosureStatus = ref('');
 const publishStatus = ref('');
 const audioBusy = ref(false);
+const archiveBusy = ref(false);
+const archiveStatus = ref('');
 const audioError = ref('');
 const audioSuccess = ref('');
 const audioFileInput = ref(null);
@@ -48,6 +54,7 @@ const profileForm = ref({
   bio: '',
   avatarUrl: '',
   coverImageUrl: '',
+  birthDate: '',
 });
 const audioForm = ref({
   title: '',
@@ -70,6 +77,7 @@ function syncProfileForm({ clearSuccess = false } = {}) {
     bio: currentUser.value?.profile?.bio || '',
     avatarUrl: currentUser.value?.profile?.avatarUrl || '',
     coverImageUrl: currentUser.value?.profile?.coverImageUrl || '',
+    birthDate: currentUser.value?.profile?.birthDate || '',
   };
 }
 
@@ -97,6 +105,7 @@ function buildProfilePayload(overrides = {}) {
     bio: profileForm.value.bio,
     avatarUrl: profileForm.value.avatarUrl || null,
     coverImageUrl: profileForm.value.coverImageUrl || null,
+    birthDate: profileForm.value.birthDate || null,
     ...overrides,
   };
 }
@@ -214,8 +223,57 @@ async function submitProfileImage(kind) {
   }
 }
 
-async function submitAccountClosure() {
-  const confirmed = globalThis.confirm?.('Закрыть аккаунт автора? Публикации будут сняты с витрины, а сессия завершится.') ?? true;
+function sanitizeArchiveFileName(value, fallback = 'work') {
+  const normalized = String(value ?? '').trim().replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ');
+  return normalized || fallback;
+}
+
+function buildWorkArchiveHtml(work) {
+  const rendered = renderRichTextHtml(work?.body || work?.summary || work?.excerpt || '');
+  return `<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>${work.title}</title></head><body><h1>${work.title}</h1><div>${rendered || '<p>Текст не добавлен.</p>'}</div></body></html>`;
+}
+
+async function downloadWorksArchive() {
+  if (!currentUser.value?.id) return;
+  archiveBusy.value = true;
+  archiveStatus.value = '';
+  try {
+    const { data } = await apolloClient.query({
+      query: WORKS_QUERY,
+      variables: { limit: 500, offset: 0, authorId: currentUser.value.id, sectionCode: null, search: null },
+      fetchPolicy: 'network-only',
+    });
+    const works = data?.works ?? [];
+    const zip = new JSZip();
+    const folder = zip.folder('works');
+    works.forEach((work, index) => {
+      const baseName = `${String(index + 1).padStart(2, '0')}-${sanitizeArchiveFileName(work.title, `work-${index + 1}`)}`;
+      folder.file(`${baseName}.txt`, stripHtml(work.body || work.summary || work.excerpt || ''));
+      folder.file(`${baseName}.html`, buildWorkArchiveHtml(work));
+    });
+    zip.file('manifest.json', JSON.stringify({
+      author: currentUser.value.login,
+      exportedAt: new Date().toISOString(),
+      works: works.map((work) => ({ id: work.id, title: work.title, slug: work.slug, sectionCode: work.sectionCode })),
+    }, null, 2));
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `littop-${sanitizeArchiveFileName(currentUser.value.login, 'author')}-works.zip`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+    archiveStatus.value = works.length ? `Архив из ${works.length} произведений готов.` : 'Архив создан, но опубликованных произведений пока нет.';
+  } catch (error) {
+    archiveStatus.value = error instanceof Error ? error.message : 'Не удалось собрать архив произведений.';
+  } finally {
+    archiveBusy.value = false;
+  }
+}
+
+async function submitAccountClosure() {  const confirmed = globalThis.confirm?.('Закрыть аккаунт автора? Публикации будут сняты с витрины, а сессия завершится.') ?? true;
   if (!confirmed) return;
 
   accountClosureStatus.value = '';
@@ -311,6 +369,10 @@ async function submitAccountClosure() {
               <strong>{{ profile?.city || 'Не указан' }}</strong>
             </div>
             <div class="inline-card">
+              <div class="meta">День рождения</div>
+              <strong>{{ profile?.birthDate ? formatBirthday(profile.birthDate) : 'Не указан' }}</strong>
+            </div>
+            <div class="inline-card">
               <div class="meta">Сайт</div>
               <strong>{{ profile?.websiteUrl || 'Не указан' }}</strong>
             </div>
@@ -341,6 +403,11 @@ async function submitAccountClosure() {
             <div class="field">
               <label for="profile-city">Город</label>
               <input id="profile-city" v-model="profileForm.city" class="input" placeholder="Например, Москва" />
+            </div>
+
+            <div class="field">
+              <label for="profile-birthday">День рождения</label>
+              <input id="profile-birthday" v-model="profileForm.birthDate" class="input" type="date" />
             </div>
 
             <div class="field">
@@ -470,10 +537,13 @@ async function submitAccountClosure() {
             <RouterLink class="btn btn-outline" to="/works">Все произведения</RouterLink>
             <RouterLink class="btn btn-outline" to="/authors">Авторы</RouterLink>
             <RouterLink class="btn btn-outline" to="/forum">Форум</RouterLink>
+            <RouterLink class="btn btn-outline" to="/messages">Личные сообщения</RouterLink>
+            <button class="btn btn-outline" type="button" :disabled="archiveBusy" @click="downloadWorksArchive">{{ archiveBusy ? 'Собираем архив…' : 'Скачать произведения архивом' }}</button>
           </div>
           <div class="note">
             Кнопка «Мои произведения» открывает каталог сразу с фильтром <code>?mine=1</code> из адресной строки.
           </div>
+          <div v-if="archiveStatus" class="message" :class="archiveStatus.includes('готов') || archiveStatus.includes('создан') ? 'success' : 'error'">{{ archiveStatus }}</div>
         </article>
       </section>
 
@@ -485,6 +555,7 @@ async function submitAccountClosure() {
           </div>
           <div class="note">
             Аккаунт автора будет закрыт: сессия завершится, произведения уйдут в архив, а форумные записи будут скрыты.
+            В течение первого года после закрытия аккаунт можно будет открыть снова через форму входа.
           </div>
           <div v-if="accountClosureStatus" class="message success">{{ accountClosureStatus }}</div>
           <div class="inline-actions">
