@@ -10,7 +10,7 @@ import { formatBirthday, formatDate, formatDateTime } from '../lib/format.js';
 import { filenameToTrackTitle, probeAudioDuration, uploadRadioTrack } from '../lib/radio.js';
 import { uploadProfileImage } from '../lib/profileImages.js';
 import { buildAuthorPageLocation } from '../lib/routes.js';
-import { WORKS_QUERY } from '../lib/graphql.js';
+import { ADMIN_CREATE_MANAGED_AUTHOR_MUTATION, MY_MANAGED_AUTHORS_QUERY, MY_RATING_EVENTS_QUERY, WORKS_QUERY } from '../lib/graphql.js';
 import { renderRichTextHtml, stripHtml } from '../lib/richText.js';
 
 const {
@@ -22,9 +22,11 @@ const {
   bootstrapSession,
   saveProfile,
   closeAccount,
+  switchToManagedAuthor,
 } = useSession();
 
 const profile = computed(() => currentUser.value?.profile ?? null);
+const isAdmin = computed(() => currentUser.value?.role === 'admin');
 const displayName = computed(() => profile.value?.displayName || currentUser.value?.login || 'Автор');
 const myWorksLink = computed(() => ({
   path: '/works',
@@ -54,6 +56,22 @@ const profileForm = ref({
   bio: '',
   avatarUrl: '',
   coverImageUrl: '',
+  coverImagePositionX: 50,
+  coverImagePositionY: 50,
+  coverImageScale: 1,
+  profileLinks: [],
+  birthDate: '',
+});
+const managedAuthors = ref([]);
+const ratingEvents = ref([]);
+const managedBusy = ref(false);
+const managedStatus = ref('');
+const managedAuthorForm = ref({
+  login: '',
+  displayName: '',
+  bio: '',
+  city: '',
+  websiteUrl: '',
   birthDate: '',
 });
 const audioForm = ref({
@@ -61,8 +79,9 @@ const audioForm = ref({
   file: null,
 });
 
-onMounted(() => {
-  bootstrapSession();
+onMounted(async () => {
+  await bootstrapSession();
+  await loadExtraCabinetData();
 });
 
 function syncProfileForm({ clearSuccess = false } = {}) {
@@ -77,14 +96,58 @@ function syncProfileForm({ clearSuccess = false } = {}) {
     bio: currentUser.value?.profile?.bio || '',
     avatarUrl: currentUser.value?.profile?.avatarUrl || '',
     coverImageUrl: currentUser.value?.profile?.coverImageUrl || '',
+    coverImagePositionX: Number(currentUser.value?.profile?.coverImagePositionX ?? 50),
+    coverImagePositionY: Number(currentUser.value?.profile?.coverImagePositionY ?? 50),
+    coverImageScale: Number(currentUser.value?.profile?.coverImageScale ?? 1),
+    profileLinks: Array.isArray(currentUser.value?.profile?.profileLinks) ? currentUser.value.profile.profileLinks.map((item) => ({ label: item.label || '', url: item.url || '' })) : [],
     birthDate: currentUser.value?.profile?.birthDate || '',
   };
 }
 
+const coverPreviewStyle = computed(() => ({
+  objectPosition: `${Number(profileForm.value.coverImagePositionX ?? 50)}% ${Number(profileForm.value.coverImagePositionY ?? 50)}%`,
+  transform: `scale(${Number(profileForm.value.coverImageScale ?? 1)})`,
+}));
+
+function normalizeProfileLinks() {
+  return (Array.isArray(profileForm.value.profileLinks) ? profileForm.value.profileLinks : [])
+    .map((item) => ({ label: String(item?.label || '').trim(), url: String(item?.url || '').trim() }))
+    .filter((item) => item.label && item.url);
+}
+
+function addProfileLink() {
+  profileForm.value.profileLinks = [...(profileForm.value.profileLinks || []), { label: '', url: '' }];
+}
+
+function removeProfileLink(index) {
+  profileForm.value.profileLinks = (profileForm.value.profileLinks || []).filter((_, idx) => idx !== index);
+}
+
+async function loadExtraCabinetData() {
+  if (!isAuthenticated.value) {
+    managedAuthors.value = [];
+    ratingEvents.value = [];
+    return;
+  }
+  try {
+    const [{ data: ratingData }, managedResult] = await Promise.all([
+      apolloClient.query({ query: MY_RATING_EVENTS_QUERY, variables: { limit: 100 }, fetchPolicy: 'network-only' }),
+      isAdmin.value
+        ? apolloClient.query({ query: MY_MANAGED_AUTHORS_QUERY, variables: { limit: 100 }, fetchPolicy: 'network-only' })
+        : Promise.resolve({ data: { myManagedAuthors: [] } }),
+    ]);
+    ratingEvents.value = ratingData?.myRatingEvents ?? [];
+    managedAuthors.value = managedResult?.data?.myManagedAuthors ?? [];
+  } catch {
+    // Не роняем кабинет, если дополнительные блоки временно недоступны.
+  }
+}
+
 watch(
   currentUser,
-  () => {
+  async () => {
     syncProfileForm();
+    await loadExtraCabinetData();
   },
   { immediate: true },
 );
@@ -105,6 +168,10 @@ function buildProfilePayload(overrides = {}) {
     bio: profileForm.value.bio,
     avatarUrl: profileForm.value.avatarUrl || null,
     coverImageUrl: profileForm.value.coverImageUrl || null,
+    coverImagePositionX: Number(profileForm.value.coverImagePositionX ?? 50),
+    coverImagePositionY: Number(profileForm.value.coverImagePositionY ?? 50),
+    coverImageScale: Number(profileForm.value.coverImageScale ?? 1),
+    profileLinks: normalizeProfileLinks(),
     birthDate: profileForm.value.birthDate || null,
     ...overrides,
   };
@@ -220,6 +287,48 @@ async function submitProfileImage(kind) {
     profileImageError.value = error instanceof Error ? error.message : 'Не удалось загрузить изображение.';
   } finally {
     profileImageBusy.value = false;
+  }
+}
+
+
+async function submitManagedAuthor() {
+  managedBusy.value = true;
+  managedStatus.value = '';
+  try {
+    await apolloClient.mutate({
+      mutation: ADMIN_CREATE_MANAGED_AUTHOR_MUTATION,
+      variables: {
+        input: {
+          login: managedAuthorForm.value.login,
+          displayName: managedAuthorForm.value.displayName,
+          bio: managedAuthorForm.value.bio || null,
+          city: managedAuthorForm.value.city || null,
+          websiteUrl: managedAuthorForm.value.websiteUrl || null,
+          birthDate: managedAuthorForm.value.birthDate || null,
+        },
+      },
+    });
+    managedAuthorForm.value = { login: '', displayName: '', bio: '', city: '', websiteUrl: '', birthDate: '' };
+    managedStatus.value = 'Управляемый аккаунт создан.';
+    await loadExtraCabinetData();
+  } catch (error) {
+    managedStatus.value = error instanceof Error ? error.message : 'Не удалось создать управляемый аккаунт.';
+  } finally {
+    managedBusy.value = false;
+  }
+}
+
+async function switchManaged(authorId) {
+  managedBusy.value = true;
+  managedStatus.value = '';
+  try {
+    await switchToManagedAuthor(authorId);
+    managedStatus.value = 'Переключение выполнено.';
+    await loadExtraCabinetData();
+  } catch (error) {
+    managedStatus.value = error instanceof Error ? error.message : 'Не удалось переключить аккаунт.';
+  } finally {
+    managedBusy.value = false;
   }
 }
 
@@ -377,6 +486,10 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
               <strong>{{ profile?.websiteUrl || 'Не указан' }}</strong>
             </div>
             <div class="inline-card">
+              <div class="meta">Кнопки-ссылки</div>
+              <div>{{ (profile?.profileLinks?.length || 0) ? profile.profileLinks.map((item) => item.label).join(', ') : 'Не добавлены' }}</div>
+            </div>
+            <div class="inline-card">
               <div class="meta">О себе</div>
               <div>{{ profile?.bio || 'Пока без описания.' }}</div>
             </div>
@@ -413,6 +526,29 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
             <div class="field">
               <label for="profile-website">Сайт</label>
               <input id="profile-website" v-model="profileForm.websiteUrl" class="input" placeholder="https://example.com" />
+            </div>
+
+            <div class="field">
+              <label>Дополнительные кнопки-ссылки</label>
+              <div class="stack compact-stack">
+                <div v-for="(link, index) in profileForm.profileLinks" :key="`profile-link-${index}`" class="grid-2">
+                  <input v-model="link.label" class="input" placeholder="Подпись кнопки" />
+                  <div class="inline-actions">
+                    <input v-model="link.url" class="input" placeholder="https://..." />
+                    <button class="btn btn-outline" type="button" @click="removeProfileLink(index)">Удалить</button>
+                  </div>
+                </div>
+                <button class="btn btn-outline" type="button" @click="addProfileLink">Добавить кнопку</button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Положение и масштаб верхней картинки</label>
+              <div class="grid-3">
+                <input v-model.number="profileForm.coverImagePositionX" class="input" type="number" min="0" max="100" step="1" placeholder="X %" />
+                <input v-model.number="profileForm.coverImagePositionY" class="input" type="number" min="0" max="100" step="1" placeholder="Y %" />
+                <input v-model.number="profileForm.coverImageScale" class="input" type="number" min="0.5" max="3" step="0.1" placeholder="Scale" />
+              </div>
             </div>
 
             <div class="field">
@@ -472,7 +608,7 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
             <div class="profile-image-card">
               <div class="meta">Большое фото автора</div>
               <div class="profile-image-preview profile-image-preview-cover">
-                <img v-if="profileForm.coverImageUrl" :src="profileForm.coverImageUrl" class="profile-image-preview-img profile-image-preview-img-cover" alt="Большое фото автора" />
+                <img v-if="profileForm.coverImageUrl" :src="profileForm.coverImageUrl" :style="coverPreviewStyle" class="profile-image-preview-img profile-image-preview-img-cover" alt="Большое фото автора" />
                 <div v-else class="profile-image-placeholder">Нет большого фото</div>
               </div>
               <input
@@ -506,6 +642,10 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
             <div class="inline-card">
               <div class="meta">Последний вход</div>
               <strong>{{ formatDateTime(currentUser?.lastLoginAt) }}</strong>
+            </div>
+            <div class="inline-card">
+              <div class="meta">Последний визит</div>
+              <strong>{{ formatDateTime(currentUser?.lastSeenAt) }}</strong>
             </div>
             <div class="inline-card">
               <div class="meta">Подборки</div>
@@ -544,6 +684,78 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
             Кнопка «Мои произведения» открывает каталог сразу с фильтром <code>?mine=1</code> из адресной строки.
           </div>
           <div v-if="archiveStatus" class="message" :class="archiveStatus.includes('готов') || archiveStatus.includes('создан') ? 'success' : 'error'">{{ archiveStatus }}</div>
+        </article>
+      </section>
+
+      <section class="layout-columns personal-layout">
+        <article class="panel">
+          <div class="section-head">
+            <h2>Рейтинговые начисления</h2>
+            <span class="pill">{{ ratingEvents.length }} событий</span>
+          </div>
+          <div v-if="ratingEvents.length" class="stack">
+            <div v-for="event in ratingEvents" :key="event.id" class="inline-card">
+              <div class="section-head">
+                <strong>{{ event.label }}</strong>
+                <span class="pill good">+{{ event.points }}</span>
+              </div>
+              <div class="meta">{{ formatDateTime(event.createdAt) }}</div>
+            </div>
+          </div>
+          <div v-else class="empty-state">Начислений пока нет.</div>
+        </article>
+      </section>
+
+      <section v-if="isAdmin" class="layout-columns personal-layout">
+        <article class="panel">
+          <div class="section-head">
+            <h2>Управляемые аккаунты</h2>
+            <span class="pill">{{ managedAuthors.length }} профилей</span>
+          </div>
+          <div class="note">Владелец сайта может создавать специальные авторские аккаунты без выхода из своего профиля и переключаться между ними.</div>
+          <form class="stack" @submit.prevent="submitManagedAuthor">
+            <div class="grid-2">
+              <div class="field">
+                <label>Логин</label>
+                <input v-model="managedAuthorForm.login" class="input" required />
+              </div>
+              <div class="field">
+                <label>Имя автора</label>
+                <input v-model="managedAuthorForm.displayName" class="input" required />
+              </div>
+              <div class="field">
+                <label>Город</label>
+                <input v-model="managedAuthorForm.city" class="input" />
+              </div>
+              <div class="field">
+                <label>День рождения</label>
+                <input v-model="managedAuthorForm.birthDate" class="input" type="date" />
+              </div>
+              <div class="field">
+                <label>Сайт</label>
+                <input v-model="managedAuthorForm.websiteUrl" class="input" />
+              </div>
+              <div class="field">
+                <label>О себе</label>
+                <textarea v-model="managedAuthorForm.bio" class="textarea"></textarea>
+              </div>
+            </div>
+            <div class="inline-actions">
+              <button class="btn btn-primary" type="submit" :disabled="managedBusy">{{ managedBusy ? 'Создаём…' : 'Создать управляемый аккаунт' }}</button>
+            </div>
+            <div v-if="managedStatus" class="message" :class="managedStatus.includes('создан') || managedStatus.includes('выполнено') ? 'success' : 'error'">{{ managedStatus }}</div>
+          </form>
+          <div v-if="managedAuthors.length" class="stack">
+            <div v-for="author in managedAuthors" :key="author.id" class="inline-card">
+              <div class="section-head">
+                <div>
+                  <strong>{{ author.displayName }}</strong>
+                  <div class="meta">@{{ author.login }}</div>
+                </div>
+                <button class="btn btn-outline" type="button" :disabled="managedBusy" @click="switchManaged(author.id)">Переключиться</button>
+              </div>
+            </div>
+          </div>
         </article>
       </section>
 

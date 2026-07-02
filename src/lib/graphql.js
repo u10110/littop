@@ -9,6 +9,13 @@ export const AUTHOR_CARD_FIELDS = gql`
     bio
     avatarUrl
     coverImageUrl
+    coverImagePositionX
+    coverImagePositionY
+    coverImageScale
+    profileLinks {
+      label
+      url
+    }
     city
     websiteUrl
     birthDate
@@ -17,6 +24,7 @@ export const AUTHOR_CARD_FIELDS = gql`
     isClassic
     isFeatured
     registeredAt
+    lastSeenAt
     createdAt
     updatedAt
   }
@@ -178,6 +186,7 @@ export const USER_SESSION_FIELDS = gql`
     status
     registeredAt
     lastLoginAt
+    lastSeenAt
     createdAt
     updatedAt
     profile {
@@ -185,6 +194,13 @@ export const USER_SESSION_FIELDS = gql`
       bio
       avatarUrl
       coverImageUrl
+      coverImagePositionX
+      coverImagePositionY
+      coverImageScale
+      profileLinks {
+        label
+        url
+      }
       city
       websiteUrl
       birthDate
@@ -522,6 +538,48 @@ export const UPDATE_MY_PROFILE_MUTATION = gql`
   mutation UpdateMyProfile($input: UpdateMyProfileInput!) {
     updateMyProfile(input: $input) {
       ...UserSessionFields
+    }
+  }
+`;
+
+export const MY_MANAGED_AUTHORS_QUERY = gql`
+  ${AUTHOR_CARD_FIELDS}
+  query MyManagedAuthors($limit: Int!) {
+    myManagedAuthors(limit: $limit) {
+      ...AuthorCardFields
+    }
+  }
+`;
+
+export const MY_RATING_EVENTS_QUERY = gql`
+  query MyRatingEvents($limit: Int!) {
+    myRatingEvents(limit: $limit) {
+      id
+      eventType
+      points
+      createdAt
+      label
+    }
+  }
+`;
+
+export const ADMIN_CREATE_MANAGED_AUTHOR_MUTATION = gql`
+  ${AUTHOR_CARD_FIELDS}
+  mutation AdminCreateManagedAuthor($input: CreateManagedAuthorInput!) {
+    adminCreateManagedAuthor(input: $input) {
+      ...AuthorCardFields
+    }
+  }
+`;
+
+export const ADMIN_SWITCH_MANAGED_AUTHOR_MUTATION = gql`
+  ${USER_SESSION_FIELDS}
+  mutation AdminSwitchManagedAuthor($managedUserId: ID!) {
+    adminSwitchManagedAuthor(managedUserId: $managedUserId) {
+      token
+      user {
+        ...UserSessionFields
+      }
     }
   }
 `;

@@ -2,13 +2,17 @@ import { computed, reactive } from 'vue';
 
 import { apolloClient } from './apollo.js';
 import {
+  clearStoredOwnerToken,
   clearStoredToken,
   extractGraphqlErrorInfo,
   extractGraphqlErrorMessage,
+  getStoredOwnerToken,
   getStoredToken,
+  setStoredOwnerToken,
   setStoredToken,
 } from './auth.js';
 import {
+  ADMIN_SWITCH_MANAGED_AUTHOR_MUTATION,
   LOGIN_MUTATION,
   ME_QUERY,
   REGISTER_MUTATION,
@@ -21,6 +25,7 @@ import {
 
 const state = reactive({
   token: getStoredToken(),
+  ownerToken: getStoredOwnerToken(),
   currentUser: null,
   bootstrapped: false,
   authBusy: false,
@@ -226,9 +231,55 @@ export function useSession() {
     }
   }
 
+
+  async function switchToManagedAuthor(managedUserId) {
+    state.authBusy = true;
+    state.authError = '';
+    state.authMeta = null;
+    try {
+      if (state.currentUser?.role === 'admin' && state.token) {
+        state.ownerToken = setStoredOwnerToken(state.token);
+      }
+      const { data } = await apolloClient.mutate({
+        mutation: ADMIN_SWITCH_MANAGED_AUTHOR_MUTATION,
+        variables: { managedUserId },
+      });
+      await finishAuth(data?.adminSwitchManagedAuthor?.token ?? '');
+      return state.currentUser;
+    } catch (error) {
+      state.authError = extractGraphqlErrorMessage(error, 'Не удалось переключить аккаунт.');
+      throw error;
+    } finally {
+      state.authBusy = false;
+    }
+  }
+
+  async function restoreOwnerSession() {
+    const ownerToken = getStoredOwnerToken();
+    if (!ownerToken) return null;
+    state.authBusy = true;
+    state.authError = '';
+    state.authMeta = null;
+    try {
+      await finishAuth(ownerToken);
+      clearStoredOwnerToken();
+      state.ownerToken = '';
+      return state.currentUser;
+    } catch (error) {
+      clearStoredOwnerToken();
+      state.ownerToken = '';
+      state.authError = extractGraphqlErrorMessage(error, 'Не удалось вернуться в аккаунт владельца.');
+      throw error;
+    } finally {
+      state.authBusy = false;
+    }
+  }
+
   async function logout() {
+    clearStoredOwnerToken();
     clearStoredToken();
     state.token = '';
+    state.ownerToken = '';
     state.currentUser = null;
     state.authError = '';
     state.authMeta = null;
@@ -242,6 +293,7 @@ export function useSession() {
   return {
     state,
     currentUser: computed(() => state.currentUser),
+    hasStoredOwnerSession: computed(() => Boolean(state.ownerToken || getStoredOwnerToken())),
     isAuthenticated: computed(() => Boolean(state.currentUser && state.token)),
     authBusy: computed(() => state.authBusy),
     authError: computed(() => state.authError),
@@ -258,6 +310,8 @@ export function useSession() {
     saveProfile,
     closeAccount,
     completeExternalAuthToken,
+    switchToManagedAuthor,
+    restoreOwnerSession,
     logout,
     bootstrapSession,
   };

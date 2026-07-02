@@ -5,7 +5,7 @@ import { RouterLink, useRoute } from 'vue-router';
 import { apolloClient } from '../lib/apollo.js';
 import { uploadProfileImage } from '../lib/profileImages.js';
 import { ADMIN_CREATE_WORK_MUTATION, ADMIN_UPDATE_AUTHOR_PROFILE_MUTATION, AUTHOR_DETAILS_QUERY, AUTHOR_QUERY } from '../lib/graphql.js';
-import { excerptText, formatBirthday, formatDate, formatDateTime, formatWorkSection } from '../lib/format.js';
+import { formatBirthday, formatDate, formatDateTime, formatWorkSection } from '../lib/format.js';
 import { buildAuthorPageLocation, buildWorkPageLocation, normalizeRouteParam } from '../lib/routes.js';
 import { setDocumentTitle } from '../lib/pageTitle.js';
 import { useSession } from '../lib/session.js';
@@ -66,11 +66,27 @@ const authorInitial = computed(() => {
   return source ? source[0].toUpperCase() : 'А';
 });
 
-const profileLinkLabel = computed(() => {
-  const url = String(author.value?.websiteUrl || '').toLowerCase();
-  if (!url) return '';
-  if (url.includes('telegram') || url.includes('t.me')) return 'Я в Telegram';
-  return 'Сайт автора';
+const isBirthdayToday = computed(() => {
+  if (!author.value?.birthDate) return false;
+  const today = new Date();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return author.value.birthDate.slice(5) === `${month}-${day}`;
+});
+
+const authorLinks = computed(() => {
+  const links = Array.isArray(author.value?.profileLinks) ? author.value.profileLinks.filter((item) => item?.label && item?.url) : [];
+  if (links.length) return links;
+  if (author.value?.websiteUrl) return [{ label: 'Мой сайт', url: author.value.websiteUrl }];
+  return [];
+});
+
+const coverImageStyle = computed(() => {
+  if (!author.value?.coverImageUrl) return {};
+  return {
+    objectPosition: `${Number(author.value.coverImagePositionX ?? 50)}% ${Number(author.value.coverImagePositionY ?? 50)}%`,
+    transform: `scale(${Number(author.value.coverImageScale ?? 1)})`,
+  };
 });
 
 const authorFacts = computed(() => {
@@ -79,6 +95,7 @@ const authorFacts = computed(() => {
   const facts = [
     { label: 'Логин', value: `@${author.value.login}` },
     { label: 'С нами с', value: formatDate(author.value.registeredAt) },
+    { label: 'Последний визит', value: formatDateTime(author.value.lastSeenAt) },
     { label: 'Рейтинг автора', value: String(author.value.ratingTotal ?? 0) },
     { label: 'Произведений', value: String(authorWorks.value.length || author.value.worksCountCached || 0) },
   ];
@@ -394,7 +411,7 @@ async function submitAdminWork() {
 
   <section v-else-if="hasAuthor" class="author-showcase-page">
     <div class="author-cover-card" :class="{ 'author-cover-card-empty': !author.coverImageUrl }">
-      <img v-if="author.coverImageUrl" :src="author.coverImageUrl" class="author-cover-image" alt="Большое фото автора" />
+      <img v-if="author.coverImageUrl" :src="author.coverImageUrl" :style="coverImageStyle" class="author-cover-image" alt="Большое фото автора" />
       <div v-else class="author-cover-placeholder">
         <div class="author-paper-eyebrow">Большое фото автора</div>
         <strong>Здесь может быть крупный снимок, загруженный из кабинета.</strong>
@@ -409,6 +426,7 @@ async function submitAdminWork() {
             <template v-else>{{ authorInitial }}</template>
           </div>
           <div class="author-name-block">
+            <div v-if="isBirthdayToday" class="author-birthday-banner">🎈 Сегодня — именинник!</div>
             <h2>{{ author.displayName }}</h2>
             <div class="author-login-link">[{{ author.login }}]</div>
           </div>
@@ -439,15 +457,18 @@ async function submitAdminWork() {
             </button>
           </div>
 
-          <a
-            v-if="author.websiteUrl"
-            class="author-portal-link"
-            :href="author.websiteUrl"
-            target="_blank"
-            rel="noreferrer"
-          >
-            {{ profileLinkLabel }}
-          </a>
+          <div v-if="authorLinks.length" class="author-links-grid">
+            <a
+              v-for="(link, index) in authorLinks"
+              :key="`${link.url}-${index}`"
+              class="author-portal-link"
+              :href="link.url"
+              target="_blank"
+              rel="noreferrer"
+            >
+              {{ link.label }}
+            </a>
+          </div>
         </article>
       </aside>
 
@@ -455,7 +476,7 @@ async function submitAdminWork() {
         <article class="author-paper-card">
           <div class="author-paper-eyebrow">Информация об авторе</div>
           <h2 class="author-paper-title">{{ author.displayName }}</h2>
-          <div class="author-paper-meta">@{{ author.login }} · на сайте с {{ formatDate(author.registeredAt) }}</div>
+          <div class="author-paper-meta">@{{ author.login }} · на сайте с {{ formatDate(author.registeredAt) }} · был(а) на сайте {{ formatDateTime(author.lastSeenAt) }}</div>
           <div class="author-paper-text">
             {{ author.bio || 'Автор пока не добавил подробную биографию. Здесь будет литературная визитка, заметки о себе и авторские ссылки.' }}
           </div>
@@ -584,7 +605,6 @@ async function submitAdminWork() {
               <div class="author-work-body">
                 <RouterLink class="author-work-title" :to="buildWorkPageLocation(work)">{{ work.title }}</RouterLink>
                 <div class="author-work-meta">{{ work.metaLine }}</div>
-                <div class="author-work-excerpt">{{ excerptText(work.summary || work.excerpt || work.body, 260) }}</div>
               </div>
             </li>
           </ol>

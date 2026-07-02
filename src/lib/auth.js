@@ -1,4 +1,5 @@
 export const TOKEN_STORAGE_KEY = 'littop.auth.token';
+export const OWNER_TOKEN_STORAGE_KEY = 'littop.owner.auth.token';
 export const SOCIAL_AUTH_CALLBACK_PATH = '/auth/callback';
 export const AUTH_MODAL_QUERY_KEY = 'auth';
 export const AUTH_MODAL_RESET_MODE = 'reset';
@@ -171,6 +172,36 @@ export function setStoredToken(token, storage = globalThis.localStorage) {
     // Ignore storage failures and keep the app usable in restricted environments.
   }
   return normalized;
+}
+
+export function getStoredOwnerToken(storage = globalThis.localStorage) {
+  try {
+    return storage?.getItem?.(OWNER_TOKEN_STORAGE_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+export function setStoredOwnerToken(token, storage = globalThis.localStorage) {
+  const normalized = typeof token === 'string' ? token.trim() : '';
+  try {
+    if (normalized) {
+      storage?.setItem?.(OWNER_TOKEN_STORAGE_KEY, normalized);
+    } else {
+      storage?.removeItem?.(OWNER_TOKEN_STORAGE_KEY);
+    }
+  } catch {
+    // Ignore storage failures and keep the app usable in restricted environments.
+  }
+  return normalized;
+}
+
+export function clearStoredOwnerToken(storage = globalThis.localStorage) {
+  try {
+    storage?.removeItem?.(OWNER_TOKEN_STORAGE_KEY);
+  } catch {
+    // Ignore storage failures and keep the app usable in restricted environments.
+  }
 }
 
 export function clearStoredToken(storage = globalThis.localStorage) {

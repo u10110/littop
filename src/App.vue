@@ -17,7 +17,7 @@ import {
 } from './lib/auth.js';
 import { useSession } from './lib/session.js';
 import { apolloClient } from './lib/apollo.js';
-import { SITE_CHROME_QUERY, TOUCH_PRESENCE_MUTATION } from './lib/graphql.js';
+import { PRIVATE_DIALOGS_QUERY, SITE_CHROME_QUERY, TOUCH_PRESENCE_MUTATION } from './lib/graphql.js';
 import { formatBirthday, formatDateTime } from './lib/format.js';
 import { setDocumentTitle } from './lib/pageTitle.js';
 import { buildAuthorPageLocation } from './lib/routes.js';
@@ -71,11 +71,14 @@ const {
   resetPassword,
   reopenClosedAccount,
   completeExternalAuthToken,
+  hasStoredOwnerSession,
+  restoreOwnerSession,
   logout,
   bootstrapSession,
 } = useSession();
 
 const displayName = computed(() => currentUser.value?.profile?.displayName || currentUser.value?.login || 'Автор');
+const unreadDialogsCount = ref(0);
 const visibleAuthError = computed(() => authLocalError.value || authError.value);
 const canReopenClosedAccount = computed(() => authMode.value === 'login' && authMeta.value?.code === 'ACCOUNT_REOPEN_AVAILABLE' && String(loginForm.value.identifier || '').trim() && String(loginForm.value.password || '').trim());
 const reopenUntilLabel = computed(() => formatDateTime(authMeta.value?.reopenUntil));
@@ -115,6 +118,24 @@ function clearPresenceTimer() {
   if (presenceTimer) {
     clearInterval(presenceTimer);
     presenceTimer = null;
+  }
+}
+
+
+async function refreshPrivateDialogsBadge() {
+  if (!isAuthenticated.value) {
+    unreadDialogsCount.value = 0;
+    return;
+  }
+  try {
+    const { data } = await apolloClient.query({
+      query: PRIVATE_DIALOGS_QUERY,
+      variables: { limit: 100 },
+      fetchPolicy: 'network-only',
+    });
+    unreadDialogsCount.value = (data?.privateDialogs ?? []).reduce((sum, item) => sum + Number(item.unreadCount ?? 0), 0);
+  } catch {
+    unreadDialogsCount.value = 0;
   }
 }
 
@@ -311,8 +332,9 @@ function handleAuthRouteState() {
   }
 }
 
-onMounted(() => {
-  bootstrapSession();
+onMounted(async () => {
+  await bootstrapSession();
+  await refreshPrivateDialogsBadge();
   window.addEventListener('littop:open-auth', handleOpenAuthEvent);
 });
 
@@ -337,7 +359,7 @@ watch(
   { immediate: true },
 );
 
-watch(isAuthenticated, (value) => {
+watch(isAuthenticated, async (value) => {
   if (value && isAuthModalOpen.value) {
     closeAuthModal();
   }
@@ -346,12 +368,14 @@ watch(isAuthenticated, (value) => {
   } else {
     clearPresenceTimer();
   }
+  await refreshPrivateDialogsBadge();
 }, { immediate: true });
 
 watch(
   () => route.fullPath,
-  () => {
+  async () => {
     isUserCardOpen.value = false;
+    await refreshPrivateDialogsBadge();
     void handleSocialAuthCallback();
     handleAuthRouteState();
   },
@@ -502,7 +526,15 @@ async function submitResetPassword() {
 async function submitLogout() {
   isUserCardOpen.value = false;
   await logout();
+  unreadDialogsCount.value = 0;
   setSuccessMessage('Сессия завершена.');
+}
+
+async function submitRestoreOwner() {
+  isUserCardOpen.value = false;
+  await restoreOwnerSession();
+  await refreshPrivateDialogsBadge();
+  setSuccessMessage('Возврат в аккаунт владельца выполнен.');
 }
 </script>
 
@@ -521,7 +553,9 @@ async function submitLogout() {
         <RouterLink to="/radio">Радио</RouterLink>
         <RouterLink to="/forum">Форум</RouterLink>
         <RouterLink v-if="isAuthenticated" to="/personal">Мой кабинет</RouterLink>
-        <RouterLink v-if="isAuthenticated" to="/messages">Личные сообщения</RouterLink>
+        <RouterLink v-if="isAuthenticated" class="bell-btn" :class="unreadDialogsCount ? 'bell-btn-hot' : 'bell-btn-calm'" to="/messages" aria-label="Личные сообщения">
+          <span class="bell-icon">🔔</span>
+        </RouterLink>
       </nav>
 
       <div class="actions">
@@ -537,9 +571,13 @@ async function submitLogout() {
               <div class="meta">@{{ currentUser?.login }} · {{ currentUser?.email }}</div>
               <div class="meta">Роль: {{ currentUser?.role }} · статус: {{ currentUser?.status }}</div>
             </div>
-            <div class="inline-actions">
+            <div class="inline-actions wrap-actions">
+              <RouterLink class="btn btn-outline bell-btn" :class="unreadDialogsCount ? 'bell-btn-hot' : 'bell-btn-calm'" to="/messages">
+                <span class="bell-icon">🔔</span>
+                <span>{{ unreadDialogsCount ? `Новых: ${unreadDialogsCount}` : 'Сообщения' }}</span>
+              </RouterLink>
               <RouterLink class="btn btn-outline" to="/personal">Мой кабинет</RouterLink>
-              <RouterLink class="btn btn-outline" to="/messages">Личные сообщения</RouterLink>
+              <button v-if="hasStoredOwnerSession" class="btn btn-outline" type="button" @click="submitRestoreOwner">Вернуться во владельца</button>
               <button class="btn btn-outline" type="button" @click="submitLogout">Выйти</button>
             </div>
           </div>
