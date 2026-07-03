@@ -39,7 +39,7 @@ watch(isAuthenticated, (value) => {
   if (value) {
     void loadDialogs();
     if (login && isAuthenticated.value) {
-      await loadMessages(login);
+      void loadMessages(login);
     }
   } else {
     dialogs.value = [];
