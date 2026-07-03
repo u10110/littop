@@ -792,7 +792,7 @@ export const PRIVATE_DIALOGS_QUERY = gql`
 
 export const PRIVATE_MESSAGES_QUERY = gql`
   ${AUTHOR_CARD_FIELDS}
-  query PrivateMessages($withLogin: String, $withUserId: ID, $limit: Int!) {
+  query  ($withLogin: String, $withUserId: ID, $limit: Int!) {
     privateMessages(withLogin: $withLogin, withUserId: $withUserId, limit: $limit) {
       id
       senderUserId
