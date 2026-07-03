@@ -35,12 +35,10 @@ onMounted(() => {
   bootstrapSession();
 });
 
-watch(isAuthenticated, (value) => {
+watch(isAuthenticated, async (value) => {
   if (value) {
-    void loadDialogs();
-    if (login && isAuthenticated.value) {
-      void loadMessages(login);
-    }
+    await loadMessages(selectedLogin.value);
+    await loadDialogs();
   } else {
     dialogs.value = [];
     messages.value = [];
@@ -49,7 +47,7 @@ watch(isAuthenticated, (value) => {
 
 watch(selectedLogin, async (login) => {
   draftRecipientLogin.value = login || draftRecipientLogin.value;
-  if (login && isAuthenticated.value) {
+  if (login) {
     await loadMessages(login);
     await markAsRead(login);
     await loadDialogs();
