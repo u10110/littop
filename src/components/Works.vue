@@ -438,174 +438,43 @@ function clearFilters() {
 
   <div v-if="error" class="message error">{{ error.message }}</div>
 
-  <section class="layout-columns">
-    <div class="stack">
-      <div class="section-head">
-        <h2>Каталог</h2>
-        <span class="pill">{{ loading ? 'загрузка…' : `${works.length} записей` }}</span>
+  <section class="stack">
+    <div class="section-head">
+      <h2>Каталог</h2>
+      <span class="pill">{{ loading ? 'загрузка…' : `${works.length} записей` }}</span>
+    </div>
+
+    <article class="panel stack">
+      <div class="note">
+        Сейчас каталог показывает произведения простым столбцом. Полный текст и обсуждение открываются по кнопке
+        <strong>«Страница произведения»</strong>.
       </div>
 
       <div v-if="works.length" class="stack">
         <article
           v-for="work in works"
           :key="work.id"
-          class="card clickable"
-          :class="{ 'is-selected': String(work.id) === String(selectedWorkId) }"
-          @click="selectedWorkId = work.id"
+          class="card"
         >
           <div class="chips">
             <span class="pill">{{ formatWorkSection(work.sectionCode) }}</span>
             <span class="pill">{{ ratingLabel(work.averageRating, work.ratingsCount) }}</span>
             <span class="pill">комментариев: {{ work.commentsCount }}</span>
+            <span v-if="work.projectFormat" class="pill">{{ work.projectFormat }}</span>
           </div>
           <h3>{{ work.title }}</h3>
           <div class="meta">
-            <RouterLink v-if="work.author?.login" class="user-inline-link" :to="buildAuthorPageLocation(work.author)" @click.stop>{{ work.author?.displayName || work.author?.login }}</RouterLink>
+            <RouterLink v-if="work.author?.login" class="user-inline-link" :to="buildAuthorPageLocation(work.author)">{{ work.author?.displayName || work.author?.login }}</RouterLink>
             <template v-else>{{ work.author?.displayName || work.author?.login }}</template>
             · {{ formatDate(work.publishedAt || work.createdAt) }}
           </div>
-          <div>{{ excerptText(work.summary || work.excerpt || work.body, 180) }}</div>
+          <div>{{ excerptText(work.summary || work.excerpt || work.body, 220) }}</div>
           <div class="inline-actions">
-            <RouterLink class="btn btn-outline" :to="buildWorkPageLocation(work)" @click.stop>Страница произведения</RouterLink>
+            <RouterLink class="btn btn-outline" :to="buildWorkPageLocation(work)">Страница произведения</RouterLink>
           </div>
         </article>
       </div>
       <div v-else-if="!loading" class="empty-state">{{ emptyStateText }}</div>
-    </div>
-
-    <div class="stack">
-      <article v-if="selectedWork" class="panel stack">
-        <div class="section-head">
-          <h2>{{ selectedWork.title }}</h2>
-          <span class="pill">{{ formatWorkSection(selectedWork.sectionCode) }}</span>
-        </div>
-
-        <div class="meta">
-          <RouterLink v-if="selectedWork.author?.login" class="user-inline-link" :to="buildAuthorPageLocation(selectedWork.author)">{{ selectedWork.author?.displayName || selectedWork.author?.login }}</RouterLink>
-          <template v-else>{{ selectedWork.author?.displayName || selectedWork.author?.login }}</template>
-          · {{ formatDate(selectedWork.publishedAt || selectedWork.createdAt) }}
-        </div>
-        <div class="chips">
-          <span class="pill">{{ ratingLabel(selectedWork.averageRating, selectedWork.ratingsCount) }}</span>
-          <span class="pill">комментариев: {{ selectedWork.commentsCount }}</span>
-          <span v-if="selectedWork.projectFormat" class="pill">{{ selectedWork.projectFormat }}</span>
-        </div>
-        <div class="inline-actions">
-          <button class="btn btn-outline" type="button" @click="toggleViewers">
-            {{ viewersVisible ? 'Скрыть список просмотров' : 'Список просмотров' }}
-          </button>
-          <RouterLink class="btn btn-outline" :to="buildWorkPageLocation(selectedWork)">Публичная страница произведения</RouterLink>
-        </div>
-
-        <div class="prewrap">{{ selectedWork.body || selectedWork.summary || selectedWork.excerpt || 'Текст пока не добавлен.' }}</div>
-
-        <div v-if="isAuthenticated" class="stack">
-          <div class="field">
-            <span class="label">Оценить произведение</span>
-            <div class="rate-row">
-              <button
-                v-for="rating in [1, 2, 3, 4, 5]"
-                :key="rating"
-                class="btn btn-outline"
-                type="button"
-                :disabled="ratingBusy"
-                @click="submitRating(rating)"
-              >
-                {{ rating }}★
-              </button>
-            </div>
-            <div v-if="ratingStatus" class="message" :class="ratingStatus.includes('сохранена') ? 'success' : 'error'">{{ ratingStatus }}</div>
-          </div>
-
-          <form class="stack" @submit.prevent="submitComment">
-            <div class="field">
-              <label for="new-comment">Новый комментарий</label>
-              <textarea id="new-comment" v-model="commentText" class="textarea" required placeholder="Напиши отзыв о тексте" />
-            </div>
-            <div class="field">
-              <label for="new-comment-image">Картинка к комментарию</label>
-              <input id="new-comment-image" class="input" type="file" accept="image/*" @change="handleCommentImageChange" />
-            </div>
-            <button class="btn btn-primary" type="submit" :disabled="commentBusy">{{ commentBusy ? 'Публикуем…' : 'Опубликовать комментарий' }}</button>
-            <div v-if="commentStatus" class="message" :class="commentStatus.includes('опубликован') || commentStatus.includes('Ответ') ? 'success' : 'error'">{{ commentStatus }}</div>
-          </form>
-        </div>
-        <div v-else class="message">Чтобы ставить оценки и оставлять комментарии, войди или зарегистрируйся в шапке.</div>
-
-        <hr class="divider" />
-
-        <div class="section-head">
-          <h3>Комментарии</h3>
-          <span class="pill">{{ commentsLoading ? 'обновляем…' : `${comments.length} записей` }}</span>
-        </div>
-        <div v-if="commentsError" class="message error">{{ commentsError }}</div>
-        <div v-if="viewersVisible" class="panel stack">
-          <div class="section-head">
-            <h3>Список просмотров</h3>
-            <span class="pill">{{ viewersLoading ? 'обновляем…' : `${viewers.length} записей` }}</span>
-          </div>
-          <div v-if="viewersError" class="message error">{{ viewersError }}</div>
-          <div v-if="viewers.length" class="stack">
-            <article v-for="viewer in viewers" :key="viewer.id" class="comment-item comment-item-rich">
-              <div class="forum-post-avatar-wrap">
-                <img v-if="viewer.viewer?.avatarUrl" :src="viewer.viewer.avatarUrl" class="forum-post-avatar" alt="avatar читателя" />
-                <div v-else class="forum-post-avatar forum-post-avatar-fallback">{{ authorInitial(viewer.viewer) }}</div>
-              </div>
-              <div class="comment-item-body">
-                <div class="forum-post-author-line">
-                  <strong>
-                    <RouterLink v-if="viewer.viewer?.login" class="user-inline-link" :to="buildAuthorPageLocation(viewer.viewer)">{{ authorLabel(viewer.viewer) }}</RouterLink>
-                    <template v-else>{{ authorLabel(viewer.viewer) }}</template>
-                  </strong>
-                  <span class="meta">· {{ formatDate(viewer.viewedAt) }}</span>
-                </div>
-              </div>
-            </article>
-          </div>
-          <div v-else-if="!viewersLoading" class="empty-state">Пока нет сохранённых просмотров авторизованных пользователей.</div>
-        </div>
-
-        <div v-if="flatComments.length" class="stack">
-          <article v-for="comment in flatComments" :key="comment.id" class="comment-item-rich forum-thread-post" :style="commentDepthStyle(comment)">
-            <div class="forum-post-avatar-wrap">
-              <img v-if="comment.author?.avatarUrl" :src="comment.author.avatarUrl" class="forum-post-avatar" alt="avatar автора комментария" />
-              <div v-else class="forum-post-avatar forum-post-avatar-fallback">{{ authorInitial(comment.author) }}</div>
-            </div>
-            <div class="comment-item-body">
-              <div class="forum-post-author-line">
-                <strong>
-                  <RouterLink v-if="comment.author?.login" class="user-inline-link" :to="buildAuthorPageLocation(comment.author)">{{ authorLabel(comment.author) }}</RouterLink>
-                  <template v-else>{{ authorLabel(comment.author) }}</template>
-                </strong>
-                <span class="meta">· {{ formatDate(comment.createdAt) }}</span>
-              </div>
-              <div v-if="comment.replyToAuthor" class="forum-reply-note">Ответ пользователю {{ authorLabel(comment.replyToAuthor) }}</div>
-              <div class="comment-body prewrap">{{ comment.body }}</div>
-              <img v-if="comment.imageUrl" :src="comment.imageUrl" class="forum-post-image" alt="Картинка к комментарию" />
-              <div v-if="isAuthenticated" class="inline-actions forum-post-actions">
-                <button class="btn btn-outline" type="button" :disabled="commentBusy" @click="startReply(comment)">Ответить</button>
-              </div>
-              <form v-if="replyTargetId === comment.id" class="stack forum-inline-form" @submit.prevent="submitReply(comment)">
-                <div class="field">
-                  <label :for="`work-reply-comment-${comment.id}`">Ответить на комментарий</label>
-                  <textarea :id="`work-reply-comment-${comment.id}`" v-model="replyText" class="textarea" required placeholder="Твой ответ" />
-                </div>
-                <div class="field">
-                  <label :for="`work-reply-comment-image-${comment.id}`">Картинка к ответу</label>
-                  <input :id="`work-reply-comment-image-${comment.id}`" class="input" type="file" accept="image/*" @change="handleReplyImageChange" />
-                </div>
-                <div class="inline-actions">
-                  <button class="btn btn-primary" type="submit" :disabled="commentBusy">{{ commentBusy ? 'Публикуем…' : 'Опубликовать ответ' }}</button>
-                  <button class="btn btn-outline" type="button" :disabled="commentBusy" @click="cancelReply">Отмена</button>
-                </div>
-              </form>
-            </div>
-          </article>
-        </div>
-        <div v-else-if="!commentsLoading" class="empty-state">Пока без комментариев — можно начать обсуждение первым.</div>
-      </article>
-
-      <div v-else class="empty-state">Выбери произведение слева, чтобы увидеть полный текст, комментарии и действия.</div>
-    </div>
+    </article>
   </section>
 </template>

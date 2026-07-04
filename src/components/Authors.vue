@@ -9,6 +9,7 @@ import { buildAuthorPageLocation } from '../lib/routes.js';
 
 const search = ref('');
 const onlyClassics = ref(false);
+const onlyMemorial = ref(false);
 const onlyFeatured = ref(false);
 const selectedLetter = ref('');
 
@@ -20,6 +21,7 @@ const queryVariables = computed(() => ({
   offset: 0,
   search: search.value.trim() || null,
   classicsOnly: onlyClassics.value,
+  memorialOnly: onlyMemorial.value,
   featuredOnly: onlyFeatured.value,
 }));
 
@@ -100,6 +102,11 @@ const authorsCountText = computed(() => loading.value ? 'загрузка…' : 
         <span>Только классики</span>
       </label>
 
+      <label class="chip">
+        <input v-model="onlyMemorial" type="checkbox" />
+        <span>Только страницы памяти</span>
+      </label>
+
       <button class="btn btn-outline" type="button" @click="selectedLetter = ''">Все буквы</button>
     </div>
 
@@ -160,6 +167,7 @@ const authorsCountText = computed(() => loading.value ? 'загрузка…' : 
           <span v-if="author.isOnline" class="pill good">в сети</span>
           <span v-if="author.isFeatured" class="pill good">витрина</span>
           <span v-if="author.isClassic" class="pill warn">классик</span>
+          <span v-if="author.isMemorialPage" class="pill">страница памяти</span>
         </div>
       </div>
     </article>

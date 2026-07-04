@@ -74,6 +74,11 @@ export function excerptText(value, maxLength = 180) {
 
 export function formatBirthday(value) {
   if (!value) return '—';
+  const normalized = String(value).trim();
+  const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (match) {
+    return `${match[3]}.${match[2]}`;
+  }
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
   return new Intl.DateTimeFormat('ru-RU', {

@@ -60,6 +60,7 @@ const isOwner = computed(() => {
   return String(currentUser.value.id) === String(work.value.author.id);
 });
 const isAdmin = computed(() => currentUser.value?.role === 'admin');
+const canManageWork = computed(() => Boolean(isOwner.value || isAdmin.value));
 const canActivateAnnouncement = computed(() => Boolean(isAdmin.value && work.value && !work.value.announcementActive));
 const renderedWorkBody = computed(() => renderRichTextHtml(work.value?.body || work.value?.summary || work.value?.excerpt || ''));
 
@@ -331,16 +332,16 @@ async function softDeleteCurrentWork() {
             {{ work.announcementActive ? 'Уже в анонсах' : announcementBusy ? 'Добавляем…' : 'Анонс' }}
           </button>
           <button
-            v-if="isOwner"
+            v-if="canManageWork"
             class="btn btn-outline"
             type="button"
             :disabled="editBusy || deleteBusy"
             @click="editMode ? cancelEditing() : startEditing()"
           >
-            {{ editMode ? 'Отменить редактирование' : 'Редактировать произведение' }}
+            {{ editMode ? 'Отменить редактирование' : isAdmin && !isOwner ? 'Редактировать как администратор' : 'Редактировать произведение' }}
           </button>
           <button
-            v-if="isOwner"
+            v-if="canManageWork"
             class="btn btn-danger"
             type="button"
             :disabled="editBusy || deleteBusy"
@@ -355,7 +356,7 @@ async function softDeleteCurrentWork() {
       <div v-if="deleteStatus" class="message" :class="deleteStatus.includes('архив') ? 'success' : 'error'">{{ deleteStatus }}</div>
       <div v-if="announcementStatus" class="message" :class="announcementStatus.includes('добавлено') ? 'success' : 'error'">{{ announcementStatus }}</div>
 
-      <form v-if="editMode && isOwner" class="stack work-edit-form" @submit.prevent="submitWorkUpdate">
+      <form v-if="editMode && canManageWork" class="stack work-edit-form" @submit.prevent="submitWorkUpdate">
         <div class="field">
           <label for="edit-work-section">Раздел</label>
           <select id="edit-work-section" v-model="editForm.sectionCode" class="select">

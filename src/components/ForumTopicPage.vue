@@ -76,7 +76,11 @@ async function registerTopicView(topicId) {
       variables: { topicId: key },
     });
     if (data?.incrementForumTopicViews?.id === topic.value?.id) {
-      topic.value = data.incrementForumTopicViews;
+      topic.value = {
+        ...topic.value,
+        ...data.incrementForumTopicViews,
+        posts: Array.isArray(topic.value?.posts) ? topic.value.posts : [],
+      };
     }
   } catch {
     // Счётчик не должен ломать загрузку темы.

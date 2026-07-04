@@ -22,6 +22,7 @@ export const AUTHOR_CARD_FIELDS = gql`
     ratingTotal
     worksCountCached
     isClassic
+    isMemorialPage
     isFeatured
     registeredAt
     lastSeenAt
@@ -207,7 +208,10 @@ export const USER_SESSION_FIELDS = gql`
       ratingTotal
       worksCountCached
       isClassic
+      isMemorialPage
       isFeatured
+      peachBalance
+      audioUploadSlots
     }
   }
 `;
@@ -280,8 +284,8 @@ export const SITE_CHROME_QUERY = gql`
 
 export const AUTHORS_QUERY = gql`
   ${AUTHOR_CARD_FIELDS}
-  query AuthorsPage($limit: Int!, $offset: Int!, $search: String, $classicsOnly: Boolean!, $featuredOnly: Boolean!) {
-    authors(limit: $limit, offset: $offset, search: $search, classicsOnly: $classicsOnly, featuredOnly: $featuredOnly) {
+  query AuthorsPage($limit: Int!, $offset: Int!, $search: String, $classicsOnly: Boolean!, $memorialOnly: Boolean!, $featuredOnly: Boolean!) {
+    authors(limit: $limit, offset: $offset, search: $search, classicsOnly: $classicsOnly, memorialOnly: $memorialOnly, featuredOnly: $featuredOnly) {
       ...AuthorCardFields
     }
   }
@@ -563,6 +567,18 @@ export const MY_RATING_EVENTS_QUERY = gql`
   }
 `;
 
+export const MY_PEACH_TRANSACTIONS_QUERY = gql`
+  query MyPeachTransactions($limit: Int!) {
+    myPeachTransactions(limit: $limit) {
+      id
+      amount
+      kind
+      note
+      createdAt
+    }
+  }
+`;
+
 export const ADMIN_CREATE_MANAGED_AUTHOR_MUTATION = gql`
   ${AUTHOR_CARD_FIELDS}
   mutation AdminCreateManagedAuthor($input: CreateManagedAuthorInput!) {
@@ -595,6 +611,49 @@ export const ADMIN_UPDATE_AUTHOR_PROFILE_MUTATION = gql`
   mutation AdminUpdateAuthorProfile($authorId: ID!, $input: UpdateMyProfileInput!) {
     adminUpdateAuthorProfile(authorId: $authorId, input: $input) {
       ...AuthorCardFields
+    }
+  }
+`;
+
+export const ADMIN_UPDATE_AUTHOR_PAGE_FLAGS_MUTATION = gql`
+  ${AUTHOR_CARD_FIELDS}
+  mutation AdminUpdateAuthorPageFlags($authorId: ID!, $isClassic: Boolean!, $isMemorialPage: Boolean!) {
+    adminUpdateAuthorPageFlags(authorId: $authorId, isClassic: $isClassic, isMemorialPage: $isMemorialPage) {
+      ...AuthorCardFields
+    }
+  }
+`;
+
+export const ADMIN_GRANT_PEACHES_MUTATION = gql`
+  ${USER_SESSION_FIELDS}
+  mutation AdminGrantPeaches($login: String!, $amount: Int!, $note: String) {
+    adminGrantPeaches(login: $login, amount: $amount, note: $note) {
+      ...UserSessionFields
+    }
+  }
+`;
+
+export const PURCHASE_AUDIO_UPLOAD_PACK_MUTATION = gql`
+  ${USER_SESSION_FIELDS}
+  mutation PurchaseAudioUploadPack {
+    purchaseAudioUploadPack {
+      ...UserSessionFields
+    }
+  }
+`;
+
+export const REQUEST_ADMIN_REVIEW_MUTATION = gql`
+  mutation RequestAdminReview($workId: ID, $title: String!, $message: String) {
+    requestAdminReview(workId: $workId, title: $title, message: $message) {
+      id
+      requesterUserId
+      workId
+      title
+      message
+      status
+      costPeaches
+      createdAt
+      updatedAt
     }
   }
 `;

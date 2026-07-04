@@ -10,7 +10,17 @@ import { formatBirthday, formatDate, formatDateTime } from '../lib/format.js';
 import { filenameToTrackTitle, probeAudioDuration, uploadRadioTrack } from '../lib/radio.js';
 import { uploadProfileImage } from '../lib/profileImages.js';
 import { buildAuthorPageLocation } from '../lib/routes.js';
-import { ADMIN_CREATE_MANAGED_AUTHOR_MUTATION, MY_MANAGED_AUTHORS_QUERY, MY_RATING_EVENTS_QUERY, WORKS_QUERY } from '../lib/graphql.js';
+import {
+  ADMIN_CREATE_MANAGED_AUTHOR_MUTATION,
+  ADMIN_GRANT_PEACHES_MUTATION,
+  ADMIN_UPDATE_AUTHOR_PAGE_FLAGS_MUTATION,
+  MY_MANAGED_AUTHORS_QUERY,
+  MY_PEACH_TRANSACTIONS_QUERY,
+  MY_RATING_EVENTS_QUERY,
+  PURCHASE_AUDIO_UPLOAD_PACK_MUTATION,
+  REQUEST_ADMIN_REVIEW_MUTATION,
+  WORKS_QUERY,
+} from '../lib/graphql.js';
 import { renderRichTextHtml, stripHtml } from '../lib/richText.js';
 
 const {
@@ -64,6 +74,9 @@ const profileForm = ref({
 });
 const managedAuthors = ref([]);
 const ratingEvents = ref([]);
+const peachTransactions = ref([]);
+const peachBalance = ref(0);
+const audioUploadSlots = ref(0);
 const managedBusy = ref(false);
 const managedStatus = ref('');
 const managedAuthorForm = ref({
@@ -77,6 +90,19 @@ const managedAuthorForm = ref({
 const audioForm = ref({
   title: '',
   file: null,
+});
+const peachBusy = ref(false);
+const peachStatus = ref('');
+const reviewBusy = ref(false);
+const reviewStatus = ref('');
+const reviewForm = ref({
+  title: '',
+  message: '',
+});
+const adminGrantForm = ref({
+  login: '',
+  amount: 100,
+  note: '',
 });
 
 onMounted(async () => {
@@ -102,6 +128,8 @@ function syncProfileForm({ clearSuccess = false } = {}) {
     profileLinks: Array.isArray(currentUser.value?.profile?.profileLinks) ? currentUser.value.profile.profileLinks.map((item) => ({ label: item.label || '', url: item.url || '' })) : [],
     birthDate: currentUser.value?.profile?.birthDate || '',
   };
+  peachBalance.value = Number(currentUser.value?.profile?.peachBalance ?? 0);
+  audioUploadSlots.value = Number(currentUser.value?.profile?.audioUploadSlots ?? 0);
 }
 
 const coverPreviewStyle = computed(() => ({
@@ -127,16 +155,19 @@ async function loadExtraCabinetData() {
   if (!isAuthenticated.value) {
     managedAuthors.value = [];
     ratingEvents.value = [];
+    peachTransactions.value = [];
     return;
   }
   try {
-    const [{ data: ratingData }, managedResult] = await Promise.all([
+    const [{ data: ratingData }, { data: peachData }, managedResult] = await Promise.all([
       apolloClient.query({ query: MY_RATING_EVENTS_QUERY, variables: { limit: 100 }, fetchPolicy: 'network-only' }),
+      apolloClient.query({ query: MY_PEACH_TRANSACTIONS_QUERY, variables: { limit: 100 }, fetchPolicy: 'network-only' }),
       isAdmin.value
         ? apolloClient.query({ query: MY_MANAGED_AUTHORS_QUERY, variables: { limit: 100 }, fetchPolicy: 'network-only' })
         : Promise.resolve({ data: { myManagedAuthors: [] } }),
     ]);
     ratingEvents.value = ratingData?.myRatingEvents ?? [];
+    peachTransactions.value = peachData?.myPeachTransactions ?? [];
     managedAuthors.value = managedResult?.data?.myManagedAuthors ?? [];
   } catch {
     // Не роняем кабинет, если дополнительные блоки временно недоступны.
@@ -230,12 +261,53 @@ async function submitAudio() {
       durationSeconds,
     });
     const title = track?.title ? ` «${track.title}»` : '';
+    audioUploadSlots.value = Math.max(0, audioUploadSlots.value - 1);
     resetAudioForm();
     audioSuccess.value = `Аудио${title} загружено. Оно уже доступно на странице «Радио».`;
+    await loadExtraCabinetData();
   } catch (error) {
     audioError.value = error instanceof Error ? error.message : 'Не удалось загрузить аудио.';
   } finally {
     audioBusy.value = false;
+  }
+}
+
+async function purchaseAudioPack() {
+  peachBusy.value = true;
+  peachStatus.value = '';
+  try {
+    const { data } = await apolloClient.mutate({ mutation: PURCHASE_AUDIO_UPLOAD_PACK_MUTATION });
+    peachBalance.value = Number(data?.purchaseAudioUploadPack?.profile?.peachBalance ?? peachBalance.value - 100);
+    audioUploadSlots.value = Number(data?.purchaseAudioUploadPack?.profile?.audioUploadSlots ?? audioUploadSlots.value + 20);
+    peachStatus.value = 'Пакет куплен: +20 загрузок аудио.';
+    await loadExtraCabinetData();
+  } catch (error) {
+    peachStatus.value = error instanceof Error ? error.message : 'Не удалось купить пакет аудио.';
+  } finally {
+    peachBusy.value = false;
+  }
+}
+
+async function submitReviewRequest() {
+  reviewBusy.value = true;
+  reviewStatus.value = '';
+  try {
+    await apolloClient.mutate({
+      mutation: REQUEST_ADMIN_REVIEW_MUTATION,
+      variables: {
+        title: reviewForm.value.title,
+        message: reviewForm.value.message || null,
+        workId: null,
+      },
+    });
+    peachBalance.value = Math.max(0, peachBalance.value - 100);
+    reviewForm.value = { title: '', message: '' };
+    reviewStatus.value = 'Заявка на рецензию отправлена администрации.';
+    await loadExtraCabinetData();
+  } catch (error) {
+    reviewStatus.value = error instanceof Error ? error.message : 'Не удалось отправить заявку на рецензию.';
+  } finally {
+    reviewBusy.value = false;
   }
 }
 
@@ -329,6 +401,49 @@ async function switchManaged(authorId) {
     managedStatus.value = error instanceof Error ? error.message : 'Не удалось переключить аккаунт.';
   } finally {
     managedBusy.value = false;
+  }
+}
+
+async function setManagedAuthorFlag(author, patch) {
+  if (!author?.id) return;
+  managedBusy.value = true;
+  managedStatus.value = '';
+  try {
+    await apolloClient.mutate({
+      mutation: ADMIN_UPDATE_AUTHOR_PAGE_FLAGS_MUTATION,
+      variables: {
+        authorId: author.id,
+        isClassic: Boolean(patch.isClassic ?? author.isClassic),
+        isMemorialPage: Boolean(patch.isMemorialPage ?? author.isMemorialPage),
+      },
+    });
+    managedStatus.value = 'Статус управляемого аккаунта обновлён.';
+    await loadExtraCabinetData();
+  } catch (error) {
+    managedStatus.value = error instanceof Error ? error.message : 'Не удалось обновить статус аккаунта.';
+  } finally {
+    managedBusy.value = false;
+  }
+}
+
+async function submitAdminGrantPeaches() {
+  peachBusy.value = true;
+  peachStatus.value = '';
+  try {
+    await apolloClient.mutate({
+      mutation: ADMIN_GRANT_PEACHES_MUTATION,
+      variables: {
+        login: adminGrantForm.value.login,
+        amount: Number(adminGrantForm.value.amount),
+        note: adminGrantForm.value.note || null,
+      },
+    });
+    peachStatus.value = 'Персики начислены.';
+    adminGrantForm.value = { login: '', amount: 100, note: '' };
+  } catch (error) {
+    peachStatus.value = error instanceof Error ? error.message : 'Не удалось начислить персики.';
+  } finally {
+    peachBusy.value = false;
   }
 }
 
@@ -449,6 +564,16 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
           <span class="meta">Рейтинг</span>
           <span class="value">{{ profile?.ratingTotal ?? 0 }}</span>
           <span class="note">Суммарная оценка автора</span>
+        </article>
+        <article class="card stat">
+          <span class="meta">Персики</span>
+          <span class="value">{{ peachBalance }}</span>
+          <span class="note">Внутренняя валюта сайта</span>
+        </article>
+        <article class="card stat">
+          <span class="meta">Аудио-слоты</span>
+          <span class="value">{{ audioUploadSlots }}</span>
+          <span class="note">Осталось загрузок</span>
         </article>
       </section>
 
@@ -704,6 +829,49 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
           </div>
           <div v-else class="empty-state">Начислений пока нет.</div>
         </article>
+
+        <article class="panel stack">
+          <div class="section-head">
+            <h2>Персики</h2>
+            <span class="pill">баланс: {{ peachBalance }}</span>
+          </div>
+          <div class="note">
+            За 100 персиков можно купить пакет из 20 загрузок аудио или отправить заявку на рецензию администрации.
+          </div>
+          <div class="chips">
+            <span class="pill">аудио-слотов: {{ audioUploadSlots }}</span>
+          </div>
+          <div class="inline-actions">
+            <button class="btn btn-primary" type="button" :disabled="peachBusy" @click="purchaseAudioPack">
+              {{ peachBusy ? 'Покупаем…' : 'Купить 20 аудио-слотов за 100 персиков' }}
+            </button>
+          </div>
+          <form class="stack" @submit.prevent="submitReviewRequest">
+            <div class="field">
+              <label for="review-title">Заявка на рецензию</label>
+              <input id="review-title" v-model="reviewForm.title" class="input" required placeholder="Что нужно посмотреть" />
+            </div>
+            <div class="field">
+              <label for="review-message">Комментарий</label>
+              <textarea id="review-message" v-model="reviewForm.message" class="textarea" placeholder="Ссылка на произведение, пожелания и т.п." />
+            </div>
+            <div class="inline-actions">
+              <button class="btn btn-outline" type="submit" :disabled="reviewBusy">{{ reviewBusy ? 'Отправляем…' : 'Заказать рецензию за 100 персиков' }}</button>
+            </div>
+          </form>
+          <div v-if="peachStatus" class="message" :class="peachStatus.includes('куплен') || peachStatus.includes('начислены') ? 'success' : 'error'">{{ peachStatus }}</div>
+          <div v-if="reviewStatus" class="message" :class="reviewStatus.includes('отправлена') ? 'success' : 'error'">{{ reviewStatus }}</div>
+          <div v-if="peachTransactions.length" class="stack">
+            <div v-for="transaction in peachTransactions" :key="transaction.id" class="inline-card">
+              <div class="section-head">
+                <strong>{{ transaction.note || transaction.kind }}</strong>
+                <span class="pill" :class="transaction.amount >= 0 ? 'good' : 'warn'">{{ transaction.amount > 0 ? '+' : '' }}{{ transaction.amount }}</span>
+              </div>
+              <div class="meta">{{ formatDateTime(transaction.createdAt) }}</div>
+            </div>
+          </div>
+          <div v-else class="empty-state">История персиков пока пуста.</div>
+        </article>
       </section>
 
       <section v-if="isAdmin" class="layout-columns personal-layout">
@@ -712,7 +880,7 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
             <h2>Управляемые аккаунты</h2>
             <span class="pill">{{ managedAuthors.length }} профилей</span>
           </div>
-          <div class="note">Владелец сайта может создавать специальные авторские аккаунты без выхода из своего профиля и переключаться между ними.</div>
+          <div class="note">Владелец сайта может создавать специальные авторские аккаунты без выхода из своего профиля, переключаться между ними и помечать их как классиков или страницы памяти.</div>
           <form class="stack" @submit.prevent="submitManagedAuthor">
             <div class="grid-2">
               <div class="field">
@@ -743,10 +911,10 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
             <div class="inline-actions">
               <button class="btn btn-primary" type="submit" :disabled="managedBusy">{{ managedBusy ? 'Создаём…' : 'Создать управляемый аккаунт' }}</button>
             </div>
-            <div v-if="managedStatus" class="message" :class="managedStatus.includes('создан') || managedStatus.includes('выполнено') ? 'success' : 'error'">{{ managedStatus }}</div>
+            <div v-if="managedStatus" class="message" :class="managedStatus.includes('создан') || managedStatus.includes('выполнено') || managedStatus.includes('обновлён') ? 'success' : 'error'">{{ managedStatus }}</div>
           </form>
           <div v-if="managedAuthors.length" class="stack">
-            <div v-for="author in managedAuthors" :key="author.id" class="inline-card">
+            <div v-for="author in managedAuthors" :key="author.id" class="inline-card stack">
               <div class="section-head">
                 <div>
                   <strong>{{ author.displayName }}</strong>
@@ -754,8 +922,47 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
                 </div>
                 <button class="btn btn-outline" type="button" :disabled="managedBusy" @click="switchManaged(author.id)">Переключиться</button>
               </div>
+              <div class="chips">
+                <span v-if="author.isClassic" class="pill warn">классик</span>
+                <span v-if="author.isMemorialPage" class="pill">страница памяти</span>
+                <span class="pill">персики: {{ author.peachBalance ?? 0 }}</span>
+                <span class="pill">аудио-слоты: {{ author.audioUploadSlots ?? 0 }}</span>
+              </div>
+              <div class="inline-actions">
+                <RouterLink class="btn btn-outline" :to="buildAuthorPageLocation(author)">Страница автора</RouterLink>
+                <button class="btn btn-outline" type="button" :disabled="managedBusy" @click="setManagedAuthorFlag(author, { isClassic: !author.isClassic })">
+                  {{ author.isClassic ? 'Снять «Классик»' : 'Сделать классиком' }}
+                </button>
+                <button class="btn btn-outline" type="button" :disabled="managedBusy" @click="setManagedAuthorFlag(author, { isMemorialPage: !author.isMemorialPage })">
+                  {{ author.isMemorialPage ? 'Снять «Память»' : 'Сделать страницей памяти' }}
+                </button>
+              </div>
             </div>
           </div>
+        </article>
+
+        <article class="panel stack">
+          <div class="section-head">
+            <h2>Начислить персики</h2>
+            <span class="pill">админ</span>
+          </div>
+          <form class="stack" @submit.prevent="submitAdminGrantPeaches">
+            <div class="field">
+              <label for="grant-login">Логин</label>
+              <input id="grant-login" v-model="adminGrantForm.login" class="input" required placeholder="login" />
+            </div>
+            <div class="field">
+              <label for="grant-amount">Сколько персиков</label>
+              <input id="grant-amount" v-model.number="adminGrantForm.amount" class="input" type="number" min="1" required />
+            </div>
+            <div class="field">
+              <label for="grant-note">Комментарий</label>
+              <textarea id="grant-note" v-model="adminGrantForm.note" class="textarea" placeholder="За что начисление" />
+            </div>
+            <div class="inline-actions">
+              <button class="btn btn-primary" type="submit" :disabled="peachBusy">{{ peachBusy ? 'Начисляем…' : 'Начислить' }}</button>
+            </div>
+          </form>
         </article>
       </section>
 
@@ -792,7 +999,7 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
 
           <p class="note">
             Загруженный аудиофайл сохраняется на сервере, запись попадает в <code>radio_tracks</code>, а трек сразу
-            появляется на странице «Радио».
+            появляется на странице «Радио». Один слот = одна загрузка. Остаток слотов: <strong>{{ audioUploadSlots }}</strong>.
           </p>
 
           <div v-if="audioError" class="message error">{{ audioError }}</div>
@@ -818,14 +1025,18 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
             </div>
 
             <div class="inline-actions">
-              <button class="btn btn-primary" type="submit" :disabled="audioBusy">
+              <button class="btn btn-primary" type="submit" :disabled="audioBusy || audioUploadSlots <= 0">
                 {{ audioBusy ? 'Загружаем…' : 'Загрузить аудио' }}
               </button>
               <button class="btn btn-outline" type="button" :disabled="audioBusy" @click="resetAudioForm">
                 Сбросить
               </button>
+              <button class="btn btn-outline" type="button" :disabled="peachBusy" @click="purchaseAudioPack">
+                Купить ещё 20 слотов
+              </button>
               <RouterLink class="btn btn-outline" to="/radio">Открыть радио</RouterLink>
             </div>
+            <div v-if="audioUploadSlots <= 0" class="message">Чтобы загрузить аудио, сначала купи пакет из 20 слотов за 100 персиков.</div>
           </form>
         </article>
       </section>

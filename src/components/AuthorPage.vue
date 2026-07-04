@@ -3,11 +3,13 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 
 import { apolloClient } from '../lib/apollo.js';
+import RichTextEditor from './RichTextEditor.vue';
 import { uploadProfileImage } from '../lib/profileImages.js';
-import { ADMIN_CREATE_WORK_MUTATION, ADMIN_UPDATE_AUTHOR_PROFILE_MUTATION, AUTHOR_DETAILS_QUERY, AUTHOR_QUERY } from '../lib/graphql.js';
+import { ADMIN_CREATE_WORK_MUTATION, ADMIN_UPDATE_AUTHOR_PAGE_FLAGS_MUTATION, ADMIN_UPDATE_AUTHOR_PROFILE_MUTATION, AUTHOR_DETAILS_QUERY, AUTHOR_QUERY } from '../lib/graphql.js';
 import { formatBirthday, formatDate, formatDateTime, formatWorkSection } from '../lib/format.js';
 import { buildAuthorPageLocation, buildWorkPageLocation, normalizeRouteParam } from '../lib/routes.js';
 import { setDocumentTitle } from '../lib/pageTitle.js';
+import { stripHtml } from '../lib/richText.js';
 import { useSession } from '../lib/session.js';
 
 const route = useRoute();
@@ -37,12 +39,13 @@ const adminProfileForm = ref({
   bio: '',
   avatarUrl: '',
   coverImageUrl: '',
+  birthDate: '',
 });
 const adminWorkForm = ref({
   sectionCode: 'poetry',
   title: '',
   summary: '',
-  body: '',
+  body: '<p></p>',
   projectFormat: '',
 });
 
@@ -50,7 +53,7 @@ const authorLogin = computed(() => normalizeRouteParam(route.params.login));
 const hasAuthor = computed(() => Boolean(author.value));
 const notFound = computed(() => !pageLoading.value && !pageError.value && Boolean(authorLogin.value) && !author.value);
 const isAdmin = computed(() => currentUser.value?.role === 'admin');
-const canManageClassic = computed(() => Boolean(isAdmin.value && author.value?.isClassic));
+const canManageAuthorPage = computed(() => Boolean(isAdmin.value));
 const canMessageAuthor = computed(() => Boolean(currentUser.value?.login && author.value?.login && currentUser.value.login !== author.value.login));
 const projectFormats = [
   { value: '', label: 'Без уточнения' },
@@ -75,10 +78,17 @@ const isBirthdayToday = computed(() => {
 });
 
 const authorLinks = computed(() => {
-  const links = Array.isArray(author.value?.profileLinks) ? author.value.profileLinks.filter((item) => item?.label && item?.url) : [];
-  if (links.length) return links;
-  if (author.value?.websiteUrl) return [{ label: 'Мой сайт', url: author.value.websiteUrl }];
-  return [];
+  const links = [];
+  if (author.value?.websiteUrl) {
+    links.push({ label: 'Мой сайт', url: author.value.websiteUrl });
+  }
+  const extraLinks = Array.isArray(author.value?.profileLinks) ? author.value.profileLinks.filter((item) => item?.label && item?.url) : [];
+  for (const item of extraLinks) {
+    if (!links.some((existing) => existing.url === item.url && existing.label === item.label)) {
+      links.push(item);
+    }
+  }
+  return links;
 });
 
 const coverImageStyle = computed(() => {
@@ -95,10 +105,13 @@ const authorFacts = computed(() => {
   const facts = [
     { label: 'Логин', value: `@${author.value.login}` },
     { label: 'С нами с', value: formatDate(author.value.registeredAt) },
-    { label: 'Последний визит', value: formatDateTime(author.value.lastSeenAt) },
     { label: 'Рейтинг автора', value: String(author.value.ratingTotal ?? 0) },
     { label: 'Произведений', value: String(authorWorks.value.length || author.value.worksCountCached || 0) },
   ];
+
+  if (!author.value.isClassic && !author.value.isMemorialPage) {
+    facts.splice(2, 0, { label: 'Последний визит', value: formatDateTime(author.value.lastSeenAt) });
+  }
 
   if (author.value.city) {
     facts.push({ label: 'Город', value: author.value.city });
@@ -110,6 +123,8 @@ const authorFacts = computed(() => {
 
   if (author.value.isFeatured) {
     facts.push({ label: 'Статус', value: 'Автор витрины' });
+  } else if (author.value.isMemorialPage) {
+    facts.push({ label: 'Статус', value: 'Страница памяти' });
   } else if (author.value.isClassic) {
     facts.push({ label: 'Статус', value: 'Классик' });
   }
@@ -183,6 +198,7 @@ watch(author, (value) => {
     bio: value?.bio || '',
     avatarUrl: value?.avatarUrl || '',
     coverImageUrl: value?.coverImageUrl || '',
+    birthDate: value?.birthDate || '',
   };
   adminProfileStatus.value = '';
   adminProfileError.value = '';
@@ -280,7 +296,7 @@ function normalizeOptional(value) {
 function buildExcerpt(summary, body) {
   const preferred = normalizeOptional(summary);
   if (preferred) return preferred;
-  const normalizedBody = normalizeOptional(body);
+  const normalizedBody = stripHtml(body);
   if (!normalizedBody) return null;
   return normalizedBody.slice(0, 280);
 }
@@ -291,7 +307,7 @@ async function refreshAuthorDetails() {
 }
 
 async function submitAdminProfile() {
-  if (!author.value?.id || !canManageClassic.value) return;
+  if (!author.value?.id || !canManageAuthorPage.value) return;
   adminProfileBusy.value = true;
   adminProfileStatus.value = '';
   adminProfileError.value = '';
@@ -308,11 +324,12 @@ async function submitAdminProfile() {
           bio: normalizeOptional(adminProfileForm.value.bio),
           avatarUrl: normalizeOptional(adminProfileForm.value.avatarUrl),
           coverImageUrl: normalizeOptional(adminProfileForm.value.coverImageUrl),
+          birthDate: normalizeOptional(adminProfileForm.value.birthDate),
         },
       },
     });
     author.value = data?.adminUpdateAuthorProfile ?? author.value;
-    adminProfileStatus.value = 'Страница классика обновлена.';
+    adminProfileStatus.value = 'Страница автора обновлена.';
     await refreshAuthorDetails();
   } catch (error) {
     adminProfileError.value = error.message;
@@ -322,7 +339,7 @@ async function submitAdminProfile() {
 }
 
 async function uploadAdminImage(kind, event) {
-  if (!canManageClassic.value) return;
+  if (!canManageAuthorPage.value) return;
   const file = event?.target?.files?.[0] ?? null;
   if (!file) return;
 
@@ -349,8 +366,32 @@ async function uploadAdminImage(kind, event) {
   }
 }
 
+async function submitAdminFlags(nextFlags = {}) {
+  if (!author.value?.id || !canManageAuthorPage.value) return;
+  adminProfileBusy.value = true;
+  adminProfileStatus.value = '';
+  adminProfileError.value = '';
+  try {
+    const { data } = await apolloClient.mutate({
+      mutation: ADMIN_UPDATE_AUTHOR_PAGE_FLAGS_MUTATION,
+      variables: {
+        authorId: author.value.id,
+        isClassic: Boolean(nextFlags.isClassic ?? author.value?.isClassic),
+        isMemorialPage: Boolean(nextFlags.isMemorialPage ?? author.value?.isMemorialPage),
+      },
+    });
+    author.value = data?.adminUpdateAuthorPageFlags ?? author.value;
+    adminProfileStatus.value = 'Статусы страницы обновлены.';
+    await refreshAuthorDetails();
+  } catch (error) {
+    adminProfileError.value = error.message;
+  } finally {
+    adminProfileBusy.value = false;
+  }
+}
+
 async function submitAdminWork() {
-  if (!author.value?.id || !canManageClassic.value) return;
+  if (!author.value?.id || !canManageAuthorPage.value) return;
   adminWorkBusy.value = true;
   adminWorkStatus.value = '';
   adminWorkError.value = '';
@@ -374,7 +415,7 @@ async function submitAdminWork() {
       sectionCode: 'poetry',
       title: '',
       summary: '',
-      body: '',
+      body: '<p></p>',
       projectFormat: '',
     };
     activeLedger.value = 'works';
@@ -433,8 +474,9 @@ async function submitAdminWork() {
 
           <div class="author-status-strip">
             <span v-if="author.isFeatured" class="author-status-pill">Автор витрины</span>
-            <span v-else-if="author.isClassic" class="author-status-pill">Классик</span>
-            <span v-else class="author-status-pill">Публичная страница</span>
+            <span v-if="author.isClassic" class="author-status-pill">Классик</span>
+            <span v-if="author.isMemorialPage" class="author-status-pill">Страница памяти</span>
+            <span v-if="!author.isFeatured && !author.isClassic && !author.isMemorialPage" class="author-status-pill">Публичная страница</span>
           </div>
 
           <div class="author-facts-list">
@@ -476,13 +518,16 @@ async function submitAdminWork() {
         <article class="author-paper-card">
           <div class="author-paper-eyebrow">Информация об авторе</div>
           <h2 class="author-paper-title">{{ author.displayName }}</h2>
-          <div class="author-paper-meta">@{{ author.login }} · на сайте с {{ formatDate(author.registeredAt) }} · был(а) на сайте {{ formatDateTime(author.lastSeenAt) }}</div>
+          <div class="author-paper-meta">
+            @{{ author.login }} · на сайте с {{ formatDate(author.registeredAt) }}
+            <template v-if="!author.isClassic && !author.isMemorialPage"> · был(а) на сайте {{ formatDateTime(author.lastSeenAt) }}</template>
+          </div>
           <div class="author-paper-text">
             {{ author.bio || 'Автор пока не добавил подробную биографию. Здесь будет литературная визитка, заметки о себе и авторские ссылки.' }}
           </div>
         </article>
 
-        <article v-if="canManageClassic" class="panel stack">
+        <article v-if="canManageAuthorPage" class="panel stack">
           <div class="section-head">
             <div>
               <div class="author-paper-eyebrow">Админ-режим классика</div>
@@ -506,6 +551,11 @@ async function submitAdminWork() {
             <div class="field">
               <label for="classic-website">Ссылка автора</label>
               <input id="classic-website" v-model="adminProfileForm.websiteUrl" class="input" placeholder="https://..." />
+            </div>
+
+            <div class="field">
+              <label for="classic-birthday">День рождения</label>
+              <input id="classic-birthday" v-model="adminProfileForm.birthDate" class="input" type="date" />
             </div>
 
             <div class="field">
@@ -542,7 +592,13 @@ async function submitAdminWork() {
             <div v-if="adminImageStatus" class="message success">{{ adminImageStatus }}</div>
             <div v-if="adminImageError" class="message error">{{ adminImageError }}</div>
             <div class="inline-actions">
-              <button class="btn btn-primary" type="submit" :disabled="adminProfileBusy">{{ adminProfileBusy ? 'Сохраняем…' : 'Сохранить страницу классика' }}</button>
+              <button class="btn btn-primary" type="submit" :disabled="adminProfileBusy">{{ adminProfileBusy ? 'Сохраняем…' : 'Сохранить страницу автора' }}</button>
+              <button class="btn btn-outline" type="button" :disabled="adminProfileBusy" @click="submitAdminFlags({ isClassic: !author.isClassic })">
+                {{ author.isClassic ? 'Снять статус «Классик»' : 'Сделать классиком' }}
+              </button>
+              <button class="btn btn-outline" type="button" :disabled="adminProfileBusy" @click="submitAdminFlags({ isMemorialPage: !author.isMemorialPage })">
+                {{ author.isMemorialPage ? 'Снять статус «Страница памяти»' : 'Сделать страницей памяти' }}
+              </button>
             </div>
             <div v-if="adminProfileStatus" class="message success">{{ adminProfileStatus }}</div>
             <div v-if="adminProfileError" class="message error">{{ adminProfileError }}</div>
@@ -578,10 +634,12 @@ async function submitAdminWork() {
               <label for="classic-work-summary">Краткое описание</label>
               <textarea id="classic-work-summary" v-model="adminWorkForm.summary" class="textarea" />
             </div>
-            <div class="field">
-              <label for="classic-work-body">Текст произведения</label>
-              <textarea id="classic-work-body" v-model="adminWorkForm.body" class="textarea" />
-            </div>
+            <RichTextEditor
+              v-model="adminWorkForm.body"
+              editor-id="classic-work-body"
+              label="Текст произведения"
+              placeholder="Полный текст произведения"
+            />
             <div class="inline-actions">
               <button class="btn btn-primary" type="submit" :disabled="adminWorkBusy">{{ adminWorkBusy ? 'Публикуем…' : 'Опубликовать произведение' }}</button>
             </div>
