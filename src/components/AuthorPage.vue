@@ -2,6 +2,11 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 
+import { VueDatePicker } from '@vuepic/vue-datepicker' // Добавили фигурные скобки
+import '@vuepic/vue-datepicker/dist/main.css'
+
+import { ru } from 'date-fns/locale'
+
 import { apolloClient } from '../lib/apollo.js';
 import RichTextEditor from './RichTextEditor.vue';
 import { uploadProfileImage } from '../lib/profileImages.js';
@@ -11,6 +16,8 @@ import { buildAuthorPageLocation, buildWorkPageLocation, normalizeRouteParam } f
 import { setDocumentTitle } from '../lib/pageTitle.js';
 import { stripHtml } from '../lib/richText.js';
 import { useSession } from '../lib/session.js';
+
+import moment from 'moment';
 
 const route = useRoute();
 const { bootstrapSession, currentUser } = useSession();
@@ -191,6 +198,7 @@ onMounted(() => {
 });
 
 watch(author, (value) => {
+  console.log( value?.birthDate   )
   adminProfileForm.value = {
     displayName: value?.displayName || '',
     city: value?.city || '',
@@ -198,7 +206,7 @@ watch(author, (value) => {
     bio: value?.bio || '',
     avatarUrl: value?.avatarUrl || '',
     coverImageUrl: value?.coverImageUrl || '',
-    birthDate: value?.birthDate || '',
+    birthDate: value?.birthDate  || '',
   };
   adminProfileStatus.value = '';
   adminProfileError.value = '';
@@ -273,8 +281,8 @@ async function loadAuthorDetails(login, authorId) {
       },
       fetchPolicy: 'network-only',
     });
-
-    author.value = data?.author ?? author.value;
+    console.log(data)
+   // author.value = data?.author ?? author.value;
     authorWorks.value = data?.works ?? [];
     writtenReviews.value = data?.writtenReviews ?? [];
     receivedReviews.value = data?.receivedReviews ?? [];
@@ -313,6 +321,7 @@ async function submitAdminProfile() {
   adminProfileError.value = '';
 
   try {
+    
     const { data } = await apolloClient.mutate({
       mutation: ADMIN_UPDATE_AUTHOR_PROFILE_MUTATION,
       variables: {
@@ -324,7 +333,7 @@ async function submitAdminProfile() {
           bio: normalizeOptional(adminProfileForm.value.bio),
           avatarUrl: normalizeOptional(adminProfileForm.value.avatarUrl),
           coverImageUrl: normalizeOptional(adminProfileForm.value.coverImageUrl),
-          birthDate: normalizeOptional(adminProfileForm.value.birthDate),
+          birthDate: normalizeOptional(moment(adminProfileForm.value.birthDate).format('YYYY-MM-DD')),
         },
       },
     });
@@ -555,7 +564,16 @@ async function submitAdminWork() {
 
             <div class="field">
               <label for="classic-birthday">День рождения</label>
-              <input id="classic-birthday" v-model="adminProfileForm.birthDate" class="input" type="date" />
+          
+              <VueDatePicker 
+                v-model="adminProfileForm.birthDate" 
+                format="dd.MM.yyyy" 
+                :locale="ru"
+                :time-config="{ enableTimePicker: false }"
+                auto-apply 
+                 :formats="{ input: 'dd.MM.yyyy' }"
+              />
+            
             </div>
 
             <div class="field">

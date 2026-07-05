@@ -5,7 +5,7 @@ import JSZip from 'jszip';
 
 import WorkPublishForm from './WorkPublishForm.vue';
 import { useSession } from '../lib/session.js';
-import { apolloClient } from '../lib/apollo.js';
+import { apolloClient } from '../lib/apollo.js'; 
 import { formatBirthday, formatDate, formatDateTime } from '../lib/format.js';
 import { filenameToTrackTitle, probeAudioDuration, uploadRadioTrack } from '../lib/radio.js';
 import { uploadProfileImage } from '../lib/profileImages.js';
@@ -911,7 +911,17 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
               </div>
               <div class="field">
                 <label>День рождения</label>
-                <input v-model="managedAuthorForm.birthDate" class="input" type="date" />
+
+                <VueDatePicker 
+                v-model="profileForm.birthDate" 
+                format="dd.MM.yyyy" 
+                :locale="ru"
+                :time-config="{ enableTimePicker: false }"
+                auto-apply 
+                 :formats="{ input: 'dd.MM.yyyy' }"
+              />
+            
+
               </div>
               <div class="field">
                 <label>Сайт</label>
