@@ -19,3 +19,16 @@ select,
 textarea {
   font: inherit;
 }
+
+.logo a{
+  text-decoration: none;
+}
+
+.logo a:hover{
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.logo a:visited{
+  text-decoration: none;
+}

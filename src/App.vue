@@ -542,7 +542,7 @@ async function submitRestoreOwner() {
   <header>
     <div class="navwrap">
       <div class="logo-block">
-        <div class="logo">Литопотам</div>
+        <div class="logo"><a href="https://littop.ru/"> Литопотам </a></div>
       </div>
 
       <nav class="nav" aria-label="Главное меню">
