@@ -10,6 +10,12 @@ import { formatBirthday, formatDate, formatDateTime } from '../lib/format.js';
 import { filenameToTrackTitle, probeAudioDuration, uploadRadioTrack } from '../lib/radio.js';
 import { uploadProfileImage } from '../lib/profileImages.js';
 import { buildAuthorPageLocation } from '../lib/routes.js';
+
+import { VueDatePicker } from '@vuepic/vue-datepicker' // Добавили фигурные скобки
+import '@vuepic/vue-datepicker/dist/main.css'
+
+import { ru } from 'date-fns/locale'
+
 import {
   ADMIN_CREATE_MANAGED_AUTHOR_MUTATION,
   ADMIN_GRANT_PEACHES_MUTATION,
@@ -645,7 +651,15 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
 
             <div class="field">
               <label for="profile-birthday">День рождения</label>
-              <input id="profile-birthday" v-model="profileForm.birthDate" class="input" type="date" />
+              <VueDatePicker 
+                v-model="profileForm.birthDate" 
+                format="dd.MM.yyyy" 
+                :locale="ru"
+                :time-config="{ enableTimePicker: false }"
+                auto-apply 
+                 :formats="{ input: 'dd.MM.yyyy' }"
+              />
+            
             </div>
 
             <div class="field">
