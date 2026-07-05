@@ -497,7 +497,7 @@ function clearFilters() {
           <RouterLink class="btn btn-outline" :to="buildWorkPageLocation(selectedWork)">Публичная страница произведения</RouterLink>
         </div>
 
-        <div class="prewrap">{{ selectedWork.body || selectedWork.summary || selectedWork.excerpt || 'Текст пока не добавлен.' }}</div>
+        <div class="prewrap">{{ selectedWork.body.replace(/<[^>]*>?/gm, '')) || selectedWork.summary || selectedWork.excerpt || 'Текст пока не добавлен.' }}</div>
 
         <div v-if="isAuthenticated" class="stack">
           <div class="field">
