@@ -5,6 +5,8 @@ import { useQuery } from '@vue/apollo-composable';
 import { RADIO_TRACKS_QUERY } from '../lib/graphql.js';
 import { formatDate, formatDuration, ratingLabel } from '../lib/format.js';
 
+import RadioPlayer from './RadioPlayer.vue';
+
 const selectedTrackId = ref(null);
 
 const { result, loading, error } = useQuery(RADIO_TRACKS_QUERY, {
@@ -38,6 +40,10 @@ watch(tracks, (items) => {
       после сохранения в папку и БД автоматически появляется в этом списке.
     </p>
   </section>
+
+   <section class="player" aria-label="Проигрыватель">
+      <RadioPlayer />
+    </section>
 
   <div v-if="error" class="message error">{{ error.message }}</div>
 
