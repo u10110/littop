@@ -281,7 +281,7 @@ async function loadAuthorDetails(login, authorId) {
       },
       fetchPolicy: 'network-only',
     });
-    console.log(data)
+
    // author.value = data?.author ?? author.value;
     authorWorks.value = data?.works ?? [];
     writtenReviews.value = data?.writtenReviews ?? [];

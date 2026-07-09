@@ -47,7 +47,7 @@
       const audioElement = ref(null);
       const isPlaying = ref(false);
       const volume = ref(0.8);
-      const radioUrl = ref('https://stream.littop.ru/radio.ogg  ');
+      const radioUrl = ref('https://stream.littop.ru/radio.ogg');
   
       onMounted(() => {
         if (audioElement.value) {

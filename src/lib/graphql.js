@@ -308,7 +308,7 @@ export const AUTHOR_DETAILS_QUERY = gql`
     author(login: $login) {
       ...AuthorCardFields
     }
-    works(authorId: $authorId, limit: 6) {
+    works(authorId: $authorId, limit: 50) {
       ...WorkPreviewFields
     }
     writtenReviews: authorWrittenWorkComments(authorId: $authorId, limit: 50) {
