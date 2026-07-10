@@ -171,6 +171,7 @@ export const RADIO_TRACK_FIELDS = gql`
     durationSeconds
     audioUrl
     sourceUrl
+    creatorUserId
     averageRating
     ratingsCount
     createdAt
@@ -436,6 +437,49 @@ export const RADIO_TRACKS_QUERY = gql`
   query RadioPage($limit: Int!, $offset: Int!) {
     radioTracks(limit: $limit, offset: $offset) {
       ...RadioTrackFields
+    }
+  }
+`;
+
+export const RADIO_TRACKS_BY_CREATOR_QUERY = gql`
+  ${RADIO_TRACK_FIELDS}
+  query RadioTracksByCreator($creatorUserId: ID!) {
+    radioTracksByCreator(creatorUserId: $creatorUserId) {
+      ...RadioTrackFields
+    }
+  }
+`;
+
+export const UPDATE_RADIO_TRACK_MUTATION = gql`
+  mutation UpdateRadioTrack($input: RadioTrackUpdateInput!) {
+    updateRadioTrack(input: $input) {
+      ...RadioTrackFields
+    }
+  }
+`;
+
+export const DELETE_RADIO_TRACK_MUTATION = gql`
+  mutation DeleteRadioTrack($id: ID!) {
+    deleteRadioTrack(id: $id) {
+      ...RadioTrackFields
+    }
+  }
+`;
+
+export const UPDATE_SITE_SETTING_MUTATION = gql`
+  mutation UpdateSiteSetting($key: String!, $value: String!) {
+    updateSiteSetting(key: $key, value: $value) {
+      key
+      value
+    }
+  }
+`;
+
+export const SITE_SETTINGS_QUERY = gql`
+  query SiteSettings {
+    siteSettings {
+      key
+      value
     }
   }
 `;

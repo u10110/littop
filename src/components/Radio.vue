@@ -2,14 +2,19 @@
 import { computed, ref, watch } from 'vue';
 import { useQuery } from '@vue/apollo-composable';
 
-import { RADIO_TRACKS_QUERY } from '../lib/graphql.js';
+import { RADIO_TRACKS_QUERY, DELETE_RADIO_TRACK_MUTATION } from '../lib/graphql.js';
 import { formatDate, formatDuration, ratingLabel } from '../lib/format.js';
 
 import RadioPlayer from './RadioPlayer.vue';
+import { apolloClient } from '../lib/apollo.js';
+import { useSession } from '../lib/session.js';
+
+const { currentUser } = useSession();
+const isAdmin = computed(() => currentUser.value?.role === 'admin');
 
 const selectedTrackId = ref(null);
 
-const { result, loading, error } = useQuery(RADIO_TRACKS_QUERY, {
+const { result, loading, error, refetch } = useQuery(RADIO_TRACKS_QUERY, {
   limit: 30,
   offset: 0,
 }, {
@@ -18,6 +23,18 @@ const { result, loading, error } = useQuery(RADIO_TRACKS_QUERY, {
 
 const tracks = computed(() => result.value?.radioTracks ?? []);
 const selectedTrack = computed(() => tracks.value.find((item) => String(item.id) === String(selectedTrackId.value)) ?? null);
+
+const canManageTrack = (track) => Boolean(isAdmin.value) || String(track.creatorUserId) === String(currentUser.value?.id);
+
+async function deleteTrack(track) {
+  if (!globalThis.confirm?.('Удалить этот аудиотрек?')) return;
+  try {
+    await apolloClient.mutate({ mutation: DELETE_RADIO_TRACK_MUTATION, variables: { id: track.id } });
+    await refetch?.();
+  } catch {
+    // ошибка удаления трека
+  }
+}
 
 watch(tracks, (items) => {
   if (!items.length) {
@@ -65,6 +82,12 @@ watch(tracks, (items) => {
           <h3>{{ track.title }}</h3>
           <div class="meta">{{ track.authorName || 'Автор не указан' }} · {{ formatDuration(track.durationSeconds) }}</div>
           <div class="meta">{{ ratingLabel(track.averageRating, track.ratingsCount) }}</div>
+          <button
+            v-if="canManageTrack(track)"
+            class="btn btn-sm btn-danger track-delete"
+            type="button"
+            @click.stop="deleteTrack(track)"
+          >Удалить</button>
         </article>
       </div>
       <div v-else-if="!loading" class="empty-state">Треков пока нет. Компонент уже ждёт данные из radio_tracks без статических заглушек.</div>

@@ -32,6 +32,24 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+  scrollBehavior(to, from, savedPosition) {
+    if (to.hash) {
+      // Даём форуму (и списку тем) отрисоваться, затем скроллим к якорю.
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve({
+            el: to.hash,
+            behavior: smooth,
+            top: 90, // запас под sticky-шапку
+          });
+        }, 400);
+      });
+    }
+    if (savedPosition) {
+      return savedPosition;
+    }
+    return { top: 0 };
+  },
 });
 
 export default router;

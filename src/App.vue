@@ -17,7 +17,7 @@ import {
 } from './lib/auth.js';
 import { useSession } from './lib/session.js';
 import { apolloClient } from './lib/apollo.js';
-import { PRIVATE_DIALOGS_QUERY, SITE_CHROME_QUERY, TOUCH_PRESENCE_MUTATION } from './lib/graphql.js';
+import { PRIVATE_DIALOGS_QUERY, SITE_CHROME_QUERY, SITE_SETTINGS_QUERY, UPDATE_SITE_SETTING_MUTATION, TOUCH_PRESENCE_MUTATION } from './lib/graphql.js';
 import { formatBirthday, formatDateTime } from './lib/format.js';
 import { setDocumentTitle } from './lib/pageTitle.js';
 import { buildAuthorPageLocation } from './lib/routes.js';
@@ -78,6 +78,42 @@ const {
 } = useSession();
 
 const displayName = computed(() => currentUser.value?.profile?.displayName || currentUser.value?.login || 'Автор');
+const isAdmin = computed(() => currentUser.value?.role === 'admin');
+const siteBanner = ref('');
+const siteBannerEditing = ref(false);
+const siteBannerDraft = ref('');
+const siteBannerBusy = ref(false);
+
+async function loadSiteBanner() {
+  try {
+    const { data } = await apolloClient.query({ query: SITE_SETTINGS_QUERY, fetchPolicy: 'network-only' });
+    const found = (data?.siteSettings ?? []).find((s) => s.key === 'site_banner');
+    siteBanner.value = found?.value ?? '';
+  } catch {
+    siteBanner.value = '';
+  }
+}
+function startEditBanner() {
+  siteBannerDraft.value = siteBanner.value;
+  siteBannerEditing.value = true;
+}
+function cancelEditBanner() {
+  siteBannerEditing.value = false;
+  siteBannerDraft.value = '';
+}
+async function saveBanner() {
+  siteBannerBusy.value = true;
+  try {
+    await apolloClient.mutate({ mutation: UPDATE_SITE_SETTING_MUTATION, variables: { key: 'site_banner', value: siteBannerDraft.value } });
+    siteBanner.value = siteBannerDraft.value;
+    siteBannerEditing.value = false;
+  } catch {
+    // ошибка сохранения настройки
+  } finally {
+    siteBannerBusy.value = false;
+  }
+}
+onMounted(loadSiteBanner);
 const unreadDialogsCount = ref(0);
 const visibleAuthError = computed(() => authLocalError.value || authError.value);
 const canReopenClosedAccount = computed(() => authMode.value === 'login' && authMeta.value?.code === 'ACCOUNT_REOPEN_AVAILABLE' && String(loginForm.value.identifier || '').trim() && String(loginForm.value.password || '').trim());
@@ -542,7 +578,7 @@ async function submitRestoreOwner() {
   <header>
     <div class="navwrap">
       <div class="logo-block">
-        <div class="logo"><a href="https://littop.ru/"> Литопотам </a></div>
+        <div class="logo"><RouterLink to="/"> Литопотам </RouterLink></div>
       </div>
 
       <nav class="nav" aria-label="Главное меню">
@@ -590,6 +626,22 @@ async function submitRestoreOwner() {
       </div>
     </div>
   </header>
+
+  <div v-if="siteBanner || isAdmin" class="site-banner">
+    <div class="site-banner-inner">
+      <template v-if="!siteBannerEditing">
+        <span class="site-banner-text">{{ siteBanner || 'Литературное радио Литопотам' }}</span>
+        <button v-if="isAdmin" class="btn btn-sm btn-outline" type="button" @click="startEditBanner">Изменить</button>
+      </template>
+      <template v-else>
+        <textarea v-model="siteBannerDraft" class="textarea site-banner-input" placeholder="Текст в шапке сайта"></textarea>
+        <div class="inline-actions">
+          <button class="btn btn-sm btn-primary" type="button" :disabled="siteBannerBusy" @click="saveBanner">Сохранить</button>
+          <button class="btn btn-sm btn-outline" type="button" :disabled="siteBannerBusy" @click="cancelEditBanner">Отмена</button>
+        </div>
+      </template>
+    </div>
+  </div>
 
   <Transition name="fade-modal">
     <div v-if="isAuthModalOpen" class="modal-backdrop" @click.self="closeAuthModal">

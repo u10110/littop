@@ -1,6 +1,7 @@
 :root {
-  --bg: #f6f7fb;
-  --surface: #ffffff;
+  --bg: #f7f0e3;
+  --surface: #fffdf8;
+  --border: #e7dcc8;
   --surface-alt: #fafbff;
   --text: #171a25;
   --muted: #667085;
@@ -1443,4 +1444,33 @@ hr.divider {
 .btn-sm {
   padding: 7px 10px;
   border-radius: 12px;
+}
+
+.site-banner {
+  background: linear-gradient(180deg, #fffdf8 0%, #f8f1e4 100%);
+  border-bottom: 1px solid var(--border);
+}
+.site-banner-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.site-banner-text {
+  font-weight: 600;
+  color: var(--accent);
+  flex: 1;
+}
+.site-banner-input {
+  flex: 1;
+  min-width: 240px;
+}
+.track-delete {
+  margin-top: 8px;
+}
+.my-tracks-block {
+  margin-top: 14px;
 }

@@ -25,6 +25,9 @@ import {
   MY_RATING_EVENTS_QUERY,
   PURCHASE_AUDIO_UPLOAD_PACK_MUTATION,
   REQUEST_ADMIN_REVIEW_MUTATION,
+  RADIO_TRACKS_BY_CREATOR_QUERY,
+  UPDATE_RADIO_TRACK_MUTATION,
+  DELETE_RADIO_TRACK_MUTATION,
   WORKS_QUERY,
 } from '../lib/graphql.js';
 import { renderRichTextHtml, stripHtml } from '../lib/richText.js';
@@ -95,8 +98,12 @@ const managedAuthorForm = ref({
 });
 const audioForm = ref({
   title: '',
+  authorName: '',
   file: null,
 });
+const editingTrackId = ref(null);
+const myTracks = ref([]);
+const myTracksBusy = ref(false);
 const peachBusy = ref(false);
 const peachStatus = ref('');
 const reviewBusy = ref(false);
@@ -233,14 +240,64 @@ function handleWorkCreated(createdWork) {
 function resetAudioForm() {
   audioForm.value = {
     title: '',
+    authorName: '',
     file: null,
   };
+  editingTrackId.value = null;
   audioError.value = '';
   audioSuccess.value = '';
   if (audioFileInput.value) {
     audioFileInput.value.value = '';
   }
 }
+
+async function loadMyTracks() {
+  if (!currentUser.value?.id) {
+    myTracks.value = [];
+    return;
+  }
+  myTracksBusy.value = true;
+  try {
+    const { data } = await apolloClient.query({
+      query: RADIO_TRACKS_BY_CREATOR_QUERY,
+      variables: { creatorUserId: currentUser.value.id },
+      fetchPolicy: 'network-only',
+    });
+    myTracks.value = data?.radioTracksByCreator ?? [];
+  } catch {
+    myTracks.value = [];
+  } finally {
+    myTracksBusy.value = false;
+  }
+}
+
+function editTrack(track) {
+  editingTrackId.value = track.id;
+  audioForm.value.title = track.title || '';
+  audioForm.value.authorName = track.authorName || '';
+  audioForm.value.file = null;
+  if (audioFileInput.value) audioFileInput.value.value = '';
+  audioSuccess.value = '';
+  audioError.value = '';
+}
+
+async function deleteTrack(track) {
+  if (!globalThis.confirm?.('Удалить этот аудиотрек?')) return;
+  try {
+    await apolloClient.mutate({
+      mutation: DELETE_RADIO_TRACK_MUTATION,
+      variables: { id: track.id },
+    });
+    await loadMyTracks();
+    audioSuccess.value = 'Аудиотрек удалён.';
+  } catch (error) {
+    audioError.value = error instanceof Error ? error.message : 'Не удалось удалить трек.';
+  }
+}
+
+watch(() => currentUser.value?.id, (id) => {
+  if (id) loadMyTracks();
+}, { immediate: true });
 
 function handleAudioFileChange(event) {
   const file = event?.target?.files?.[0] ?? null;
@@ -259,10 +316,27 @@ async function submitAudio() {
   audioSuccess.value = '';
 
   try {
+    if (editingTrackId.value) {
+      await apolloClient.mutate({
+        mutation: UPDATE_RADIO_TRACK_MUTATION,
+        variables: {
+          input: {
+            id: editingTrackId.value,
+            title: audioForm.value.title,
+            authorName: audioForm.value.authorName,
+          },
+        },
+      });
+      audioSuccess.value = 'Изменения аудиотрека сохранены.';
+      resetAudioForm();
+      await loadMyTracks();
+      return;
+    }
     const file = audioForm.value.file;
     const durationSeconds = await probeAudioDuration(file);
     const track = await uploadRadioTrack({
       title: audioForm.value.title,
+      authorName: audioForm.value.authorName,
       file,
       durationSeconds,
     });
@@ -1036,6 +1110,11 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
             </div>
 
             <div class="field">
+              <label for="audio-author">Подпись автора</label>
+              <input id="audio-author" v-model="audioForm.authorName" class="input" placeholder="Кто автор трека (если не вы)" />
+            </div>
+
+            <div class="field">
               <label for="audio-file">Аудиофайл</label>
               <input
                 id="audio-file"
@@ -1043,25 +1122,44 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
                 class="input"
                 type="file"
                 accept="audio/*"
-                required
+                :required="!editingTrackId"
                 @change="handleAudioFileChange"
               />
             </div>
 
             <div class="inline-actions">
-              <button class="btn btn-primary" type="submit" :disabled="audioBusy || audioUploadSlots <= 0">
-                {{ audioBusy ? 'Загружаем…' : 'Загрузить аудио' }}
+              <button class="btn btn-primary" type="submit" :disabled="audioBusy || (!editingTrackId && audioUploadSlots <= 0)">
+                {{ audioBusy ? (editingTrackId ? 'Сохраняем…' : 'Загружаем…') : (editingTrackId ? 'Сохранить изменения' : 'Загрузить аудио') }}
               </button>
               <button class="btn btn-outline" type="button" :disabled="audioBusy" @click="resetAudioForm">
-                Сбросить
+                {{ editingTrackId ? 'Отмена' : 'Сбросить' }}
               </button>
-              <button class="btn btn-outline" type="button" :disabled="peachBusy" @click="purchaseAudioPack">
+              <button v-if="!editingTrackId" class="btn btn-outline" type="button" :disabled="peachBusy" @click="purchaseAudioPack">
                 Купить ещё 20 слотов
               </button>
               <RouterLink class="btn btn-outline" to="/radio">Открыть радио</RouterLink>
             </div>
-            <div v-if="audioUploadSlots <= 0" class="message">Чтобы загрузить аудио, сначала купи пакет из 20 слотов за 100 персиков.</div>
+            <div v-if="audioUploadSlots <= 0 && !editingTrackId" class="message">Чтобы загрузить аудио, сначала купи пакет из 20 слотов за 100 персиков.</div>
           </form>
+
+          <div v-if="myTracks.length" class="stack my-tracks-block">
+            <div class="section-head">
+              <h3>Мои загрузки</h3>
+              <span class="pill">{{ myTracks.length }}</span>
+            </div>
+            <ol class="author-works-ledger">
+              <li v-for="track in myTracks" :key="track.id" class="author-works-ledger-item">
+                <div class="author-work-body">
+                  <div class="author-work-title">{{ track.title }}</div>
+                  <div class="author-work-meta">{{ track.authorName || 'Автор не указан' }}</div>
+                </div>
+                <div class="inline-actions">
+                  <button class="btn btn-sm btn-outline" type="button" @click="editTrack(track)">Редактировать</button>
+                  <button class="btn btn-sm btn-danger" type="button" @click="deleteTrack(track)">Удалить</button>
+                </div>
+              </li>
+            </ol>
+          </div>
         </article>
       </section>
     </template>

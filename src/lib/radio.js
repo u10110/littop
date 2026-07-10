@@ -55,6 +55,7 @@ export function probeAudioDuration(file) {
 export async function uploadRadioTrack({
   title,
   file,
+  authorName = '',
   durationSeconds = null,
   graphqlEndpoint = getGraphqlEndpoint(),
   token = getStoredToken(),
@@ -79,6 +80,7 @@ export async function uploadRadioTrack({
     },
     body: JSON.stringify({
       title: normalizedTitle,
+      authorName: String(authorName || '').trim(),
       fileName: file.name,
       mimeType: file.type || '',
       contentBase64: await fileToBase64(file),

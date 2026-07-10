@@ -10,7 +10,7 @@ import { ru } from 'date-fns/locale'
 import { apolloClient } from '../lib/apollo.js';
 import RichTextEditor from './RichTextEditor.vue';
 import { uploadProfileImage } from '../lib/profileImages.js';
-import { ADMIN_CREATE_WORK_MUTATION, ADMIN_UPDATE_AUTHOR_PAGE_FLAGS_MUTATION, ADMIN_UPDATE_AUTHOR_PROFILE_MUTATION, AUTHOR_DETAILS_QUERY, AUTHOR_QUERY } from '../lib/graphql.js';
+import { ADMIN_CREATE_WORK_MUTATION, ADMIN_UPDATE_AUTHOR_PAGE_FLAGS_MUTATION, ADMIN_UPDATE_AUTHOR_PROFILE_MUTATION, AUTHOR_DETAILS_QUERY, AUTHOR_QUERY, RADIO_TRACKS_BY_CREATOR_QUERY, DELETE_RADIO_TRACK_MUTATION } from '../lib/graphql.js';
 import { formatBirthday, formatDate, formatDateTime, formatWorkSection } from '../lib/format.js';
 import { buildAuthorPageLocation, buildWorkPageLocation, normalizeRouteParam } from '../lib/routes.js';
 import { setDocumentTitle } from '../lib/pageTitle.js';
@@ -24,6 +24,7 @@ const { bootstrapSession, currentUser } = useSession();
 
 const author = ref(null);
 const authorWorks = ref([]);
+const authorTracks = ref([]);
 const writtenReviews = ref([]);
 const receivedReviews = ref([]);
 const pageLoading = ref(false);
@@ -178,18 +179,21 @@ const receivedReviewRows = computed(() => receivedReviews.value.map((item, index
 const activeSectionTitle = computed(() => {
   if (activeLedger.value === 'written') return 'Написанные отзывы';
   if (activeLedger.value === 'received') return 'Полученные отзывы';
+  if (activeLedger.value === 'audio') return 'Загруженные аудио';
   return 'Произведения';
 });
 
 const activeSectionEyebrow = computed(() => {
   if (activeLedger.value === 'written') return 'Что автор пишет другим';
   if (activeLedger.value === 'received') return 'Что пишут автору';
+  if (activeLedger.value === 'audio') return 'Аудиотреки, загруженные автором';
   return 'Авторская лента';
 });
 
 const activeCount = computed(() => {
   if (activeLedger.value === 'written') return writtenReviewRows.value.length;
   if (activeLedger.value === 'received') return receivedReviewRows.value.length;
+  if (activeLedger.value === 'audio') return authorTracks.value.length;
   return workRows.value.length;
 });
 
@@ -286,6 +290,16 @@ async function loadAuthorDetails(login, authorId) {
     authorWorks.value = data?.works ?? [];
     writtenReviews.value = data?.writtenReviews ?? [];
     receivedReviews.value = data?.receivedReviews ?? [];
+    try {
+      const { data: tdata } = await apolloClient.query({
+        query: RADIO_TRACKS_BY_CREATOR_QUERY,
+        variables: { creatorUserId: authorId },
+        fetchPolicy: 'network-only',
+      });
+      authorTracks.value = tdata?.radioTracksByCreator ?? [];
+    } catch {
+      authorTracks.value = [];
+    }
   } catch (queryError) {
     pageError.value = queryError.message;
     authorWorks.value = [];
@@ -436,6 +450,21 @@ async function submitAdminWork() {
     adminWorkBusy.value = false;
   }
 }
+
+function canManageAuthorTracks(track) {
+  if (isAdmin.value) return true;
+  return String(track.creatorUserId) === String(currentUser.value?.id);
+}
+
+async function deleteAuthorTrack(track) {
+  if (!globalThis.confirm?.('Удалить этот аудиотрек?')) return;
+  try {
+    await apolloClient.mutate({ mutation: DELETE_RADIO_TRACK_MUTATION, variables: { id: track.id } });
+    authorTracks.value = authorTracks.value.filter((t) => t.id !== track.id);
+  } catch (error) {
+    pageError.value = error instanceof Error ? error.message : 'Не удалось удалить трек.';
+  }
+}
 </script>
 
 <template>
@@ -505,6 +534,9 @@ async function submitAdminWork() {
             </button>
             <button class="btn" :class="activeLedger === 'received' ? 'btn-primary' : 'btn-outline'" type="button" @click="activeLedger = 'received'">
               ПОЛУЧЕННЫЕ
+            </button>
+            <button class="btn" :class="activeLedger === 'audio' ? 'btn-primary' : 'btn-outline'" type="button" @click="activeLedger = 'audio'">
+              АУДИО
             </button>
           </div>
 
@@ -723,10 +755,25 @@ async function submitAdminWork() {
             </li>
           </ol>
 
+          <ol v-else-if="activeLedger === 'audio' && authorTracks.length" class="author-works-ledger">
+            <li v-for="track in authorTracks" :key="`audio-${track.id}`" class="author-works-ledger-item">
+              <div class="author-work-order">&#9834;</div>
+              <div class="author-work-body">
+                <div class="author-work-title">{{ track.title }}</div>
+                <div class="author-work-meta">{{ track.authorName || 'Автор не указан' }}</div>
+              </div>
+              <div class="inline-actions" v-if="canManageAuthorTracks(track)">
+                <RouterLink class="btn btn-sm btn-outline" :to="{ path: '/radio' }">Открыть</RouterLink>
+                <button class="btn btn-sm btn-danger" type="button" @click="deleteAuthorTrack(track)">Удалить</button>
+              </div>
+            </li>
+          </ol>
+
           <div v-else-if="!worksLoading" class="empty-state author-empty-ledger">
             <template v-if="activeLedger === 'works'">У этого автора пока нет опубликованных произведений.</template>
             <template v-else-if="activeLedger === 'written'">Автор пока не написал отзывов другим авторам.</template>
-            <template v-else>Этому автору пока никто не написал отзывов.</template>
+            <template v-else-if="activeLedger !== 'audio'">Этому автору пока никто не написал отзывов.</template>
+            <template v-if="activeLedger === 'audio'">У этого автора пока нет загруженных аудиотреков.</template>
           </div>
         </section>
       </div>

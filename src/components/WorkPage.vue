@@ -12,6 +12,7 @@ import {
   WORK_QUERY,
 } from '../lib/graphql.js';
 import { formatDate, formatWorkSection, ratingLabel } from '../lib/format.js';
+import { getWorkMediaMeta, uploadWorkMedia } from '../lib/workMedia.js';
 import { getAuthorDisplayName } from '../lib/forum.js';
 import { buildAuthorPageLocation, normalizeRouteParam } from '../lib/routes.js';
 import { isRichTextEmpty, renderRichTextHtml, sanitizeRichTextHtml, stripHtml } from '../lib/richText.js';
@@ -40,6 +41,39 @@ const editForm = ref({
   body: '<p></p>',
   projectFormat: '',
 });
+const editAudioFile = ref(null);
+const editAudioBusy = ref(false);
+const editAudioStatus = ref('');
+const audioMeta = getWorkMediaMeta('audio');
+
+async function handleEditAudioChange(event) {
+  editAudioFile.value = event?.target?.files?.[0] ?? null;
+  editAudioStatus.value = '';
+}
+async function uploadEditAudio() {
+  const file = editAudioFile.value;
+  if (!file) return;
+  editAudioBusy.value = true;
+  editAudioStatus.value = '';
+  try {
+    const asset = await uploadWorkMedia({ kind: 'audio', file });
+    if (asset?.url) {
+      work.value.audioUrl = asset.url;
+      work.value.audioFileName = asset.fileName || file.name;
+      editAudioStatus.value = 'Аудио прикреплено. Сохрани произведение.';
+    }
+  } catch (error) {
+    editAudioStatus.value = error instanceof Error ? error.message : 'Не удалось загрузить аудио.';
+  } finally {
+    editAudioBusy.value = false;
+  }
+}
+function removeEditAudio() {
+  work.value.audioUrl = null;
+  work.value.audioFileName = null;
+  editAudioFile.value = null;
+  editAudioStatus.value = '';
+}
 let workRequestVersion = 0;
 
 const projectFormats = [
@@ -389,6 +423,21 @@ async function softDeleteCurrentWork() {
           label="Текст"
           placeholder="Полный текст произведения"
         />
+
+        <div class="field">
+          <label for="edit-work-audio">Аудиофайл произведения</label>
+          <input id="edit-work-audio" class="input" type="file" :accept="audioMeta.accept" :disabled="editAudioBusy" @change="handleEditAudioChange" />
+          <div v-if="work.audioUrl" class="inline-actions">
+            <span class="pill good">Сейчас прикреплено: {{ work.audioFileName || 'аудио' }}</span>
+            <button class="btn btn-sm btn-outline" type="button" :disabled="editAudioBusy" @click="uploadEditAudio">{{ editAudioBusy ? 'Загружаем…' : 'Заменить аудио' }}</button>
+            <button class="btn btn-sm btn-danger" type="button" :disabled="editAudioBusy" @click="removeEditAudio">Убрать аудио</button>
+          </div>
+          <div v-else-if="editAudioFile" class="inline-actions">
+            <span class="pill">Выбран: {{ editAudioFile.name }}</span>
+            <button class="btn btn-sm btn-primary" type="button" :disabled="editAudioBusy" @click="uploadEditAudio">{{ editAudioBusy ? 'Загружаем…' : 'Прикрепить аудио' }}</button>
+          </div>
+          <div v-if="editAudioStatus" class="message" :class="editAudioStatus.includes('прикреплено') ? 'success' : 'error'">{{ editAudioStatus }}</div>
+        </div>
 
         <div class="inline-actions">
           <button class="btn btn-primary" type="submit" :disabled="editBusy">{{ editBusy ? 'Сохраняем…' : 'Сохранить' }}</button>
