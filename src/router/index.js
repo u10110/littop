@@ -39,7 +39,7 @@ const router = createRouter({
         setTimeout(() => {
           resolve({
             el: to.hash,
-            behavior: smooth,
+            behavior: "smooth",
             top: 90, // запас под sticky-шапку
           });
         }, 400);
