@@ -17,6 +17,7 @@ import {
 } from './lib/auth.js';
 import { useSession } from './lib/session.js';
 import { apolloClient } from './lib/apollo.js';
+import { uploadSiteHeaderImage } from './lib/siteHeader.js';
 import { PRIVATE_DIALOGS_QUERY, SITE_CHROME_QUERY, SITE_SETTINGS_QUERY, UPDATE_SITE_SETTING_MUTATION, TOUCH_PRESENCE_MUTATION } from './lib/graphql.js';
 import { formatBirthday, formatDateTime } from './lib/format.js';
 import { setDocumentTitle } from './lib/pageTitle.js';
@@ -87,10 +88,51 @@ const siteBannerBusy = ref(false);
 async function loadSiteBanner() {
   try {
     const { data } = await apolloClient.query({ query: SITE_SETTINGS_QUERY, fetchPolicy: 'network-only' });
-    const found = (data?.siteSettings ?? []).find((s) => s.key === 'site_banner');
-    siteBanner.value = found?.value ?? '';
+    const settings = data?.siteSettings ?? [];
+    siteBanner.value = settings.find((s) => s.key === 'site_banner')?.value ?? '';
+    headerImageUrl.value = settings.find((s) => s.key === 'header_image_url')?.value ?? '';
   } catch {
     siteBanner.value = '';
+    headerImageUrl.value = '';
+  }
+}
+
+const headerImageUrl = ref('');
+const headerImageBusy = ref(false);
+const headerImageInput = ref(null);
+const headerStyle = computed(() => (headerImageUrl.value
+  ? {
+      backgroundImage: `linear-gradient(rgba(0,0,0,.45), rgba(0,0,0,.45)), url("${headerImageUrl.value}")`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+    }
+  : {}));
+
+async function onHeaderImageSelected(event) {
+  const file = event.target?.files?.[0];
+  if (!file) return;
+  headerImageBusy.value = true;
+  try {
+    const url = await uploadSiteHeaderImage({ file });
+    await apolloClient.mutate({ mutation: UPDATE_SITE_SETTING_MUTATION, variables: { key: 'header_image_url', value: url } });
+    headerImageUrl.value = url;
+  } catch {
+    // ошибка загрузки картинки шапки
+  } finally {
+    headerImageBusy.value = false;
+    if (headerImageInput.value) headerImageInput.value.value = '';
+  }
+}
+
+async function clearHeaderImage() {
+  headerImageBusy.value = true;
+  try {
+    await apolloClient.mutate({ mutation: UPDATE_SITE_SETTING_MUTATION, variables: { key: 'header_image_url', value: '' } });
+    headerImageUrl.value = '';
+  } catch {
+    // ошибка сброса картинки шапки
+  } finally {
+    headerImageBusy.value = false;
   }
 }
 function startEditBanner() {
@@ -575,7 +617,7 @@ async function submitRestoreOwner() {
 </script>
 
 <template>
-  <header>
+  <header :style="headerStyle">
     <div class="navwrap">
       <div class="logo-block">
         <div class="logo"><RouterLink to="/"> Литопотам </RouterLink></div>
@@ -641,6 +683,15 @@ async function submitRestoreOwner() {
         </div>
       </template>
     </div>
+  </div>
+
+  <div v-if="isAdmin" class="site-header-admin">
+    <span class="meta">Картинка шапки:</span>
+    <input ref="headerImageInput" type="file" accept="image/*" :disabled="headerImageBusy" @change="onHeaderImageSelected" />
+    <button v-if="headerImageUrl" class="btn btn-sm btn-outline" type="button" :disabled="headerImageBusy" @click="clearHeaderImage">Убрать</button>
+    <span v-if="headerImageBusy" class="meta">Загружаем…</span>
+    <span v-else-if="headerImageUrl" class="meta">установлена</span>
+    <span v-else class="meta">не задана</span>
   </div>
 
   <Transition name="fade-modal">

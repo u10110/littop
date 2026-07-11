@@ -9,6 +9,7 @@ import { CREATE_FORUM_TOPIC_MUTATION, FORUM_OVERVIEW_QUERY, FORUM_TOPIC_QUERY } 
 import { excerptText, formatDate } from '../lib/format.js';
 import { buildForumTopicLookupVariables, getAuthorDisplayName, getAuthorInitial } from '../lib/forum.js';
 import { buildAuthorPageLocation, buildForumTopicPageLocation, normalizeRouteParam } from '../lib/routes.js';
+import { uploadForumTopicImage } from '../lib/forumImages.js';
 import { useSession } from '../lib/session.js';
 
 const route = useRoute();
@@ -26,6 +27,14 @@ const topicForm = ref({
   title: '',
   body: '',
 });
+const topicImageFile = ref(null);
+const topicImagePreviewUrl = ref('');
+
+function handleTopicImageChange(event) {
+  const file = event?.target?.files?.[0] ?? null;
+  topicImageFile.value = file;
+  topicImagePreviewUrl.value = file ? URL.createObjectURL(file) : '';
+}
 
 const { isAuthenticated, bootstrapSession } = useSession();
 
@@ -167,6 +176,9 @@ async function submitTopic() {
   topicStatus.value = '';
 
   try {
+    const imageUrl = topicImageFile.value instanceof File
+      ? await uploadForumTopicImage({ file: topicImageFile.value })
+      : '';
     const { data } = await apolloClient.mutate({
       mutation: CREATE_FORUM_TOPIC_MUTATION,
       variables: {
@@ -174,11 +186,14 @@ async function submitTopic() {
           sectionSlug: topicForm.value.sectionSlug,
           title: topicForm.value.title.trim(),
           body: topicForm.value.body.trim(),
+          imageUrl,
         },
       },
     });
     topicForm.value.title = '';
     topicForm.value.body = '';
+    topicImageFile.value = null;
+    topicImagePreviewUrl.value = '';
     topicStatus.value = 'Тема создана.';
     await refetch();
     selectedTopicId.value = data?.createForumTopic?.id ?? selectedTopicId.value;
@@ -295,6 +310,11 @@ async function submitTopic() {
           <div class="field">
             <label for="forum-body">Текст</label>
             <textarea id="forum-body" v-model="topicForm.body" class="textarea" required />
+          </div>
+          <div class="field">
+            <label for="forum-image">Картинка темы (необязательно)</label>
+            <input id="forum-image" type="file" accept="image/*" @change="handleTopicImageChange" />
+            <img v-if="topicImagePreviewUrl" :src="topicImagePreviewUrl" class="forum-topic-preview-image" alt="превью картинки темы" />
           </div>
           <button class="btn btn-primary" type="submit" :disabled="topicBusy">{{ topicBusy ? 'Создаём…' : 'Создать тему' }}</button>
           <div v-if="topicStatus" class="message" :class="topicStatus.includes('создана') ? 'success' : 'error'">{{ topicStatus }}</div>

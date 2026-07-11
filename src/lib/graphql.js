@@ -95,6 +95,8 @@ export const FORUM_TOPIC_PREVIEW_FIELDS = gql`
     viewsCount
     status
     isPinned
+    imageUrl
+    featuredMain
     tags
     createdAt
     updatedAt
