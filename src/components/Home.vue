@@ -76,9 +76,13 @@ const healthTone = computed(() => {
         <h2>Колонка редактора</h2>
         <RouterLink to="/forum?section=editor-column" class="btn btn-outline">Все статьи</RouterLink>
       </div>
-      <article v-if="editorLead" class="card stack">
+      <article v-if="editorLead" class="card stack editor-lead">
+        <div v-if="editorLead.imageUrl" class="editor-lead-image">
+          <img :src="editorLead.imageUrl" :alt="editorLead.title" loading="lazy" />
+        </div>
         <div class="chips">
           <span class="pill">Колонка редактора</span>
+          <span v-if="editorLead.featuredMain" class="pill good">на главной</span>
           <span class="pill">ответов: {{ editorLead.repliesCount }}</span>
         </div>
         <h3>
@@ -94,7 +98,18 @@ const healthTone = computed(() => {
           <RouterLink class="btn btn-primary" :to="buildForumTopicPageLocation(editorLead)">Открыть тему</RouterLink>
         </div>
       </article>
-      <div v-else class="empty-state">В колонке редактора пока нет опубликованных статей.</div>
+      <div v-else class="empty-state editor-informer">
+        <p>В колонке редактора пока нет опубликованных статей.</p>
+        <template v-if="recentTopics.length">
+          <div class="meta">Темы форума:</div>
+          <ul class="informer-list">
+            <li v-for="topic in recentTopics" :key="`inform-${topic.id}`">
+              <RouterLink :to="buildForumTopicPageLocation(topic)">{{ topic.title }}</RouterLink>
+              <span class="meta"> · {{ formatDate(topic.lastPostAt || topic.createdAt) }}</span>
+            </li>
+          </ul>
+        </template>
+      </div>
     </div>
 
     <div class="section-block">
@@ -177,18 +192,6 @@ const healthTone = computed(() => {
               <div class="meta">{{ author.worksCountCached }} произведений</div>
             </div>
           </div>
-        </article>
-        <article class="card">
-          <h3>Кто в сети</h3>
-          <div v-if="onlineAuthors.length" class="list">
-            <div v-for="author in onlineAuthors" :key="`online-${author.id}`" class="inline-card">
-              <strong>
-                <RouterLink :to="buildAuthorPageLocation(author)">{{ author.displayName }}</RouterLink>
-              </strong>
-              <div class="meta">@{{ author.login }} · сейчас на сайте</div>
-            </div>
-          </div>
-          <div v-else class="empty-state">Сейчас в сети никого не видно.</div>
         </article>
       </div>
       <div v-else class="empty-state">В базе пока нет авторов. После регистрации они начнут появляться здесь автоматически.</div>

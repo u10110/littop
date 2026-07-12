@@ -59,3 +59,44 @@ export async function uploadForumPostImage({
 
   return payload?.imageUrl || '';
 }
+
+export async function uploadForumTopicImage({
+  file,
+  graphqlEndpoint = getGraphqlEndpoint(),
+  token = getStoredToken(),
+} = {}) {
+  if (!(file instanceof File)) {
+    throw new Error('Выбери изображение для темы.');
+  }
+  if (!token) {
+    throw new Error('Для загрузки изображения нужен вход в аккаунт.');
+  }
+
+  const backendBaseUrl = resolveBackendBaseUrl(graphqlEndpoint);
+  const response = await fetch(`${backendBaseUrl}/forum/upload-topic-image`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...buildAuthHeaders(token),
+    },
+    body: JSON.stringify({
+      fileName: file.name,
+      mimeType: file.type || '',
+      contentBase64: await fileToBase64(file),
+    }),
+  });
+
+  const rawText = await response.text();
+  let payload = null;
+  try {
+    payload = rawText ? JSON.parse(rawText) : null;
+  } catch {
+    payload = null;
+  }
+
+  if (!response.ok) {
+    throw new Error(payload?.error || rawText || 'Не удалось загрузить изображение темы.');
+  }
+
+  return payload?.imageUrl || '';
+}
