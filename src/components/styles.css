@@ -773,6 +773,116 @@ hr.divider {
   align-items: start;
 }
 
+/* --- Форум: карточка темы с блоком «Последние сообщения» --- */
+.forum-topics {
+  gap: 16px;
+}
+
+.forum-topic-card--rich {
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 10px 24px rgba(140, 47, 57, 0.05);
+}
+
+.forum-topic-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  font-size: 0.92rem;
+}
+
+.forum-topic-title {
+  display: inline-block;
+  margin-top: 4px;
+  color: #1a5fb4;
+  font-weight: 700;
+  font-size: 1.18rem;
+  line-height: 1.25;
+  text-decoration: none;
+}
+
+.forum-topic-title:hover {
+  text-decoration: underline;
+}
+
+.forum-topic-excerpt {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.96rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.forum-topic-last-posts {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.forum-topic-last-posts-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0;
+}
+
+.forum-topic-last-posts-head h4 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.forum-last-post {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.forum-last-post-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.forum-last-post-text {
+  font-size: 0.94rem;
+  line-height: 1.4;
+  color: var(--text);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.forum-goto-link {
+  align-self: flex-start;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.forum-goto-link:hover {
+  text-decoration: underline;
+}
+
+.forum-topic-card-actions {
+  margin-top: 2px;
+}
+
 .forum-topic-card-head,
 .comment-item-rich,
 .forum-topic-opening,

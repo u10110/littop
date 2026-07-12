@@ -193,18 +193,6 @@ const healthTone = computed(() => {
             </div>
           </div>
         </article>
-        <article class="card">
-          <h3>Кто в сети</h3>
-          <div v-if="onlineAuthors.length" class="list">
-            <div v-for="author in onlineAuthors" :key="`online-${author.id}`" class="inline-card">
-              <strong>
-                <RouterLink :to="buildAuthorPageLocation(author)">{{ author.displayName }}</RouterLink>
-              </strong>
-              <div class="meta">@{{ author.login }} · сейчас на сайте</div>
-            </div>
-          </div>
-          <div v-else class="empty-state">Сейчас в сети никого не видно.</div>
-        </article>
       </div>
       <div v-else class="empty-state">В базе пока нет авторов. После регистрации они начнут появляться здесь автоматически.</div>
     </div>

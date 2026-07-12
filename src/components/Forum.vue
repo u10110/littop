@@ -1,131 +1,88 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
-import { RouterLink, useRoute, useRouter } from 'vue-router';
-import { useQuery } from '@vue/apollo-composable';
+import { ref, computed, watch, onMounted } from 'vue';
+import { RouterLink, useRouter } from 'vue-router';
+import { useQuery, useMutation } from '@vue/apollo-composable';
 
-import ForumThreadView from './ForumThreadView.vue';
-import { apolloClient } from '../lib/apollo.js';
-import { CREATE_FORUM_TOPIC_MUTATION, FORUM_OVERVIEW_QUERY, FORUM_TOPIC_QUERY } from '../lib/graphql.js';
-import { excerptText, formatDate } from '../lib/format.js';
-import { buildForumTopicLookupVariables, getAuthorDisplayName, getAuthorInitial } from '../lib/forum.js';
-import { buildAuthorPageLocation, buildForumTopicPageLocation, normalizeRouteParam } from '../lib/routes.js';
-import { uploadForumTopicImage } from '../lib/forumImages.js';
+import {
+  FORUM_OVERVIEW_QUERY,
+  FORUM_SECTIONS_QUERY,
+  CREATE_FORUM_TOPIC_MUTATION,
+} from '../lib/graphql.js';
+import { formatDateTime, excerptText } from '../lib/format.js';
+import {
+  buildAuthorPageLocation,
+  buildForumTopicPageLocation,
+} from '../lib/routes.js';
+import {
+  getAuthorDisplayName,
+  getAuthorInitial,
+} from '../lib/forum.js';
 import { useSession } from '../lib/session.js';
 
-const route = useRoute();
+const { isAuthenticated } = useSession();
 const router = useRouter();
-const selectedSection = ref(normalizeRouteParam(route.query.section));
-const selectedTopicId = ref(null);
-const topicDetail = ref(null);
-const topicDetailLoading = ref(false);
-const topicDetailError = ref('');
-const topicStatus = ref('');
-const topicBusy = ref(false);
-let topicRequestVersion = 0;
-const topicForm = ref({
-  sectionSlug: 'tm',
-  title: '',
-  body: '',
-});
-const topicImageFile = ref(null);
-const topicImagePreviewUrl = ref('');
 
-function handleTopicImageChange(event) {
-  const file = event?.target?.files?.[0] ?? null;
-  topicImageFile.value = file;
-  topicImagePreviewUrl.value = file ? URL.createObjectURL(file) : '';
-}
+const activeSection = ref(null);
+const searchQuery = ref('');
 
-const { isAuthenticated, bootstrapSession } = useSession();
+const { result, loading, error, refetch } = useQuery(
+  FORUM_OVERVIEW_QUERY,
+  computed(() => ({
+    sectionSlug: activeSection.value || null,
+    limit: 20,
+    offset: 0,
+  })),
+  { fetchPolicy: 'cache-and-network' },
+);
 
-const queryVariables = computed(() => ({
-  sectionSlug: selectedSection.value || null,
-  limit: 30,
-  offset: 0,
-}));
-
-const { result, loading, error, refetch } = useQuery(FORUM_OVERVIEW_QUERY, queryVariables, {
-  fetchPolicy: 'network-only',
-});
-
-const sections = computed(() => result.value?.forumSections ?? []);
+const sectionsResult = useQuery(FORUM_SECTIONS_QUERY);
+const sections = computed(() => sectionsResult.value?.forumSections ?? []);
 const topics = computed(() => result.value?.forumTopics ?? []);
+const loadError = computed(() => error.value?.message || '');
+
+const displayTopics = computed(() => {
+  const q = String(searchQuery.value || '').trim().toLowerCase();
+  if (!q) return topics.value;
+  return topics.value.filter((t) => {
+    const hay = `${t.title || ''} ${t.body || ''} ${authorLabel(t.author)}`.toLowerCase();
+    return hay.includes(q);
+  });
+});
+
+const fallbackSection = computed(() => sections.value[0]?.slug || '');
+const activeSectionName = computed(() =>
+  sections.value.find((s) => s.slug === activeSection.value)?.name || '',
+);
+
+const showNewTopicModal = ref(false);
+const newTopicSection = ref('');
+const newTopicTitle = ref('');
+const newTopicBody = ref('');
+const newTopicBusy = ref(false);
+const newTopicError = ref('');
+const newTopicImageFile = ref(null);
+
+const [createTopicMutation] = useMutation(CREATE_FORUM_TOPIC_MUTATION);
+
+watch(activeSection, () => {
+  refetch();
+});
+
+watch(sections, () => {
+  if (!activeSection.value && fallbackSection.value) {
+    activeSection.value = fallbackSection.value;
+  }
+}, { immediate: true });
 
 onMounted(() => {
-  bootstrapSession();
-});
-
-watch(sections, (items) => {
-  if (!items.length) {
-    topicForm.value.sectionSlug = '';
-    return;
-  }
-
-  const stillExists = items.some((item) => item.slug === topicForm.value.sectionSlug);
-  if (!stillExists) {
-    topicForm.value.sectionSlug = items[0].slug;
-  }
-}, { immediate: true });
-
-watch(() => route.query.section, (rawSection) => {
-  const normalized = normalizeRouteParam(rawSection);
-  if (normalized !== selectedSection.value) {
-    selectedSection.value = normalized;
-  }
-}, { immediate: true });
-
-watch(selectedSection, (slug, previousSlug) => {
-  const normalizedRouteSection = normalizeRouteParam(route.query.section);
-  if (slug !== normalizedRouteSection) {
-    const nextQuery = { ...route.query };
-    if (slug) nextQuery.section = slug;
-    else delete nextQuery.section;
-    router.replace({ query: nextQuery });
-  }
-
-  if (slug) {
-    topicForm.value.sectionSlug = slug;
-  }
-
-  if (slug !== previousSlug) {
-    topicRequestVersion += 1;
-    selectedTopicId.value = null;
-    topicDetail.value = null;
-    topicDetailLoading.value = false;
-    topicDetailError.value = '';
+  if (!activeSection.value && fallbackSection.value) {
+    activeSection.value = fallbackSection.value;
   }
 });
 
-watch(topics, (items) => {
-  if (!items.length) {
-    topicRequestVersion += 1;
-    selectedTopicId.value = null;
-    topicDetail.value = null;
-    topicDetailLoading.value = false;
-    topicDetailError.value = '';
-    return;
-  }
-
-  const stillExists = items.some((item) => String(item.id) === String(selectedTopicId.value));
-  if (!stillExists) {
-    topicRequestVersion += 1;
-    selectedTopicId.value = null;
-    topicDetail.value = null;
-    topicDetailLoading.value = false;
-    topicDetailError.value = '';
-  }
-}, { immediate: true });
-
-watch(selectedTopicId, (topicId) => {
-  if (!topicId) {
-    topicRequestVersion += 1;
-    topicDetail.value = null;
-    topicDetailLoading.value = false;
-    topicDetailError.value = '';
-    return;
-  }
-  loadTopic(topicId);
-}, { immediate: true });
+function openAuthModal(mode = 'login') {
+  window.dispatchEvent(new CustomEvent('littop:open-auth', { detail: { mode } }));
+}
 
 function authorLabel(author) {
   return getAuthorDisplayName(author);
@@ -135,202 +92,259 @@ function authorInitial(author) {
   return getAuthorInitial(author);
 }
 
-async function loadTopic(topicId) {
-  const requestVersion = ++topicRequestVersion;
-  topicDetailLoading.value = true;
-  topicDetailError.value = '';
+function lastPosts(topic) {
+  const posts = Array.isArray(topic?.posts) ? topic.posts : [];
+  return posts.slice(-3);
+}
 
-  try {
-    const { data } = await apolloClient.query({
-      query: FORUM_TOPIC_QUERY,
-      variables: buildForumTopicLookupVariables(topicId),
-      fetchPolicy: 'network-only',
-    });
+function replyWord(n) {
+  const v = Number(n) || 0;
+  const mod10 = v % 10;
+  const mod100 = v % 100;
+  if (mod10 === 1 && mod100 !== 11) return 'ответ';
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'ответа';
+  return 'ответов';
+}
 
-    if (requestVersion !== topicRequestVersion) {
-      return;
-    }
+function handleImageChange(event) {
+  newTopicImageFile.value = event?.target?.files?.[0] ?? null;
+}
 
-    topicDetail.value = data?.forumTopic ?? null;
-  } catch (queryError) {
-    if (requestVersion !== topicRequestVersion) {
-      return;
-    }
-
-    topicDetail.value = null;
-    topicDetailError.value = queryError.message;
-  } finally {
-    if (requestVersion === topicRequestVersion) {
-      topicDetailLoading.value = false;
-    }
+async function resolveUploadedImageUrl(file) {
+  if (file instanceof File) {
+    const { uploadForumTopicImage } = await import('../lib/forumImages.js');
+    return uploadForumTopicImage({ file });
   }
+  return null;
 }
 
-async function refreshTopicDetail() {
-  if (!selectedTopicId.value) return;
-  await Promise.all([refetch(), loadTopic(selectedTopicId.value)]);
-}
-
-async function submitTopic() {
-  topicBusy.value = true;
-  topicStatus.value = '';
-
+async function submitNewTopic() {
+  newTopicBusy.value = true;
+  newTopicError.value = '';
   try {
-    const imageUrl = topicImageFile.value instanceof File
-      ? await uploadForumTopicImage({ file: topicImageFile.value })
-      : '';
-    const { data } = await apolloClient.mutate({
-      mutation: CREATE_FORUM_TOPIC_MUTATION,
+    const imageUrl = await resolveUploadedImageUrl(newTopicImageFile.value);
+    const { data } = await createTopicMutation({
       variables: {
         input: {
-          sectionSlug: topicForm.value.sectionSlug,
-          title: topicForm.value.title.trim(),
-          body: topicForm.value.body.trim(),
+          sectionSlug: newTopicSection.value || fallbackSection.value,
+          title: newTopicTitle.value.trim(),
+          body: newTopicBody.value.trim(),
           imageUrl,
         },
       },
     });
-    topicForm.value.title = '';
-    topicForm.value.body = '';
-    topicImageFile.value = null;
-    topicImagePreviewUrl.value = '';
-    topicStatus.value = 'Тема создана.';
-    await refetch();
-    selectedTopicId.value = data?.createForumTopic?.id ?? selectedTopicId.value;
-  } catch (mutationError) {
-    topicStatus.value = mutationError.message;
+    const created = data?.createForumTopic;
+    newTopicSection.value = '';
+    newTopicTitle.value = '';
+    newTopicBody.value = '';
+    newTopicImageFile.value = null;
+    showNewTopicModal.value = false;
+    if (created?.id) {
+      await refetch();
+      router.push(buildForumTopicPageLocation(created));
+    }
+  } catch (e) {
+    newTopicError.value = e?.message || 'Не удалось создать тему.';
   } finally {
-    topicBusy.value = false;
+    newTopicBusy.value = false;
   }
 }
 </script>
 
 <template>
-  <section class="page-head">
-    <h1>Форум</h1>
-    <p class="muted">
-      Темы открываются и в split-view, и отдельной страницей. Ответы поддерживают ветки, а редактирование доступно только автору собственного сообщения.
-    </p>
-  </section>
-
-  <div v-if="error" class="message error">{{ error.message }}</div>
-
-  <section class="panel stack">
-    <div class="section-head">
-      <h2>Секции</h2>
-      <span class="pill">{{ loading ? 'загрузка…' : `${sections.length} секций` }}</span>
-    </div>
-    <div class="chips">
-      <button
-        class="btn"
-        :class="selectedSection ? 'btn-outline' : 'btn-primary'"
-        type="button"
-        @click="selectedSection = ''"
-      >
-        Все секции
-      </button>
-      <button
-        v-for="section in sections"
-        :key="section.id"
-        class="btn"
-        :class="section.slug === selectedSection ? 'btn-primary' : 'btn-outline'"
-        type="button"
-        @click="selectedSection = section.slug"
-      >
-        {{ section.name }}
-      </button>
-    </div>
-  </section>
-
-  <section class="layout-columns forum-layout-columns">
-    <div class="stack">
+  <main>
+    <section v-if="!isAuthenticated || loadError" class="panel stack forum-auth-note">
       <div class="section-head">
-        <h2>Темы</h2>
-        <div class="inline-actions">
-          <RouterLink v-if="isAuthenticated" class="btn btn-primary" to="/forum#forum-new-topic-form">
-            Добавить тему
-          </RouterLink>
-          <span class="pill">{{ loading ? 'загрузка…' : `${topics.length} тем` }}</span>
-        </div>
-      </div>
-
-      <div v-if="topics.length" class="stack">
-        <article
-          v-for="topic in topics"
-          :key="topic.id"
-          class="card clickable forum-topic-card"
-          :class="{ 'is-selected': String(topic.id) === String(selectedTopicId) }"
-          @click="selectedTopicId = topic.id"
+        <h1 class="forum-page-title">Форум</h1>
+        <button
+          v-if="isAuthenticated"
+          class="btn btn-primary"
+          type="button"
+          :disabled="newTopicBusy"
+          @click="showNewTopicModal = true"
         >
-          <div class="forum-topic-card-head">
-            <div class="forum-post-avatar-wrap forum-post-avatar-wrap-sm">
-              <img v-if="topic.author?.avatarUrl" :src="topic.author.avatarUrl" class="forum-post-avatar forum-post-avatar-sm" alt="avatar автора темы" />
-              <div v-else class="forum-post-avatar forum-post-avatar-fallback forum-post-avatar-sm">{{ authorInitial(topic.author) }}</div>
+          Новая тема
+        </button>
+        <button
+          v-else
+          class="btn btn-primary"
+          type="button"
+          @click="openAuthModal('login')"
+        >
+          Войти, чтобы писать на форуме
+        </button>
+      </div>
+      <p v-if="loadError" class="message error">{{ loadError }}</p>
+    </section>
+
+    <!-- ФИЛЬТРЫ -->
+    <div class="filters forum-filters">
+      <button
+        v-if="isAuthenticated"
+        class="btn btn-primary"
+        type="button"
+        :disabled="newTopicBusy"
+        @click="showNewTopicModal = true"
+      >
+        Новая тема
+      </button>
+
+      <select v-model="activeSection" class="select forum-section-select">
+        <option :value="null">Все разделы</option>
+        <option v-for="section in sections" :key="section.id" :value="section.slug">
+          {{ section.name }}
+        </option>
+      </select>
+
+      <input
+        v-model="searchQuery"
+        class="input forum-search"
+        type="search"
+        placeholder="Поиск по форуму"
+      />
+    </div>
+
+    <!-- СПИСОК ТЕМ (одна широкая колонка) -->
+    <section class="forum-list">
+      <div v-if="loading && !displayTopics.length" class="message">Загрузка тем…</div>
+
+      <div v-if="displayTopics.length" class="stack forum-topics">
+        <article
+          v-for="topic in displayTopics"
+          :key="topic.id"
+          class="forum-topic-card forum-topic-card--rich"
+        >
+          <header class="forum-topic-card-head">
+            <div class="forum-post-avatar-wrap">
+              <img
+                v-if="topic.author?.avatarUrl"
+                :src="topic.author.avatarUrl"
+                class="forum-post-avatar"
+                :alt="`Аватар ${authorLabel(topic.author)}`"
+              />
+              <div v-else class="forum-post-avatar forum-post-avatar-fallback">
+                {{ authorInitial(topic.author) }}
+              </div>
             </div>
             <div class="forum-topic-card-body">
-              <div class="chips">
-                <span class="pill">{{ topic.sectionSlug }}</span>
-                <span v-if="topic.isPinned" class="pill warn">закреп</span>
-                <span class="pill">ответов: {{ topic.repliesCount }}</span>
-                <span class="pill">просмотров: {{ topic.viewsCount }}</span>
-              </div>
-              <div class="section-head forum-topic-card-title-row">
-                <h3>{{ topic.title }}</h3>
-                <RouterLink class="btn btn-outline btn-sm" :to="buildForumTopicPageLocation(topic)" @click.stop>
-                  Открыть тему
+              <div class="forum-topic-meta">
+                <RouterLink
+                  v-if="topic.author?.login"
+                  class="user-inline-link"
+                  :to="buildAuthorPageLocation(topic.author)"
+                >
+                  <strong>{{ authorLabel(topic.author) }}</strong>
                 </RouterLink>
+                <span v-else class="meta">{{ authorLabel(topic.author) }}</span>
+                <span class="meta">· {{ topic.sectionSlug }}</span>
+                <span class="meta">· добавлено: {{ formatDateTime(topic.createdAt) }}</span>
               </div>
-              <div class="meta">
-                <RouterLink v-if="topic.author?.login" class="user-inline-link" :to="buildAuthorPageLocation(topic.author)">{{ authorLabel(topic.author) }}</RouterLink>
-                <template v-else>{{ authorLabel(topic.author) }}</template>
-                · создана {{ formatDate(topic.createdAt) }}
+              <RouterLink class="forum-topic-title" :to="buildForumTopicPageLocation(topic)">
+                {{ topic.title }}
+              </RouterLink>
+              <p v-if="topic.body" class="forum-topic-excerpt">
+                {{ excerptText(topic.body, 240) }}
+              </p>
+            </div>
+          </header>
+
+          <section v-if="lastPosts(topic).length" class="forum-topic-last-posts">
+            <div class="section-head forum-topic-last-posts-head">
+              <h4>Последние сообщения</h4>
+              <span class="pill">{{ topic.repliesCount }} {{ replyWord(topic.repliesCount) }}</span>
+            </div>
+            <div class="stack forum-topic-last-posts-list">
+              <div v-for="post in lastPosts(topic)" :key="post.id" class="forum-last-post">
+                <div class="forum-post-avatar-wrap forum-post-avatar-wrap-sm">
+                  <img
+                    v-if="post.author?.avatarUrl"
+                    :src="post.author.avatarUrl"
+                    class="forum-post-avatar forum-post-avatar-sm"
+                    :alt="`Аватар ${authorLabel(post.author)}`"
+                  />
+                  <div v-else class="forum-post-avatar forum-post-avatar-sm forum-post-avatar-fallback">
+                    {{ authorInitial(post.author) }}
+                  </div>
+                </div>
+                <div class="forum-last-post-body">
+                  <div class="forum-post-author-line">
+                    <RouterLink
+                      v-if="post.author?.login"
+                      class="user-inline-link"
+                      :to="buildAuthorPageLocation(post.author)"
+                    >
+                      <strong>{{ authorLabel(post.author) }}</strong>
+                    </RouterLink>
+                    <span v-else class="meta">{{ authorLabel(post.author) }}</span>
+                    <span class="meta">· {{ formatDateTime(post.createdAt) }}</span>
+                  </div>
+                  <div class="prewrap forum-last-post-text">{{ excerptText(post.body, 200) }}</div>
+                  <RouterLink class="forum-goto-link" :to="buildForumTopicPageLocation(topic)">
+                    перейти →
+                  </RouterLink>
+                </div>
               </div>
             </div>
+          </section>
+
+          <div class="inline-actions forum-topic-card-actions">
+            <RouterLink class="btn btn-outline" :to="buildForumTopicPageLocation(topic)">
+              Открыть тему
+            </RouterLink>
+            <span v-if="topic.isPinned" class="pill warn">закреплено</span>
           </div>
         </article>
       </div>
-      <div v-else-if="!loading" class="empty-state">В выбранной секции пока нет тем.</div>
 
-      <article v-if="isAuthenticated" id="forum-new-topic-form" class="panel stack">
+      <div v-else-if="!loading" class="message empty">
+        Тем пока нет. {{ isAuthenticated ? 'Создайте первую!' : 'Войдите, чтобы написать.' }}
+      </div>
+
+      <div v-if="loadError" class="message error">{{ loadError }}</div>
+    </section>
+
+    <!-- МОДАЛКА СОЗДАНИЯ ТЕМЫ -->
+    <div v-if="showNewTopicModal" class="modal-backdrop" @click.self="showNewTopicModal = false">
+      <div class="auth-modal panel stack" role="dialog" aria-modal="true">
         <div class="section-head">
           <h2>Новая тема</h2>
+          <button class="btn btn-ghost modal-close" type="button" @click="showNewTopicModal = false" aria-label="Закрыть">×</button>
         </div>
 
-        <form class="stack" @submit.prevent="submitTopic">
+        <div v-if="newTopicError" class="message error">{{ newTopicError }}</div>
+
+        <form class="stack" @submit.prevent="submitNewTopic">
           <div class="field">
-            <label for="forum-section">Секция</label>
-            <select id="forum-section" v-model="topicForm.sectionSlug" class="select">
-              <option v-for="section in sections" :key="section.id" :value="section.slug">{{ section.name }}</option>
+            <label for="new-topic-section">Раздел</label>
+            <select id="new-topic-section" v-model="newTopicSection" class="select" required>
+              <option value="" disabled>Выберите раздел</option>
+              <option v-for="section in sections" :key="section.id" :value="section.slug">
+                {{ section.name }}
+              </option>
             </select>
           </div>
           <div class="field">
-            <label for="forum-title">Заголовок</label>
-            <input id="forum-title" v-model="topicForm.title" class="input" required />
+            <label for="new-topic-title">Заголовок</label>
+            <input id="new-topic-title" v-model="newTopicTitle" class="input" required />
           </div>
           <div class="field">
-            <label for="forum-body">Текст</label>
-            <textarea id="forum-body" v-model="topicForm.body" class="textarea" required />
+            <label for="new-topic-body">Текст темы</label>
+            <textarea id="new-topic-body" v-model="newTopicBody" class="textarea" required></textarea>
           </div>
           <div class="field">
-            <label for="forum-image">Картинка темы (необязательно)</label>
-            <input id="forum-image" type="file" accept="image/*" @change="handleTopicImageChange" />
-            <img v-if="topicImagePreviewUrl" :src="topicImagePreviewUrl" class="forum-topic-preview-image" alt="превью картинки темы" />
+            <label>Картинка (необязательно)</label>
+            <input type="file" accept="image/*" @change="handleImageChange" />
           </div>
-          <button class="btn btn-primary" type="submit" :disabled="topicBusy">{{ topicBusy ? 'Создаём…' : 'Создать тему' }}</button>
-          <div v-if="topicStatus" class="message" :class="topicStatus.includes('создана') ? 'success' : 'error'">{{ topicStatus }}</div>
+          <div class="inline-actions">
+            <button class="btn btn-primary" type="submit" :disabled="newTopicBusy">
+              {{ newTopicBusy ? 'Создаём…' : 'Создать тему' }}
+            </button>
+            <button class="btn btn-outline" type="button" :disabled="newTopicBusy" @click="showNewTopicModal = false">
+              Отмена
+            </button>
+          </div>
         </form>
-      </article>
+      </div>
     </div>
-
-    <div class="stack">
-      <ForumThreadView
-        v-if="topicDetail || topicDetailLoading || topicDetailError"
-        :topic="topicDetail"
-        :loading="topicDetailLoading"
-        :error="topicDetailError"
-        @refresh="refreshTopicDetail"
-      />
-      <div v-else class="empty-state">Выбери тему слева или открой её отдельной страницей.</div>
-    </div>
-  </section>
+  </main>
 </template>

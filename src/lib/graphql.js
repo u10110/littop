@@ -488,6 +488,7 @@ export const SITE_SETTINGS_QUERY = gql`
 
 export const FORUM_OVERVIEW_QUERY = gql`
   ${FORUM_TOPIC_PREVIEW_FIELDS}
+  ${FORUM_POST_FIELDS}
   query ForumOverview($sectionSlug: String, $limit: Int!, $offset: Int!) {
     forumSections {
       id
@@ -499,6 +500,9 @@ export const FORUM_OVERVIEW_QUERY = gql`
     }
     forumTopics(sectionSlug: $sectionSlug, limit: $limit, offset: $offset) {
       ...ForumTopicPreviewFields
+      posts {
+        ...ForumPostFields
+      }
     }
   }
 `;
