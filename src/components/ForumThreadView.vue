@@ -13,7 +13,7 @@ import {
   UPDATE_FORUM_TOPIC_MUTATION,
 } from '../lib/graphql.js';
 import { formatDate } from '../lib/format.js';
-import { uploadForumPostImage, uploadForumTopicImage } from '../lib/forumImages.js';
+import { uploadForumPostImage } from '../lib/forumImages.js';
 import { flattenForumPostTree, getAuthorDisplayName, getAuthorInitial } from '../lib/forum.js';
 import { buildAuthorPageLocation, buildForumTopicPageLocation } from '../lib/routes.js';
 import { useSession } from '../lib/session.js';
@@ -48,10 +48,6 @@ const replyImageFile = ref(null);
 const editPostId = ref(null);
 const editBody = ref('');
 const editImageFile = ref(null);
-
-const topicEditImageFile = ref(null);
-const topicEditImageUrl = ref('');
-const featuredBusy = ref(false);
 
 const topicEditMode = ref(false);
 const topicEditBusy = ref(false);
@@ -110,8 +106,6 @@ function syncTopicEditForm() {
     title: props.topic?.title || '',
     body: props.topic?.body || '',
   };
-  topicEditImageUrl.value = props.topic?.imageUrl || '';
-  topicEditImageFile.value = null;
 }
 
 function startTopicEdit() {
@@ -202,29 +196,6 @@ function handleEditImageChange(event) {
   editImageFile.value = event?.target?.files?.[0] ?? null;
 }
 
-function handleTopicImageEditChange(event) {
-  topicEditImageFile.value = event?.target?.files?.[0] ?? null;
-}
-
-async function toggleFeaturedMain() {
-  if (!props.topic?.id) return;
-  featuredBusy.value = true;
-  try {
-    await apolloClient.mutate({
-      mutation: UPDATE_FORUM_TOPIC_MUTATION,
-      variables: {
-        topicId: props.topic.id,
-        input: { featuredMain: !props.topic.featuredMain },
-      },
-    });
-    emit('refresh');
-  } catch (mutationError) {
-    topicEditStatus.value = mutationError.message;
-  } finally {
-    featuredBusy.value = false;
-  }
-}
-
 async function resolveUploadedImageUrl(file, fallbackUrl = null) {
   if (file instanceof File) {
     return uploadForumPostImage({ file });
@@ -238,9 +209,6 @@ async function submitTopicEdit() {
   topicEditStatus.value = '';
 
   try {
-    const imageUrl = topicEditImageFile.value instanceof File
-      ? await uploadForumTopicImage({ file: topicEditImageFile.value })
-      : (topicEditImageUrl.value || '');
     await apolloClient.mutate({
       mutation: UPDATE_FORUM_TOPIC_MUTATION,
       variables: {
@@ -249,7 +217,6 @@ async function submitTopicEdit() {
           sectionSlug: String(topicEditForm.value.sectionSlug || '').trim(),
           title: String(topicEditForm.value.title || '').trim(),
           body: String(topicEditForm.value.body || '').trim(),
-          imageUrl,
         },
       },
     });
@@ -412,11 +379,6 @@ async function deletePost(post) {
           {{ topicEditMode ? 'Отменить редактирование темы' : 'Редактировать тему / секцию' }}
         </button>
       </div>
-      <div v-if="isAdmin && topic.sectionSlug === 'editor-column'" class="inline-actions">
-        <button class="btn btn-primary" type="button" :disabled="featuredBusy" @click="toggleFeaturedMain">
-          {{ topic.featuredMain ? 'Убрать с главной' : 'Вывести на главную' }}
-        </button>
-      </div>
       <div class="inline-actions">
         <RouterLink class="btn btn-outline" :to="buildForumTopicPageLocation(topic)">Открыть тему</RouterLink>
         <button v-if="isAuthenticated" class="btn btn-primary" type="button" :disabled="threadBusy" @click="focusRootReplyForm">
@@ -444,12 +406,6 @@ async function deletePost(post) {
         <label for="topic-edit-body">Текст темы</label>
         <textarea id="topic-edit-body" v-model="topicEditForm.body" class="textarea" required />
       </div>
-      <div class="field">
-        <label>Картинка темы</label>
-        <img v-if="topicEditImageUrl && !topicEditImageFile" :src="topicEditImageUrl" class="forum-topic-preview-image" alt="текущая картинка темы" />
-        <input type="file" accept="image/*" @change="handleTopicImageEditChange" />
-        <button v-if="topicEditImageUrl || topicEditImageFile" class="btn btn-outline btn-sm" type="button" :disabled="topicEditBusy" @click="topicEditImageUrl = ''; topicEditImageFile = null;">Убрать картинку</button>
-      </div>
       <div class="inline-actions">
         <button class="btn btn-primary" type="submit" :disabled="topicEditBusy">{{ topicEditBusy ? 'Сохраняем…' : 'Сохранить тему' }}</button>
         <button class="btn btn-outline" type="button" :disabled="topicEditBusy" @click="cancelTopicEdit">Отмена</button>
@@ -468,7 +424,6 @@ async function deletePost(post) {
           <span v-if="topic.author?.city" class="meta">· {{ topic.author.city }}</span>
         </div>
         <div class="prewrap">{{ topic.body || 'Текст темы не указан.' }}</div>
-        <img v-if="topic.imageUrl" :src="topic.imageUrl" class="forum-topic-hero-image" alt="картинка темы" />
       </div>
     </article>
 
