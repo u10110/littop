@@ -214,7 +214,12 @@ async function toggleFeaturedMain() {
       mutation: UPDATE_FORUM_TOPIC_MUTATION,
       variables: {
         topicId: props.topic.id,
-        input: { featuredMain: !props.topic.featuredMain },
+        input: {
+          sectionSlug: String(props.topic.sectionSlug || '').trim(),
+          title: String(props.topic.title || '').trim(),
+          body: String(props.topic.body || '').trim(),
+          featuredMain: !props.topic.featuredMain,
+        },
       },
     });
     emit('refresh');
