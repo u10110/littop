@@ -105,6 +105,7 @@ export const FORUM_TOPIC_PREVIEW_FIELDS = gql`
       ...AuthorCardFields
     }
   }
+  ${AUTHOR_CARD_FIELDS}
 `;
 
 export const FORUM_POST_FIELDS = gql`
@@ -829,7 +830,6 @@ export const TOGGLE_WORK_COMMENT_LIKE_MUTATION = gql`
 `;
 
 export const CREATE_FORUM_TOPIC_MUTATION = gql`
-  ${AUTHOR_CARD_FIELDS}
   ${FORUM_TOPIC_PREVIEW_FIELDS}
   mutation CreateForumTopic($input: CreateForumTopicInput!) {
     createForumTopic(input: $input) {
@@ -839,7 +839,6 @@ export const CREATE_FORUM_TOPIC_MUTATION = gql`
 `;
 
 export const UPDATE_FORUM_TOPIC_MUTATION = gql`
-  ${AUTHOR_CARD_FIELDS}
   ${FORUM_TOPIC_PREVIEW_FIELDS}
   mutation UpdateForumTopic($topicId: ID!, $input: UpdateForumTopicInput!) {
     updateForumTopic(topicId: $topicId, input: $input) {
@@ -849,7 +848,6 @@ export const UPDATE_FORUM_TOPIC_MUTATION = gql`
 `;
 
 export const INCREMENT_FORUM_TOPIC_VIEWS_MUTATION = gql`
-  ${AUTHOR_CARD_FIELDS}
   ${FORUM_TOPIC_PREVIEW_FIELDS}
   mutation IncrementForumTopicViews($topicId: ID!) {
     incrementForumTopicViews(topicId: $topicId) {
