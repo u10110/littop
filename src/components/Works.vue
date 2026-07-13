@@ -11,7 +11,7 @@ import {
   WORKS_QUERY,
   WORK_VIEWERS_QUERY,
 } from '../lib/graphql.js';
-import { excerptText, formatDate, formatWorkSection, ratingLabel } from '../lib/format.js';
+import { formatDate, formatWorkSection, ratingLabel } from '../lib/format.js';
 import { flattenThreadTree } from '../lib/discussion.js';
 import { uploadForumPostImage } from '../lib/forumImages.js';
 import { getAuthorDisplayName, getAuthorInitial } from '../lib/forum.js';
@@ -24,6 +24,7 @@ const router = useRouter();
 const sectionFilter = ref('');
 const search = ref('');
 const mineOnly = ref(false);
+const todayOnly = ref(false);
 const selectedWorkId = ref(null);
 const comments = ref([]);
 const commentsLoading = ref(false);
@@ -74,10 +75,16 @@ function normalizeMineQuery(value) {
   return ['1', 'true', 'yes', 'mine', 'my'].includes(normalized);
 }
 
+function normalizeTodayQuery(value) {
+  const normalized = takeQueryValue(value).trim().toLowerCase();
+  return ['1', 'true', 'yes', 'today'].includes(normalized);
+}
+
 function applyFiltersFromQuery(query) {
   sectionFilter.value = normalizeSectionQuery(query.section);
   search.value = normalizeSearchQuery(query.search);
   mineOnly.value = normalizeMineQuery(query.mine);
+  todayOnly.value = normalizeTodayQuery(query.today);
 }
 
 function buildNextQuery(baseQuery) {
@@ -102,6 +109,12 @@ function buildNextQuery(baseQuery) {
     delete nextQuery.mine;
   }
 
+  if (todayOnly.value) {
+    nextQuery.today = '1';
+  } else {
+    delete nextQuery.today;
+  }
+
   return nextQuery;
 }
 
@@ -110,6 +123,7 @@ function managedQuerySnapshot(query) {
     section: normalizeSectionQuery(query.section),
     search: normalizeSearchQuery(query.search),
     mine: normalizeMineQuery(query.mine),
+    today: normalizeTodayQuery(query.today),
   });
 }
 
@@ -130,7 +144,7 @@ watch(
   { immediate: true },
 );
 
-watch([sectionFilter, search, mineOnly], () => {
+watch([sectionFilter, search, mineOnly, todayOnly], () => {
   const stateSnapshot = JSON.stringify({
     section: sectionFilter.value,
     search: search.value.trim(),
@@ -154,6 +168,7 @@ const queryVariables = computed(() => ({
   sectionCode: sectionFilter.value || null,
   search: search.value.trim() || null,
   authorId: authorFilterActive.value ? currentUser.value.id : null,
+  createdToday: todayOnly.value || null,
 }));
 
 const { result, loading, error, refetch } = useQuery(WORKS_QUERY, queryVariables, {
@@ -177,6 +192,10 @@ const activeFilterPills = computed(() => {
 
   if (mineOnly.value) {
     pills.push('только мои произведения');
+  }
+
+  if (todayOnly.value) {
+    pills.push('произведения за сегодня');
   }
 
   return pills;
@@ -390,6 +409,7 @@ function clearFilters() {
   sectionFilter.value = '';
   search.value = '';
   mineOnly.value = false;
+  todayOnly.value = false;
 }
 </script>
 
@@ -422,6 +442,9 @@ function clearFilters() {
           <button class="btn" :class="mineOnly ? 'btn-primary' : 'btn-outline'" type="button" @click="mineOnly = !mineOnly">
             {{ mineOnly ? 'Показываются мои' : 'Только мои произведения' }}
           </button>
+          <button class="btn" :class="todayOnly ? 'btn-primary' : 'btn-outline'" type="button" @click="todayOnly = !todayOnly">
+            {{ todayOnly ? 'За сегодня' : 'Произведения за сегодня' }}
+          </button>
           <button class="btn btn-outline" type="button" @click="clearFilters">Сбросить</button>
         </div>
       </div>
@@ -445,31 +468,23 @@ function clearFilters() {
         <span class="pill">{{ loading ? 'загрузка…' : `${works.length} записей` }}</span>
       </div>
 
-      <div v-if="works.length" class="stack">
-        <article
+      <ul v-if="works.length" class="work-list">
+        <li
           v-for="work in works"
           :key="work.id"
-          class="card clickable"
+          class="work-list-row"
           :class="{ 'is-selected': String(work.id) === String(selectedWorkId) }"
           @click="selectedWorkId = work.id"
         >
-          <div class="chips">
-            <span class="pill">{{ formatWorkSection(work.sectionCode) }}</span>
-            <span class="pill">{{ ratingLabel(work.averageRating, work.ratingsCount) }}</span>
-            <span class="pill">комментариев: {{ work.commentsCount }}</span>
-          </div>
-          <h3>{{ work.title }}</h3>
-          <div class="meta">
+          <RouterLink class="work-list-title" :to="buildWorkPageLocation(work)" @click.stop>{{ work.title }}</RouterLink>
+          <span class="work-list-meta">
             <RouterLink v-if="work.author?.login" class="user-inline-link" :to="buildAuthorPageLocation(work.author)" @click.stop>{{ work.author?.displayName || work.author?.login }}</RouterLink>
             <template v-else>{{ work.author?.displayName || work.author?.login }}</template>
-            · {{ formatDate(work.publishedAt || work.createdAt) }}
-          </div>
-          <div>{{ excerptText(work.summary || work.excerpt || work.body, 180) }}</div>
-          <div class="inline-actions">
-            <RouterLink class="btn btn-outline" :to="buildWorkPageLocation(work)" @click.stop>Страница произведения</RouterLink>
-          </div>
-        </article>
-      </div>
+            <span class="work-list-dot">·</span>{{ formatWorkSection(work.sectionCode) }}
+            <span class="work-list-dot">·</span>{{ formatDate(work.publishedAt || work.createdAt) }}
+          </span>
+        </li>
+      </ul>
       <div v-else-if="!loading" class="empty-state">{{ emptyStateText }}</div>
     </div>
 

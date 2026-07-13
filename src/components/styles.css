@@ -1634,3 +1634,52 @@ hr.divider {
   border-radius: 12px;
   object-fit: cover;
 }
+
+
+/* === Announce pack: row list for works catalog + announce confirm modal === */
+.work-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.work-list-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  flex-wrap: wrap;
+}
+.work-list-row:hover {
+  background: rgba(15, 23, 42, 0.04);
+}
+.work-list-row.is-selected {
+  background: rgba(99, 102, 241, 0.10);
+}
+.work-list-title {
+  font-weight: 600;
+  color: var(--accent, #4f46e5);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.work-list-title:hover {
+  text-decoration: underline;
+}
+.work-list-meta {
+  color: var(--muted, #64748b);
+  font-size: 0.92rem;
+}
+.work-list-dot {
+  margin: 0 6px;
+  color: var(--muted, #94a3b8);
+}
+.confirm-modal {
+  width: min(460px, 100%);
+}
+.confirm-modal-text {
+  margin: 0;
+  line-height: 1.55;
+}

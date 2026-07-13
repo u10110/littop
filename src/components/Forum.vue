@@ -62,7 +62,7 @@ const newTopicBusy = ref(false);
 const newTopicError = ref('');
 const newTopicImageFile = ref(null);
 
-const [createTopicMutation] = useMutation(CREATE_FORUM_TOPIC_MUTATION);
+const { mutate: createTopicMutation } = useMutation(CREATE_FORUM_TOPIC_MUTATION);
 
 watch(activeSection, () => {
   refetch();

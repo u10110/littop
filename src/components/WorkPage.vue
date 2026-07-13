@@ -22,6 +22,7 @@ const route = useRoute();
 const {
   bootstrapSession,
   currentUser,
+  isAuthenticated,
 } = useSession();
 
 const work = ref(null);
@@ -34,6 +35,7 @@ const deleteBusy = ref(false);
 const deleteStatus = ref('');
 const announcementBusy = ref(false);
 const announcementStatus = ref('');
+const showAnnounceConfirm = ref(false);
 const editForm = ref({
   sectionCode: 'poetry',
   title: '',
@@ -95,7 +97,7 @@ const isOwner = computed(() => {
 });
 const isAdmin = computed(() => currentUser.value?.role === 'admin');
 const canManageWork = computed(() => Boolean(isOwner.value || isAdmin.value));
-const canActivateAnnouncement = computed(() => Boolean(isAdmin.value && work.value && !work.value.announcementActive));
+const canActivateAnnouncement = computed(() => Boolean(isAuthenticated.value && work.value && !work.value.announcementActive));
 const renderedWorkBody = computed(() => renderRichTextHtml(work.value?.body || work.value?.summary || work.value?.excerpt || ''));
 
 onMounted(() => {
@@ -256,6 +258,20 @@ async function submitWorkUpdate() {
   }
 }
 
+function requestAnnouncement() {
+  if (!work.value || !canActivateAnnouncement.value) return;
+  if (isAdmin.value) {
+    activateAnnouncement();
+    return;
+  }
+  showAnnounceConfirm.value = true;
+}
+
+async function confirmAnnouncement() {
+  showAnnounceConfirm.value = false;
+  await activateAnnouncement();
+}
+
 async function activateAnnouncement() {
   if (!work.value || !canActivateAnnouncement.value) return;
   announcementBusy.value = true;
@@ -267,7 +283,7 @@ async function activateAnnouncement() {
         workId: work.value.id,
       },
     });
-    announcementStatus.value = 'Произведение добавлено в колонку «Анонсы».';
+    announcementStatus.value = 'произведение анонсировано';
     await refreshCurrentWork();
   } catch (mutationError) {
     announcementStatus.value = mutationError.message;
@@ -357,11 +373,11 @@ async function softDeleteCurrentWork() {
           </RouterLink>
           <a class="btn btn-primary" href="#root-work-review">Написать отзыв</a>
           <button
-            v-if="isAdmin"
+            v-if="canActivateAnnouncement"
             class="btn btn-primary"
             type="button"
             :disabled="announcementBusy || work.announcementActive"
-            @click="activateAnnouncement"
+            @click="requestAnnouncement"
           >
             {{ work.announcementActive ? 'Уже в анонсах' : announcementBusy ? 'Добавляем…' : 'Анонс' }}
           </button>
@@ -388,7 +404,20 @@ async function softDeleteCurrentWork() {
 
       <div v-if="editStatus" class="message" :class="editStatus.includes('сохранены') ? 'success' : 'error'">{{ editStatus }}</div>
       <div v-if="deleteStatus" class="message" :class="deleteStatus.includes('архив') ? 'success' : 'error'">{{ deleteStatus }}</div>
-      <div v-if="announcementStatus" class="message" :class="announcementStatus.includes('добавлено') ? 'success' : 'error'">{{ announcementStatus }}</div>
+      <div v-if="announcementStatus" class="message" :class="announcementStatus.includes('анонсировано') ? 'success' : 'error'">{{ announcementStatus }}</div>
+
+      <div v-if="showAnnounceConfirm" class="modal-backdrop" @click.self="showAnnounceConfirm = false">
+        <div class="auth-modal confirm-modal">
+          <p class="confirm-modal-text">
+            После анонсирования это произведение появится на главной, чтобы его увидели больше читателей.<br />
+            С вашего счета спишется 50 персиков. Продолжим?
+          </p>
+          <div class="inline-actions">
+            <button class="btn btn-primary" type="button" :disabled="announcementBusy" @click="confirmAnnouncement">Продолжить</button>
+            <button class="btn btn-outline" type="button" :disabled="announcementBusy" @click="showAnnounceConfirm = false">Отмена</button>
+          </div>
+        </div>
+      </div>
 
       <form v-if="editMode && canManageWork" class="stack work-edit-form" @submit.prevent="submitWorkUpdate">
         <div class="field">
