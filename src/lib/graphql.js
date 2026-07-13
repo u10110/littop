@@ -24,6 +24,7 @@ export const AUTHOR_CARD_FIELDS = gql`
     isClassic
     isMemorialPage
     isFeatured
+    isChild
     registeredAt
     lastSeenAt
     createdAt
@@ -287,8 +288,8 @@ export const SITE_CHROME_QUERY = gql`
 
 export const AUTHORS_QUERY = gql`
   ${AUTHOR_CARD_FIELDS}
-  query AuthorsPage($limit: Int!, $offset: Int!, $search: String, $classicsOnly: Boolean!, $memorialOnly: Boolean!, $featuredOnly: Boolean!) {
-    authors(limit: $limit, offset: $offset, search: $search, classicsOnly: $classicsOnly, memorialOnly: $memorialOnly, featuredOnly: $featuredOnly) {
+  query AuthorsPage($limit: Int!, $offset: Int!, $search: String, $classicsOnly: Boolean!, $memorialOnly: Boolean!, $featuredOnly: Boolean!, $childrenOnly: Boolean!) {
+    authors(limit: $limit, offset: $offset, search: $search, classicsOnly: $classicsOnly, memorialOnly: $memorialOnly, featuredOnly: $featuredOnly, childrenOnly: $childrenOnly) {
       ...AuthorCardFields
     }
   }
@@ -667,8 +668,8 @@ export const ADMIN_UPDATE_AUTHOR_PROFILE_MUTATION = gql`
 
 export const ADMIN_UPDATE_AUTHOR_PAGE_FLAGS_MUTATION = gql`
   ${AUTHOR_CARD_FIELDS}
-  mutation AdminUpdateAuthorPageFlags($authorId: ID!, $isClassic: Boolean!, $isMemorialPage: Boolean!) {
-    adminUpdateAuthorPageFlags(authorId: $authorId, isClassic: $isClassic, isMemorialPage: $isMemorialPage) {
+  mutation AdminUpdateAuthorPageFlags($authorId: ID!, $isClassic: Boolean!, $isMemorialPage: Boolean!, $isChild: Boolean) {
+    adminUpdateAuthorPageFlags(authorId: $authorId, isClassic: $isClassic, isMemorialPage: $isMemorialPage, isChild: $isChild) {
       ...AuthorCardFields
     }
   }

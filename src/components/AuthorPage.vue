@@ -401,6 +401,7 @@ async function submitAdminFlags(nextFlags = {}) {
         authorId: author.value.id,
         isClassic: Boolean(nextFlags.isClassic ?? author.value?.isClassic),
         isMemorialPage: Boolean(nextFlags.isMemorialPage ?? author.value?.isMemorialPage),
+        isChild: Boolean(nextFlags.isChild ?? author.value?.isChild),
       },
     });
     author.value = data?.adminUpdateAuthorPageFlags ?? author.value;
@@ -514,6 +515,7 @@ async function deleteAuthorTrack(track) {
             <span v-if="author.isFeatured" class="author-status-pill">Автор витрины</span>
             <span v-if="author.isClassic" class="author-status-pill">Классик</span>
             <span v-if="author.isMemorialPage" class="author-status-pill">Страница памяти</span>
+            <span v-if="author.isChild" class="author-status-pill">Детский аккаунт</span>
             <span v-if="!author.isFeatured && !author.isClassic && !author.isMemorialPage" class="author-status-pill">Публичная страница</span>
           </div>
 
@@ -648,6 +650,9 @@ async function deleteAuthorTrack(track) {
               </button>
               <button class="btn btn-outline" type="button" :disabled="adminProfileBusy" @click="submitAdminFlags({ isMemorialPage: !author.isMemorialPage })">
                 {{ author.isMemorialPage ? 'Снять статус «Страница памяти»' : 'Сделать страницей памяти' }}
+              </button>
+              <button class="btn btn-outline" type="button" :disabled="adminProfileBusy" @click="submitAdminFlags({ isChild: !author.isChild })">
+                {{ author.isChild ? 'Снять статус «Детский аккаунт»' : 'Сделать детским аккаунтом' }}
               </button>
             </div>
             <div v-if="adminProfileStatus" class="message success">{{ adminProfileStatus }}</div>

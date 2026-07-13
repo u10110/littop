@@ -495,6 +495,7 @@ async function setManagedAuthorFlag(author, patch) {
         authorId: author.id,
         isClassic: Boolean(patch.isClassic ?? author.isClassic),
         isMemorialPage: Boolean(patch.isMemorialPage ?? author.isMemorialPage),
+        isChild: Boolean(patch.isChild ?? author.isChild),
       },
     });
     managedStatus.value = 'Статус управляемого аккаунта обновлён.';
@@ -1033,6 +1034,9 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
                 </button>
                 <button class="btn btn-outline" type="button" :disabled="managedBusy" @click="setManagedAuthorFlag(author, { isMemorialPage: !author.isMemorialPage })">
                   {{ author.isMemorialPage ? 'Снять «Память»' : 'Сделать страницей памяти' }}
+                </button>
+                <button class="btn btn-outline" type="button" :disabled="managedBusy" @click="setManagedAuthorFlag(author, { isChild: !author.isChild })">
+                  {{ author.isChild ? 'Снять «Детский аккаунт»' : 'Сделать детским аккаунтом' }}
                 </button>
               </div>
             </div>

@@ -11,6 +11,7 @@ const search = ref('');
 const onlyClassics = ref(false);
 const onlyMemorial = ref(false);
 const onlyFeatured = ref(false);
+const onlyChildren = ref(false);
 const selectedLetter = ref('');
 
 const cyrillicLetters = ['А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ё', 'Ж', 'З', 'И', 'Й', 'К', 'Л', 'М', 'Н', 'О', 'П', 'Р', 'С', 'Т', 'У', 'Ф', 'Х', 'Ц', 'Ч', 'Ш', 'Щ', 'Э', 'Ю', 'Я'];
@@ -23,6 +24,7 @@ const queryVariables = computed(() => ({
   classicsOnly: onlyClassics.value,
   memorialOnly: onlyMemorial.value,
   featuredOnly: onlyFeatured.value,
+  childrenOnly: onlyChildren.value,
 }));
 
 const { result, loading, error } = useQuery(AUTHORS_QUERY, queryVariables, {
@@ -107,6 +109,11 @@ const authorsCountText = computed(() => loading.value ? 'загрузка…' : 
         <span>Только страницы памяти</span>
       </label>
 
+      <label class="chip">
+        <input v-model="onlyChildren" type="checkbox" />
+        <span>Только детские аккаунты</span>
+      </label>
+
       <button class="btn btn-outline" type="button" @click="selectedLetter = ''">Все буквы</button>
     </div>
 
@@ -168,6 +175,7 @@ const authorsCountText = computed(() => loading.value ? 'загрузка…' : 
           <span v-if="author.isFeatured" class="pill good">витрина</span>
           <span v-if="author.isClassic" class="pill warn">классик</span>
           <span v-if="author.isMemorialPage" class="pill">страница памяти</span>
+          <span v-if="author.isChild" class="pill">детский аккаунт</span>
         </div>
       </div>
     </article>
