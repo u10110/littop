@@ -531,12 +531,20 @@ async function deleteAuthorTrack(track) {
             <button class="btn" :class="activeLedger === 'works' ? 'btn-primary' : 'btn-outline'" type="button" @click="activeLedger = 'works'">
               ПРОИЗВЕДЕНИЯ
             </button>
-            <button class="btn" :class="activeLedger === 'written' ? 'btn-primary' : 'btn-outline'" type="button" @click="activeLedger = 'written'">
+            <RouterLink
+              class="btn"
+              :class="activeLedger === 'written' ? 'btn-primary' : 'btn-outline'"
+              :to="{ name: 'author-feedback', params: { login: author.login, kind: 'received' } }"
+            >
               НАПИСАННЫЕ
-            </button>
-            <button class="btn" :class="activeLedger === 'received' ? 'btn-primary' : 'btn-outline'" type="button" @click="activeLedger = 'received'">
+            </RouterLink>
+            <RouterLink
+              class="btn"
+              :class="activeLedger === 'received' ? 'btn-primary' : 'btn-outline'"
+              :to="{ name: 'author-feedback', params: { login: author.login, kind: 'written' } }"
+            >
               ПОЛУЧЕННЫЕ
-            </button>
+            </RouterLink>
             <button class="btn" :class="activeLedger === 'audio' ? 'btn-primary' : 'btn-outline'" type="button" @click="activeLedger = 'audio'">
               АУДИО
             </button>

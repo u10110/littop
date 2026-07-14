@@ -35,7 +35,7 @@ const { result, loading, error, refetch } = useQuery(
   { fetchPolicy: 'cache-and-network' },
 );
 
-const sectionsResult = useQuery(FORUM_SECTIONS_QUERY);
+const { result: sectionsResult } = useQuery(FORUM_SECTIONS_QUERY);
 const sections = computed(() => sectionsResult.value?.forumSections ?? []);
 const topics = computed(() => result.value?.forumTopics ?? []);
 const loadError = computed(() => error.value?.message || '');
@@ -204,6 +204,30 @@ async function submitNewTopic() {
       />
     </div>
 
+    <!-- БЛОК СЕКЦИИ -->
+    <section class="forum-sections-block">
+      <div class="section-head forum-sections-head">
+        <h2 class="forum-sections-title">Секции</h2>
+        <span v-if="activeSectionName" class="pill">{{ activeSectionName }}</span>
+      </div>
+      <div class="forum-sections-chips">
+        <button
+          type="button"
+          class="chip"
+          :class="{ 'chip-active': activeSection === null }"
+          @click="activeSection = null"
+        >Все разделы</button>
+        <button
+          v-for="section in sections"
+          :key="section.id"
+          type="button"
+          class="chip"
+          :class="{ 'chip-active': activeSection === section.slug }"
+          @click="activeSection = section.slug"
+        >{{ section.name }}</button>
+      </div>
+    </section>
+
     <!-- СПИСОК ТЕМ (одна широкая колонка) -->
     <section class="forum-list">
       <div v-if="loading && !displayTopics.length" class="message">Загрузка тем…</div>
@@ -348,3 +372,38 @@ async function submitNewTopic() {
     </div>
   </main>
 </template>
+
+<style scoped>
+.forum-sections-block {
+  margin: 0 0 1.25rem;
+}
+.forum-sections-title {
+  font-size: 1.15rem;
+  margin: 0;
+}
+.forum-sections-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+.chip {
+  border: 1px solid var(--border, #3a3a3a);
+  background: transparent;
+  color: inherit;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.92rem;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.chip:hover {
+  border-color: var(--accent, #6b8cff);
+}
+.chip-active {
+  background: var(--accent, #6b8cff);
+  color: #fff;
+  border-color: var(--accent, #6b8cff);
+}
+</style>

@@ -4,6 +4,7 @@ import Works from '../components/Works.vue';
 import WorkPage from '../components/WorkPage.vue';
 import Authors from '../components/Authors.vue';
 import AuthorPage from '../components/AuthorPage.vue';
+import AuthorFeedback from '../components/AuthorFeedback.vue';
 import Contests from '../components/Contests.vue';
 import Radio from '../components/Radio.vue';
 import Forum from '../components/Forum.vue';
@@ -19,6 +20,7 @@ const routes = [
   { path: '/works/:slugOrId', name: 'work-public', component: WorkPage },
   { path: '/authors', name: 'authors', component: Authors },
   { path: '/authors/:login', name: 'author-public', component: AuthorPage },
+  { path: '/authors/:login/feedback/:kind', name: 'author-feedback', component: AuthorFeedback },
   { path: '/contests', name: 'contests', component: Contests },
   { path: '/radio', name: 'radio', component: Radio },
   { path: '/forum', name: 'forum', component: Forum },
