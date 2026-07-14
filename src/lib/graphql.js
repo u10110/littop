@@ -247,10 +247,10 @@ export const HOME_QUERY = gql`
     announcements: works(limit: 12) {
       ...WorkPreviewFields
     }
-    recentTopics: forumTopics(limit: 6) {
+    recentTopics: forumTopics(limit: 8) {
       ...ForumTopicPreviewFields
     }
-    editorColumnTopics: forumTopics(sectionSlug: "editor-column", limit: 1) {
+    editorColumnTopics: forumTopics(sectionSlug: "editor-column", limit: 6) {
       ...ForumTopicPreviewFields
     }
     contests(limit: 6) {

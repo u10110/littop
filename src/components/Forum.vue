@@ -189,19 +189,14 @@ async function submitNewTopic() {
         Новая тема
       </button>
 
-      <select v-model="activeSection" class="select forum-section-select">
-        <option :value="null">Все разделы</option>
-        <option v-for="section in sections" :key="section.id" :value="section.slug">
-          {{ section.name }}
-        </option>
-      </select>
-
-      <input
-        v-model="searchQuery"
-        class="input forum-search"
-        type="search"
-        placeholder="Поиск по форуму"
-      />
+      <div class="field" style="min-width: 260px; flex: 2;">
+        <span class="label">Поиск</span>
+        <input
+          v-model="searchQuery"
+          class="input"
+          placeholder="Поиск по форуму"
+        />
+      </div>
     </div>
 
     <!-- БЛОК СЕКЦИИ -->

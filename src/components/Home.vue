@@ -27,6 +27,18 @@ const announcements = computed(() => result.value?.announcements ?? []);
 const recentTopics = computed(() => result.value?.recentTopics ?? []);
 const editorColumnTopics = computed(() => result.value?.editorColumnTopics ?? []);
 const editorLead = computed(() => editorColumnTopics.value[0] ?? null);
+const editorColumnExtra = computed(() => {
+  const leadId = editorLead.value?.id;
+  const seen = new Set();
+  const out = [];
+  for (const t of [...editorColumnTopics.value.slice(1), ...recentTopics.value]) {
+    if (!t?.id || t.id === leadId || seen.has(t.id)) continue;
+    seen.add(t.id);
+    out.push(t);
+    if (out.length >= 12) break;
+  }
+  return out;
+});
 const contests = computed(() => result.value?.contests ?? []);
 const radioTracks = computed(() => result.value?.radioTracks ?? []);
 
@@ -76,6 +88,23 @@ const healthTone = computed(() => {
         <h2>Колонка редактора</h2>
         <RouterLink to="/forum?section=editor-column" class="btn btn-outline">Все статьи</RouterLink>
       </div>
+      <div v-if="editorColumnExtra.length" class="stack">
+        <article v-for="topic in editorColumnExtra" :key="`edc-${topic.id}`" class="card">
+          <div class="chips">
+            <span class="pill">{{ topic.sectionSlug }}</span>
+            <span class="pill">ответов: {{ topic.repliesCount }}</span>
+          </div>
+          <h3>
+            <RouterLink :to="buildForumTopicPageLocation(topic)">{{ topic.title }}</RouterLink>
+          </h3>
+          <div class="meta">
+            <RouterLink v-if="topic.author?.login" class="user-inline-link" :to="buildAuthorPageLocation(topic.author)">{{ topic.author?.displayName || topic.author?.login }}</RouterLink>
+            <template v-else>{{ topic.author?.displayName || topic.author?.login }}</template>
+            · {{ formatDate(topic.lastPostAt || topic.createdAt) }}
+          </div>
+          <div>{{ excerptText(topic.body, 140) }}</div>
+        </article>
+      </div>
       <article v-if="editorLead" class="card stack editor-lead">
         <div v-if="editorLead.imageUrl" class="editor-lead-image">
           <img :src="editorLead.imageUrl" :alt="editorLead.title" loading="lazy" />
@@ -98,17 +127,8 @@ const healthTone = computed(() => {
           <RouterLink class="btn btn-primary" :to="buildForumTopicPageLocation(editorLead)">Открыть тему</RouterLink>
         </div>
       </article>
-      <div v-else class="empty-state editor-informer">
-        <p>В колонке редактора пока нет опубликованных статей.</p>
-        <template v-if="recentTopics.length">
-          <div class="meta">Темы форума:</div>
-          <ul class="informer-list">
-            <li v-for="topic in recentTopics" :key="`inform-${topic.id}`">
-              <RouterLink :to="buildForumTopicPageLocation(topic)">{{ topic.title }}</RouterLink>
-              <span class="meta"> · {{ formatDate(topic.lastPostAt || topic.createdAt) }}</span>
-            </li>
-          </ul>
-        </template>
+      <div v-if="!editorLead && !editorColumnExtra.length" class="empty-state">
+        <p>В колонке редактора пока нет опубликованных тем.</p>
       </div>
     </div>
 

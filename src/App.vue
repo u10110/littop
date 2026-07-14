@@ -100,13 +100,7 @@ async function loadSiteBanner() {
 const headerImageUrl = ref('');
 const headerImageBusy = ref(false);
 const headerImageInput = ref(null);
-const headerStyle = computed(() => (headerImageUrl.value
-  ? {
-      backgroundImage: `linear-gradient(rgba(0,0,0,.45), rgba(0,0,0,.45)), url("${headerImageUrl.value}")`,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-    }
-  : {}));
+const headerStyle = computed(() => ({}));
 
 async function onHeaderImageSelected(event) {
   const file = event.target?.files?.[0];
@@ -617,7 +611,7 @@ async function submitRestoreOwner() {
 </script>
 
 <template>
-  <header :style="headerStyle">
+  <header class="site-header" :style="headerStyle">
     <div class="navwrap">
       <div class="logo-block">
         <div class="logo"><RouterLink to="/"> Литопотам </RouterLink></div>
@@ -669,19 +663,24 @@ async function submitRestoreOwner() {
     </div>
   </header>
 
-  <div v-if="siteBanner || isAdmin" class="site-banner">
-    <div class="site-banner-inner">
-      <template v-if="!siteBannerEditing">
-        <span class="site-banner-text">{{ siteBanner || 'Литературное радио Литопотам' }}</span>
-        <button v-if="isAdmin" class="btn btn-sm btn-outline" type="button" @click="startEditBanner">Изменить</button>
-      </template>
-      <template v-else>
-        <textarea v-model="siteBannerDraft" class="textarea site-banner-input" placeholder="Текст в шапке сайта"></textarea>
-        <div class="inline-actions">
-          <button class="btn btn-sm btn-primary" type="button" :disabled="siteBannerBusy" @click="saveBanner">Сохранить</button>
-          <button class="btn btn-sm btn-outline" type="button" :disabled="siteBannerBusy" @click="cancelEditBanner">Отмена</button>
-        </div>
-      </template>
+  <div class="top-banner" v-if="route.path === '/'" :class="{ 'has-header-image': headerImageUrl }">
+    <div v-if="headerImageUrl" class="header-banner-media">
+      <img :src="headerImageUrl" alt="Шапка сайта" class="header-banner-img" />
+    </div>
+    <div v-if="siteBanner || isAdmin" class="site-banner site-banner-overlay">
+      <div class="site-banner-inner">
+        <template v-if="!siteBannerEditing">
+          <span class="site-banner-text">{{ siteBanner || 'Литературное радио Литопотам' }}</span>
+          <button v-if="isAdmin" class="btn btn-sm btn-outline site-banner-edit-btn" type="button" @click="startEditBanner">Изменить</button>
+        </template>
+        <template v-else>
+          <textarea v-model="siteBannerDraft" class="textarea site-banner-input" placeholder="Текст в шапке сайта"></textarea>
+          <div class="inline-actions">
+            <button class="btn btn-sm btn-primary" type="button" :disabled="siteBannerBusy" @click="saveBanner">Сохранить</button>
+            <button class="btn btn-sm btn-outline" type="button" :disabled="siteBannerBusy" @click="cancelEditBanner">Отмена</button>
+          </div>
+        </template>
+      </div>
     </div>
   </div>
 
