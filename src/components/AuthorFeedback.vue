@@ -120,7 +120,7 @@ watch([login, kind], load);
       <div v-if="errorMsg" class="message error">{{ errorMsg }}</div>
       <div v-else-if="loading" class="message">Загрузка…</div>
       <ol v-else-if="rows.length" class="author-works-ledger">
-        <li v-for="row in rows" :key="row.id" class="author-works-ledger-item">
+        <li v-for="row in rows" :key="row.id" >
           <div class="author-work-body">
             <RouterLink
               class="author-work-title"
