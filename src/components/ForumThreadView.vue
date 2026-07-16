@@ -8,6 +8,7 @@ import { apolloClient } from '../lib/apollo.js';
 import {
   CREATE_FORUM_POST_MUTATION,
   DELETE_FORUM_POST_MUTATION,
+  DELETE_FORUM_TOPIC_MUTATION,
   FORUM_SECTIONS_QUERY,
   UPDATE_FORUM_POST_MUTATION,
   UPDATE_FORUM_TOPIC_MUTATION,
@@ -359,6 +360,22 @@ async function submitEdit(post) {
   }
 }
 
+async function deleteTopic() {
+  if (!props.topic?.id) return;
+  const confirmed = globalThis.confirm?.('Удалить эту тему форума? Все сообщения внутри тоже исчезнут.') ?? true;
+  if (!confirmed) return;
+  threadBusy.value = true;
+  threadStatus.value = '';
+  try {
+    await apolloClient.mutate({ mutation: DELETE_FORUM_TOPIC_MUTATION, variables: { topicId: props.topic.id } });
+    emit('refresh');
+  } catch (mutationError) {
+    threadStatus.value = mutationError.message;
+  } finally {
+    threadBusy.value = false;
+  }
+}
+
 async function deletePost(post) {
   if (!post?.id) return;
   const confirmed = globalThis.confirm?.('Удалить это сообщение? Все дочерние ответы тоже исчезнут из ветки.') ?? true;
@@ -415,6 +432,15 @@ async function deletePost(post) {
           @click="topicEditMode ? cancelTopicEdit() : startTopicEdit()"
         >
           <Icon name="pencil" />{{ topicEditMode ? 'Отменить редактирование темы' : 'Редактировать тему / секцию' }}
+        </button>
+        <button
+          v-if="canManageTopic"
+          class="btn btn-danger"
+          type="button"
+          :disabled="topicEditBusy || threadBusy"
+          @click="deleteTopic"
+        >
+          <Icon name="trash-2" />Удалить тему
         </button>
       </div>
       <div v-if="isAdmin && topic.sectionSlug === 'editor-column'" class="inline-actions">

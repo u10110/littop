@@ -244,7 +244,7 @@ export const HOME_QUERY = gql`
     recentWorks: works(limit: 6) {
       ...WorkPreviewFields
     }
-    announcements: works(limit: 12) {
+    announcements: announcedWorks {
       ...WorkPreviewFields
     }
     recentTopics: forumTopics(limit: 8) {
@@ -884,6 +884,19 @@ export const DELETE_FORUM_POST_MUTATION = gql`
   }
 `;
 
+export const ADMIN_DELETE_USER_MUTATION = gql`
+  mutation AdminDeleteUser($userId: ID!) {
+    adminDeleteUser(userId: $userId)
+  }
+`;
+
+export const DELETE_FORUM_TOPIC_MUTATION = gql`
+  mutation DeleteForumTopic($topicId: ID!) {
+    deleteForumTopic(topicId: $topicId) {
+      id
+    }
+  }
+`;
 
 export const PRIVATE_DIALOGS_QUERY = gql`
   ${AUTHOR_CARD_FIELDS}

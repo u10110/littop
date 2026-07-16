@@ -190,10 +190,11 @@ function openAuthModal(mode = 'login') {
           @click="openDialog(dialog.peer?.login)"
         >
           <div class="section-head">
-            <strong>{{ dialog.peer?.displayName || dialog.peer?.login }}</strong>
+            <RouterLink v-if="dialog.peer?.login" :to="buildAuthorPageLocation(dialog.peer)"><strong>{{ dialog.peer?.displayName || dialog.peer?.login }}</strong></RouterLink>
+            <strong v-else>{{ dialog.peer?.displayName || dialog.peer?.login }}</strong>
             <span v-if="dialog.unreadCount" class="pill warn">{{ dialog.unreadCount }} новых</span>
           </div>
-          <div class="meta">@{{ dialog.peer?.login }} · {{ formatDateTime(dialog.lastMessageAt) }}</div>
+          <div class="meta"><RouterLink v-if="dialog.peer?.login" :to="buildAuthorPageLocation(dialog.peer)">@{{ dialog.peer?.login }}</RouterLink> · {{ formatDateTime(dialog.lastMessageAt) }}</div>
           <div>{{ dialog.lastMessageBody }}</div>
         </button>
       </div>
@@ -234,7 +235,9 @@ function openAuthModal(mode = 'login') {
           :class="isOwnMessage(message) ? 'pm-message pm-message-own' : 'pm-message'"
         >
           <div class="meta">
-            {{ isOwnMessage(message) ? 'Ты' : (message.sender?.displayName || message.sender?.login) }} · {{ formatDateTime(message.createdAt) }}
+            <template v-if="isOwnMessage(message)">Ты</template>
+            <RouterLink v-else-if="message.sender?.login" :to="buildAuthorPageLocation(message.sender)">{{ message.sender?.displayName || message.sender?.login }}</RouterLink>
+            <template v-else>{{ message.sender?.displayName || message.sender?.login }}</template> · {{ formatDateTime(message.createdAt) }}
           </div>
           <div class="prewrap">{{ message.body }}</div>
         </article>

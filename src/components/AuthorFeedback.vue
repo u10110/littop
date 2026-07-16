@@ -2,15 +2,19 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
 import { apolloClient } from '../lib/apollo.js';
-import { AUTHOR_QUERY, AUTHOR_DETAILS_QUERY } from '../lib/graphql.js';
+import { AUTHOR_QUERY, AUTHOR_DETAILS_QUERY, DELETE_WORK_COMMENT_MUTATION } from '../lib/graphql.js';
 import { buildAuthorPageLocation, buildWorkPageLocation } from '../lib/routes.js';
 import { formatDateTime, excerptText } from '../lib/format.js';
+import { useSession } from '../lib/session.js';
 
 const route = useRoute();
 const login = computed(() => route.params.login);
 // kind = 'received' -> отзывы, написанные АВТОРУ под его произведениями (НАПИСАННЫЕ)
 // kind = 'written'  -> что АВТОР написал другим (ПОЛУЧЕННЫЕ)
 const kind = computed(() => route.params.kind);
+
+const { currentUser } = useSession();
+const isAdmin = computed(() => currentUser.value?.role === 'admin');
 
 const author = ref(null);
 const loading = ref(false);
@@ -98,6 +102,18 @@ function backLink() {
   return author.value ? buildAuthorPageLocation(author.value) : '/authors';
 }
 
+async function deleteReview(row) {
+  if (!row?.id) return;
+  if (!globalThis.confirm?.('Удалить этот отзыв?')) return;
+  try {
+    await apolloClient.mutate({ mutation: DELETE_WORK_COMMENT_MUTATION, variables: { commentId: row.id } });
+    writtenReviews.value = writtenReviews.value.filter((r) => r.id !== row.id);
+    receivedReviews.value = receivedReviews.value.filter((r) => r.id !== row.id);
+  } catch (e) {
+    errorMsg.value = e?.message || 'Не удалось удалить отзыв.';
+  }
+}
+
 onMounted(load);
 watch([login, kind], load);
 </script>
@@ -134,6 +150,9 @@ watch([login, kind], load);
               <span v-if="row.counterpartLink"> · {{ formatDateTime(row.updatedAt || row.createdAt) }}</span>
             </div>
             <div class="author-work-excerpt">{{ excerptText(row.body, 260) }}</div>
+            <div v-if="isAdmin" class="author-work-actions">
+              <button class="btn btn-sm btn-danger" type="button" @click="deleteReview(row)"><Icon name="trash-2" />Удалить</button>
+            </div>
           </div>
         </li>
       </ol>

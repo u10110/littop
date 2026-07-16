@@ -10,7 +10,7 @@ import { ru } from 'date-fns/locale'
 import { apolloClient } from '../lib/apollo.js';
 import RichTextEditor from './RichTextEditor.vue';
 import { uploadProfileImage } from '../lib/profileImages.js';
-import { ADMIN_CREATE_WORK_MUTATION, ADMIN_UPDATE_AUTHOR_PAGE_FLAGS_MUTATION, ADMIN_UPDATE_AUTHOR_PROFILE_MUTATION, AUTHOR_DETAILS_QUERY, AUTHOR_QUERY, RADIO_TRACKS_BY_CREATOR_QUERY, DELETE_RADIO_TRACK_MUTATION } from '../lib/graphql.js';
+import { ADMIN_CREATE_WORK_MUTATION, ADMIN_UPDATE_AUTHOR_PAGE_FLAGS_MUTATION, ADMIN_UPDATE_AUTHOR_PROFILE_MUTATION, ADMIN_DELETE_USER_MUTATION, AUTHOR_DETAILS_QUERY, AUTHOR_QUERY, RADIO_TRACKS_BY_CREATOR_QUERY, DELETE_RADIO_TRACK_MUTATION } from '../lib/graphql.js';
 import { formatBirthday, formatDate, formatDateTime, formatWorkSection } from '../lib/format.js';
 import { buildAuthorPageLocation, buildWorkPageLocation, normalizeRouteParam } from '../lib/routes.js';
 import { setDocumentTitle } from '../lib/pageTitle.js';
@@ -466,6 +466,17 @@ async function deleteAuthorTrack(track) {
     pageError.value = error instanceof Error ? error.message : 'Не удалось удалить трек.';
   }
 }
+
+async function deleteAuthorAccount() {
+  if (!author.value?.id) return;
+  if (!globalThis.confirm?.('Удалить аккаунт этого автора? Все его произведения, темы форума и комментарии будут скрыты (мягкое удаление).')) return;
+  try {
+    await apolloClient.mutate({ mutation: ADMIN_DELETE_USER_MUTATION, variables: { userId: author.value.id } });
+    globalThis.location?.assign('/authors');
+  } catch (error) {
+    pageError.value = error instanceof Error ? error.message : 'Не удалось удалить аккаунт.';
+  }
+}
 </script>
 
 <template>
@@ -527,21 +538,21 @@ async function deleteAuthorTrack(track) {
           </div>
 
           <div class="stack">
-            <RouterLink v-if="canMessageAuthor" class="btn btn-outline" :to="{ path: '/messages', query: { with: author.login } }"><Icon name="mail" />Написать личное сообщение</RouterLink>
+            <div v-if="canMessageAuthor" style="text-align: center;"><RouterLink class="btn btn-outline" :to="{ path: '/messages', query: { with: author.login } }"><Icon name="mail" />Написать личное сообщение</RouterLink></div>
             <button class="btn" :class="activeLedger === 'works' ? 'btn-primary' : 'btn-outline'" type="button" @click="activeLedger = 'works'">
               <Icon name="book-open" />ПРОИЗВЕДЕНИЯ
             </button>
             <RouterLink
               class="btn"
               :class="activeLedger === 'written' ? 'btn-primary' : 'btn-outline'"
-              :to="{ name: 'author-feedback', params: { login: author.login, kind: 'received' } }"
+              :to="{ name: 'author-feedback', params: { login: author.login, kind: 'written' } }"
             >
               <Icon name="pen-line" />НАПИСАННЫЕ
             </RouterLink>
             <RouterLink
               class="btn"
               :class="activeLedger === 'received' ? 'btn-primary' : 'btn-outline'"
-              :to="{ name: 'author-feedback', params: { login: author.login, kind: 'written' } }"
+              :to="{ name: 'author-feedback', params: { login: author.login, kind: 'received' } }"
             >
               <Icon name="inbox" />ПОЛУЧЕННЫЕ
             </RouterLink>
@@ -662,6 +673,9 @@ async function deleteAuthorTrack(track) {
               <button class="btn btn-outline" type="button" :disabled="adminProfileBusy" @click="submitAdminFlags({ isChild: !author.isChild })">
                 {{ author.isChild ? 'Снять статус «Детский аккаунт»' : 'Сделать детским аккаунтом' }}
               </button>
+            </div>
+            <div class="inline-actions admin-danger-actions">
+              <button class="btn btn-danger" type="button" @click="deleteAuthorAccount"><Icon name="trash-2" />Удалить аккаунт автора</button>
             </div>
             <div v-if="adminProfileStatus" class="message success">{{ adminProfileStatus }}</div>
             <div v-if="adminProfileError" class="message error">{{ adminProfileError }}</div>
