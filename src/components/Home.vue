@@ -37,6 +37,7 @@ const editorColumnExtra = computed(() => {
     out.push(t);
     if (out.length >= 12) break;
   }
+  out.sort((a, b) => (Number(b?.repliesCount) || 0) - (Number(a?.repliesCount) || 0));
   return out;
 });
 const contests = computed(() => result.value?.contests ?? []);
