@@ -68,18 +68,6 @@ watch(activeSection, () => {
   refetch();
 });
 
-watch(sections, () => {
-  if (!activeSection.value && fallbackSection.value) {
-    activeSection.value = fallbackSection.value;
-  }
-}, { immediate: true });
-
-onMounted(() => {
-  if (!activeSection.value && fallbackSection.value) {
-    activeSection.value = fallbackSection.value;
-  }
-});
-
 function openAuthModal(mode = 'login') {
   window.dispatchEvent(new CustomEvent('littop:open-auth', { detail: { mode } }));
 }
@@ -211,7 +199,7 @@ async function submitNewTopic() {
           class="chip"
           :class="{ 'chip-active': activeSection === null }"
           @click="activeSection = null"
-        >Все разделы</button>
+        >Все темы</button>
         <button
           v-for="section in sections"
           :key="section.id"

@@ -26,6 +26,7 @@ import { buildAuthorPageLocation } from './lib/routes.js';
 const endpoint = getGraphqlEndpoint();
 const route = useRoute();
 const router = useRouter();
+const mobileMenuOpen = ref(false);
 const authMode = ref('login');
 const authSuccess = ref('');
 const authLocalError = ref('');
@@ -421,6 +422,11 @@ watch(isAuthModalOpen, (value) => {
   document.body.style.overflow = value ? 'hidden' : '';
 });
 
+watch(mobileMenuOpen, (value) => {
+  if (isAuthModalOpen.value) return;
+  document.body.style.overflow = value ? 'hidden' : '';
+});
+
 watch(
   [() => route.name, bootstrapped, isAuthenticated],
   ([name, isBootstrapped, authed]) => {
@@ -613,6 +619,11 @@ async function submitRestoreOwner() {
 <template>
   <header class="site-header" :style="headerStyle">
     <div class="navwrap">
+      <button class="burger-btn" type="button" :aria-expanded="mobileMenuOpen" aria-label="Открыть меню" @click="mobileMenuOpen = !mobileMenuOpen">
+        <span class="burger-bar"></span>
+        <span class="burger-bar"></span>
+        <span class="burger-bar"></span>
+      </button>
       <div class="logo-block">
         <div class="logo"><RouterLink to="/"> Литопотам </RouterLink></div>
       </div>
@@ -656,12 +667,36 @@ async function submitRestoreOwner() {
         </div>
 
         <div v-else class="actions-compact">
-          <button class="btn btn-primary" type="button" @click="openAuthModal('login')">Войти</button>
-          <button class="btn btn-outline" type="button" @click="openAuthModal('register')">Регистрация</button>
+          <button class="auth-icon-btn" type="button" aria-label="Войти или зарегистрироваться" @click="openAuthModal('login')">
+            <svg class="auth-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M9 4 H20 V20 H9" />
+              <path d="M3 12 H13" />
+              <path d="M13 8 L17 12 L13 16" />
+            </svg>
+          </button>
         </div>
       </div>
     </div>
   </header>
+
+  <div class="mobile-menu-backdrop" :class="{ 'is-open': mobileMenuOpen }" @click.self="mobileMenuOpen = false">
+    <aside class="mobile-menu" :class="{ 'is-open': mobileMenuOpen }" aria-label="Мобильное меню">
+      <div class="mobile-menu-head">
+        <span class="mobile-menu-title">Меню</span>
+        <button class="btn btn-ghost mobile-menu-close" type="button" aria-label="Закрыть меню" @click="mobileMenuOpen = false">&times;</button>
+      </div>
+      <nav class="mobile-nav" aria-label="Мобильное меню">
+        <RouterLink to="/" @click="mobileMenuOpen = false">Главная</RouterLink>
+        <RouterLink to="/works" @click="mobileMenuOpen = false">Произведения</RouterLink>
+        <RouterLink to="/authors" @click="mobileMenuOpen = false">Авторы</RouterLink>
+        <RouterLink to="/contests" @click="mobileMenuOpen = false">Конкурсы</RouterLink>
+        <RouterLink to="/radio" @click="mobileMenuOpen = false">Радио</RouterLink>
+        <RouterLink to="/forum" @click="mobileMenuOpen = false">Форум</RouterLink>
+        <RouterLink v-if="isAuthenticated" to="/personal" @click="mobileMenuOpen = false">Мой кабинет</RouterLink>
+        <RouterLink v-if="isAuthenticated" to="/messages" @click="mobileMenuOpen = false">Сообщения</RouterLink>
+      </nav>
+    </aside>
+  </div>
 
   <div class="top-banner" v-if="route.path === '/'" :class="{ 'has-header-image': headerImageUrl }">
     <div v-if="headerImageUrl" class="header-banner-media">

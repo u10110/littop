@@ -42,6 +42,12 @@ const editorColumnExtra = computed(() => {
 const contests = computed(() => result.value?.contests ?? []);
 const radioTracks = computed(() => result.value?.radioTracks ?? []);
 
+const homeForumTopics = computed(() =>
+  [...recentTopics.value].sort(
+    (a, b) => (Number(b?.repliesCount) || 0) - (Number(a?.repliesCount) || 0),
+  ),
+);
+
 const healthTone = computed(() => {
   if (!health.value) return 'warn';
   return health.value.database ? 'good' : 'danger';
@@ -223,7 +229,7 @@ const healthTone = computed(() => {
         <RouterLink to="/forum" class="btn btn-outline">Открыть форум</RouterLink>
       </div>
       <div v-if="recentTopics.length" class="stack">
-        <article v-for="topic in recentTopics" :key="topic.id" class="card">
+        <article v-for="topic in homeForumTopics" :key="topic.id" class="card">
           <div class="chips">
             <span class="pill">{{ topic.sectionSlug }}</span>
             <span class="pill">ответов: {{ topic.repliesCount }}</span>
