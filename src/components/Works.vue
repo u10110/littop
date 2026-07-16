@@ -473,13 +473,22 @@ function clearFilters() {
           :class="{ 'is-selected': String(work.id) === String(selectedWorkId) }"
           @click="selectedWorkId = work.id"
         >
-          <RouterLink class="work-list-title" :to="buildWorkPageLocation(work)" @click.stop>{{ work.title }}</RouterLink>
-          <span class="work-list-meta">
+          <button type="button" class="work-list-title" @click.stop="selectedWorkId = work.id">{{ work.title }}</button>
+          <div class="work-list-meta">
+            <span class="work-list-date">{{ formatDate(work.publishedAt || work.createdAt) }}</span>
+            <span class="work-list-dot">·</span>
             <RouterLink v-if="work.author?.login" class="user-inline-link" :to="buildAuthorPageLocation(work.author)" @click.stop>{{ work.author?.displayName || work.author?.login }}</RouterLink>
             <template v-else>{{ work.author?.displayName || work.author?.login }}</template>
-            <span class="work-list-dot">·</span>{{ formatWorkSection(work.sectionCode) }}
-            <span class="work-list-dot">·</span>{{ formatDate(work.publishedAt || work.createdAt) }}
-          </span>
+            <span class="work-list-dot">·</span>
+            <span class="work-list-type">{{ formatWorkSection(work.sectionCode) }}</span>
+            <RouterLink class="work-list-page-link" :to="buildWorkPageLocation(work)" @click.stop aria-label="Открыть страницу произведения" title="Страница произведения">
+              <svg class="icon-open" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                <polyline points="15 3 21 3 21 9" />
+                <line x1="10" y1="14" x2="21" y2="3" />
+              </svg>
+            </RouterLink>
+          </div>
         </li>
       </ul>
       <div v-else-if="!loading" class="empty-state">{{ emptyStateText }}</div>
