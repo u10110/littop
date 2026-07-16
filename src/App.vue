@@ -22,6 +22,7 @@ import { PRIVATE_DIALOGS_QUERY, SITE_CHROME_QUERY, SITE_SETTINGS_QUERY, UPDATE_S
 import { formatBirthday, formatDateTime } from './lib/format.js';
 import { setDocumentTitle } from './lib/pageTitle.js';
 import { buildAuthorPageLocation } from './lib/routes.js';
+import AuthForm from './components/AuthForm.vue';
 
 const endpoint = getGraphqlEndpoint();
 const route = useRoute();
@@ -293,6 +294,11 @@ function closeAuthModal() {
   if (route.query?.auth || route.query?.token) {
     void clearResetRouteState();
   }
+}
+
+function onAuthSuccess(message) {
+  setSuccessMessage(message);
+  closeAuthModal();
 }
 
 function handleOpenAuthEvent(event) {
@@ -727,187 +733,8 @@ async function submitRestoreOwner() {
   <Transition name="fade-modal">
     <div v-if="isAuthModalOpen" class="modal-backdrop" @click.self="closeAuthModal">
       <div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
-        <div class="section-head">
-          <div class="stack compact-stack">
-            <h2 id="auth-modal-title">{{ authModalTitle }}</h2>
-            <span class="meta">{{ authModalSubtitle }}</span>
-          </div>
-          <button class="btn btn-ghost modal-close" type="button" @click="closeAuthModal" aria-label="Закрыть"><Icon name="x" /></button>
-        </div>
-
-        <div v-if="authMode === 'login' || authMode === 'register'" class="auth-toggle">
-          <button
-            class="btn"
-            :class="authMode === 'login' ? 'btn-primary' : 'btn-outline'"
-            type="button"
-            @click="openAuthModal('login')"
-          >
-            <Icon name="log-in" />Вход
-          </button>
-          <button
-            class="btn"
-            :class="authMode === 'register' ? 'btn-primary' : 'btn-outline'"
-            type="button"
-            @click="openAuthModal('register')"
-          >
-            <Icon name="user-plus" />Регистрация
-          </button>
-        </div>
-
-        <div v-else class="inline-actions">
-          <button class="btn btn-outline" type="button" @click="openAuthModal('login')"><Icon name="arrow-left" />Назад ко входу</button>
-          <button v-if="authMode !== 'register'" class="btn btn-outline" type="button" @click="openAuthModal('register')"><Icon name="user-plus" />Регистрация</button>
-        </div>
-
-        <div v-if="visibleAuthError" class="message error">{{ visibleAuthError }}</div>
-
-        <form v-if="authMode === 'login'" class="auth-grid" @submit.prevent="submitLogin">
-          <div class="field">
-            <label for="login-identifier">Email или логин</label>
-            <input id="login-identifier" v-model="loginForm.identifier" class="input" autocomplete="username email" required />
-          </div>
-          <div class="field">
-            <label for="login-password">Пароль</label>
-            <div class="password-input-row">
-              <input
-                id="login-password"
-                v-model="loginForm.password"
-                class="input"
-                :type="loginPasswordVisible ? 'text' : 'password'"
-                autocomplete="current-password"
-                required
-              />
-              <button
-                class="btn btn-outline password-toggle"
-                type="button"
-                :aria-pressed="loginPasswordVisible"
-                :aria-label="loginPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'"
-                @click="loginPasswordVisible = !loginPasswordVisible"
-              >
-                <Icon :name="loginPasswordVisible ? 'eye-off' : 'eye'" />
-              </button>
-            </div>
-          </div>
-          <div class="inline-actions">
-            <button class="btn btn-primary" type="submit" :disabled="authBusy"><Icon name="log-in" />{{ authBusy ? 'Входим…' : 'Войти' }}</button>
-            <button class="btn btn-ghost" type="button" @click="openAuthModal('forgot')">Забыли пароль?</button>
-          </div>
-          <div v-if="canReopenClosedAccount" class="message warn">
-            <div>Аккаунт закрыт, но его ещё можно открыть{{ reopenUntilLabel && reopenUntilLabel !== '—' ? ` до ${reopenUntilLabel}` : '' }}.</div>
-            <div class="inline-actions">
-              <button class="btn btn-primary" type="button" :disabled="authBusy" @click="submitReopenClosedAccount"><Icon name="rotate-ccw" />Открыть аккаунт</button>
-            </div>
-          </div>
-          <div class="social-auth-block">
-            <div class="meta">Или войди через соцсеть</div>
-            <div class="social-auth-grid">
-              <button
-                v-for="provider in socialProviders"
-                :key="`login-${provider.code}`"
-                class="btn btn-outline btn-social"
-                type="button"
-                @click="startSocialAuth(provider.code, 'login')"
-              >
-                {{ provider.label }}
-              </button>
-            </div>
-          </div>
-        </form>
-
-        <form v-else-if="authMode === 'register'" class="auth-grid" @submit.prevent="submitRegister">
-          <div class="field">
-            <label for="register-display-name">Отображаемое имя</label>
-            <input id="register-display-name" v-model="registerForm.displayName" class="input" autocomplete="name" required />
-          </div>
-          <div class="field">
-            <label for="register-login">Логин</label>
-            <input id="register-login" v-model="registerForm.login" class="input" autocomplete="username" required />
-          </div>
-          <div class="field">
-            <label for="register-email">Email</label>
-            <input id="register-email" v-model="registerForm.email" class="input" type="email" inputmode="email" autocomplete="email" required />
-          </div>
-          <div class="field">
-            <label for="register-password">Пароль</label>
-            <div class="password-input-row">
-              <input
-                id="register-password"
-                v-model="registerForm.password"
-                class="input"
-                :type="registerPasswordVisible ? 'text' : 'password'"
-                autocomplete="new-password"
-                required
-              />
-              <button
-                class="btn btn-outline password-toggle"
-                type="button"
-                :aria-pressed="registerPasswordVisible"
-                :aria-label="registerPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'"
-                @click="registerPasswordVisible = !registerPasswordVisible"
-              >
-                <Icon :name="registerPasswordVisible ? 'eye-off' : 'eye'" />
-              </button>
-            </div>
-          </div>
-          <label class="terms-check">
-            <input v-model="registerForm.acceptTerms" type="checkbox" required />
-            <span>
-              Я принимаю
-              <RouterLink class="terms-link" to="/terms" target="_blank">Пользовательское соглашение</RouterLink>
-            </span>
-          </label>
-          <button class="btn btn-primary" type="submit" :disabled="authBusy">
-            <Icon name="user-plus" />{{ authBusy ? 'Создаём профиль…' : 'Создать профиль' }}
-          </button>
-          <div class="social-auth-block">
-            <div class="meta">Или зарегистрируйся через соцсеть</div>
-            <div class="social-auth-grid">
-              <button
-                v-for="provider in socialProviders"
-                :key="`register-${provider.code}`"
-                class="btn btn-outline btn-social"
-                type="button"
-                @click="startSocialAuth(provider.code, 'register')"
-              >
-                {{ provider.label }}
-              </button>
-            </div>
-          </div>
-        </form>
-
-        <form v-else-if="authMode === 'forgot'" class="auth-grid" @submit.prevent="submitForgotPassword">
-          <div class="field">
-            <label for="forgot-email">Почта для восстановления</label>
-            <input id="forgot-email" v-model="forgotForm.email" class="input" type="email" inputmode="email" autocomplete="email" required />
-          </div>
-          <button class="btn btn-primary" type="submit" :disabled="authBusy">
-            <Icon name="mail" />{{ authBusy ? 'Отправляем…' : 'Отправить письмо' }}
-          </button>
-        </form>
-
-        <form v-else class="auth-grid" @submit.prevent="submitResetPassword">
-          <div class="field">
-            <label for="reset-password">Новый пароль</label>
-            <div class="password-input-row">
-              <input id="reset-password" v-model="resetForm.password" class="input" :type="resetPasswordVisible ? 'text' : 'password'" autocomplete="new-password" required />
-              <button class="btn btn-outline password-toggle" type="button" :aria-pressed="resetPasswordVisible" :aria-label="resetPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'" @click="resetPasswordVisible = !resetPasswordVisible">
-                <Icon :name="resetPasswordVisible ? 'eye-off' : 'eye'" />
-              </button>
-            </div>
-          </div>
-          <div class="field">
-            <label for="reset-password-confirm">Повтори пароль</label>
-            <div class="password-input-row">
-              <input id="reset-password-confirm" v-model="resetForm.confirmPassword" class="input" :type="resetConfirmPasswordVisible ? 'text' : 'password'" autocomplete="new-password" required />
-              <button class="btn btn-outline password-toggle" type="button" :aria-pressed="resetConfirmPasswordVisible" :aria-label="resetConfirmPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'" @click="resetConfirmPasswordVisible = !resetConfirmPasswordVisible">
-                <Icon :name="resetConfirmPasswordVisible ? 'eye-off' : 'eye'" />
-              </button>
-            </div>
-          </div>
-          <button class="btn btn-primary" type="submit" :disabled="authBusy">
-            <Icon name="save" />{{ authBusy ? 'Сохраняем…' : 'Сохранить новый пароль' }}
-          </button>
-        </form>
+        <button class="btn btn-ghost modal-close" type="button" @click="closeAuthModal" aria-label="Закрыть"><Icon name="x" /></button>
+        <AuthForm :initial-mode="authMode" :reset-token="resetToken" @success="onAuthSuccess" />
       </div>
     </div>
   </Transition>
