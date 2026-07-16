@@ -43,6 +43,22 @@ const editorColumnExtra = computed(() => {
 const contests = computed(() => result.value?.contests ?? []);
 const radioTracks = computed(() => result.value?.radioTracks ?? []);
 
+const sortedFeaturedAuthors = computed(() =>
+  [...featuredAuthors.value].sort(
+    (a, b) => (Number(b?.ratingTotal) || 0) - (Number(a?.ratingTotal) || 0),
+  ),
+);
+const sortedClassicAuthors = computed(() =>
+  [...classicAuthors.value].sort(
+    (a, b) => (Number(b?.ratingTotal) || 0) - (Number(a?.ratingTotal) || 0),
+  ),
+);
+const sortedRadioTracks = computed(() =>
+  [...radioTracks.value].sort(
+    (a, b) => (Number(b?.ratingsCount) || 0) - (Number(a?.ratingsCount) || 0),
+  ),
+);
+
 const homeForumTopics = computed(() =>
   [...recentTopics.value].sort(
     (a, b) => (Number(b?.repliesCount) || 0) - (Number(a?.repliesCount) || 0),
@@ -201,7 +217,7 @@ const healthTone = computed(() => {
         <article class="card">
           <h3>Витрина</h3>
           <div class="list">
-            <div v-for="author in featuredAuthors" :key="`featured-${author.id}`" class="inline-card">
+            <div v-for="author in sortedFeaturedAuthors" :key="`featured-${author.id}`" class="inline-card">
               <strong>
                 <RouterLink :to="buildAuthorPageLocation(author)">{{ author.displayName }}</RouterLink>
               </strong>
@@ -212,7 +228,7 @@ const healthTone = computed(() => {
         <article class="card">
           <h3>Классики</h3>
           <div class="list">
-            <div v-for="author in classicAuthors" :key="`classic-${author.id}`" class="inline-card">
+            <div v-for="author in sortedClassicAuthors" :key="`classic-${author.id}`" class="inline-card">
               <strong>
                 <RouterLink :to="buildAuthorPageLocation(author)">{{ author.displayName }}</RouterLink>
               </strong>
@@ -276,7 +292,7 @@ const healthTone = computed(() => {
         <RouterLink to="/radio" class="btn btn-outline">Открыть радио</RouterLink>
       </div>
       <div v-if="radioTracks.length" class="stack">
-        <article v-for="track in radioTracks" :key="track.id" class="card">
+        <article v-for="track in sortedRadioTracks" :key="track.id" class="card">
           <h3>{{ track.title }}</h3>
           <div class="meta">{{ track.authorName || 'Автор не указан' }} · {{ ratingLabel(track.averageRating, track.ratingsCount) }}</div>
         </article>
