@@ -506,7 +506,7 @@ function clearFilters() {
           <button class="btn btn-outline" type="button" @click="toggleViewers">
             {{ viewersVisible ? 'Скрыть список просмотров' : 'Список просмотров' }}
           </button>
-          <RouterLink class="btn btn-outline" :to="buildWorkPageLocation(selectedWork)">Публичная страница произведения</RouterLink>
+          <RouterLink class="btn btn-outline" :to="buildWorkPageLocation(selectedWork)">Страница произведения</RouterLink>
         </div>
 
         <div v-if="selectedWork.body" class="prewrap" v-html="selectedWork.body" />
