@@ -143,7 +143,7 @@ async function submitNewTopic() {
   <main>
     <section v-if="!isAuthenticated || loadError" class="panel stack forum-auth-note">
       <div class="section-head">
-        <h1 class="forum-page-title">Форум</h1>
+        <h1 class="forum-page-title"><Icon name="messages-square" />Форум</h1>
         <button
           v-if="isAuthenticated"
           class="btn btn-primary"
@@ -151,7 +151,7 @@ async function submitNewTopic() {
           :disabled="newTopicBusy"
           @click="showNewTopicModal = true"
         >
-          Новая тема
+          <Icon name="plus" />Новая тема
         </button>
         <button
           v-else
@@ -174,11 +174,11 @@ async function submitNewTopic() {
         :disabled="newTopicBusy"
         @click="showNewTopicModal = true"
       >
-        Новая тема
+        <Icon name="plus" />Новая тема
       </button>
 
       <div class="field" style="min-width: 260px; flex: 2;">
-        <span class="label">Поиск</span>
+        <span class="label"><Icon name="search" />Поиск</span>
         <input
           v-model="searchQuery"
           class="input"
@@ -190,7 +190,7 @@ async function submitNewTopic() {
     <!-- БЛОК СЕКЦИИ -->
     <section class="forum-sections-block">
       <div class="section-head forum-sections-head">
-        <h2 class="forum-sections-title">Секции</h2>
+        <h2 class="forum-sections-title"><Icon name="layers" />Секции</h2>
         <span v-if="activeSectionName" class="pill">{{ activeSectionName }}</span>
       </div>
       <div class="forum-sections-chips">
@@ -314,8 +314,8 @@ async function submitNewTopic() {
     <div v-if="showNewTopicModal" class="modal-backdrop" @click.self="showNewTopicModal = false">
       <div class="auth-modal panel stack" role="dialog" aria-modal="true">
         <div class="section-head">
-          <h2>Новая тема</h2>
-          <button class="btn btn-ghost modal-close" type="button" @click="showNewTopicModal = false" aria-label="Закрыть">×</button>
+          <h2><Icon name="plus" />Новая тема</h2>
+          <button class="btn btn-ghost modal-close" type="button" @click="showNewTopicModal = false" aria-label="Закрыть"><Icon name="x" /></button>
         </div>
 
         <div v-if="newTopicError" class="message error">{{ newTopicError }}</div>
@@ -344,7 +344,7 @@ async function submitNewTopic() {
           </div>
           <div class="inline-actions">
             <button class="btn btn-primary" type="submit" :disabled="newTopicBusy">
-              {{ newTopicBusy ? 'Создаём…' : 'Создать тему' }}
+              <Icon name="send" />{{ newTopicBusy ? 'Создаём…' : 'Создать тему' }}
             </button>
             <button class="btn btn-outline" type="button" :disabled="newTopicBusy" @click="showNewTopicModal = false">
               Отмена

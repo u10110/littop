@@ -325,10 +325,10 @@ async function softDeleteCurrentWork() {
   <section class="page-head">
     <div class="section-head">
       <div>
-        <h1>Страница произведения</h1>
+        <h1><Icon name="book-open" />Страница произведения</h1>
         <p class="muted">Полный текст, отзывы, лайки и списки читателей доступны по прямой публичной ссылке.</p>
       </div>
-      <RouterLink class="btn btn-outline" to="/works">← К каталогу произведений</RouterLink>
+      <RouterLink class="btn btn-outline" to="/works"><Icon name="arrow-left" />← К каталогу произведений</RouterLink>
     </div>
   </section>
 
@@ -369,9 +369,9 @@ async function softDeleteCurrentWork() {
             class="btn btn-outline"
             :to="buildAuthorPageLocation(work.author)"
           >
-            Страница автора
+            <Icon name="user-circle" />Страница автора
           </RouterLink>
-          <a class="btn btn-primary" href="#root-work-review">Написать отзыв</a>
+          <a class="btn btn-primary" href="#root-work-review"><Icon name="pen-line" />Написать отзыв</a>
           <button
             v-if="canActivateAnnouncement"
             class="btn btn-primary"
@@ -379,7 +379,7 @@ async function softDeleteCurrentWork() {
             :disabled="announcementBusy || work.announcementActive"
             @click="requestAnnouncement"
           >
-            {{ work.announcementActive ? 'Уже в анонсах' : announcementBusy ? 'Добавляем…' : 'Анонс' }}
+            <Icon name="megaphone" />{{ work.announcementActive ? 'Уже в анонсах' : announcementBusy ? 'Добавляем…' : 'Анонс' }}
           </button>
           <button
             v-if="canManageWork"
@@ -388,7 +388,7 @@ async function softDeleteCurrentWork() {
             :disabled="editBusy || deleteBusy"
             @click="editMode ? cancelEditing() : startEditing()"
           >
-            {{ editMode ? 'Отменить редактирование' : isAdmin && !isOwner ? 'Редактировать как администратор' : 'Редактировать произведение' }}
+            <Icon name="pencil" />{{ editMode ? 'Отменить редактирование' : isAdmin && !isOwner ? 'Редактировать как администратор' : 'Редактировать произведение' }}
           </button>
           <button
             v-if="canManageWork"
@@ -397,7 +397,7 @@ async function softDeleteCurrentWork() {
             :disabled="editBusy || deleteBusy"
             @click="softDeleteCurrentWork"
           >
-            {{ deleteBusy ? 'Архивируем…' : 'Удалить' }}
+            <Icon name="trash-2" />{{ deleteBusy ? 'Архивируем…' : 'Удалить' }}
           </button>
         </div>
       </div>
@@ -479,14 +479,14 @@ async function softDeleteCurrentWork() {
 
       <div v-if="work.pdfUrl || work.audioUrl" class="stack work-media-block">
         <div class="section-head">
-          <h3>Материалы произведения</h3>
+          <h3><Icon name="file-text" />Материалы произведения</h3>
           <span class="pill">вложения</span>
         </div>
 
         <div v-if="work.pdfUrl" class="stack media-preview-card">
           <div class="inline-actions">
             <strong>{{ work.pdfFileName || 'PDF-файл' }}</strong>
-            <a class="btn btn-outline btn-sm" :href="work.pdfUrl" target="_blank" rel="noopener noreferrer">Открыть PDF</a>
+            <a class="btn btn-outline btn-sm" :href="work.pdfUrl" target="_blank" rel="noopener noreferrer"><Icon name="file-text" />Открыть PDF</a>
           </div>
           <iframe class="work-pdf-frame" :src="work.pdfUrl" title="PDF произведения" loading="lazy" />
         </div>
@@ -494,7 +494,7 @@ async function softDeleteCurrentWork() {
         <div v-if="work.audioUrl" class="stack media-preview-card">
           <div class="inline-actions">
             <strong>{{ work.audioFileName || 'Аудиофайл' }}</strong>
-            <a class="btn btn-outline btn-sm" :href="work.audioUrl" target="_blank" rel="noopener noreferrer">Скачать аудио</a>
+            <a class="btn btn-outline btn-sm" :href="work.audioUrl" target="_blank" rel="noopener noreferrer"><Icon name="download" />Скачать аудио</a>
           </div>
           <audio class="work-audio-player" :src="work.audioUrl" controls preload="metadata" />
         </div>

@@ -136,7 +136,7 @@ async function submitCreateWork() {
 <template>
   <article class="panel stack">
     <div class="section-head">
-      <h2>Новая публикация</h2>
+      <h2><Icon name="pen-line" />Новая публикация</h2>
       <span class="pill good">mutation createWork</span>
     </div>
 
@@ -180,7 +180,7 @@ async function submitCreateWork() {
 
       <div class="media-upload-grid">
         <div class="field media-upload-card">
-          <label for="create-pdf">PDF-файл</label>
+          <label for="create-pdf"><Icon name="file-text" />PDF-файл</label>
           <input
             id="create-pdf"
             ref="pdfInput"
@@ -195,7 +195,7 @@ async function submitCreateWork() {
         </div>
 
         <div class="field media-upload-card">
-          <label for="create-audio">Аудиофайл</label>
+          <label for="create-audio"><Icon name="music" />Аудиофайл</label>
           <input
             id="create-audio"
             ref="audioInput"
@@ -211,7 +211,7 @@ async function submitCreateWork() {
       </div>
 
       <button class="btn btn-primary" type="submit" :disabled="createBusy">
-        {{ createBusy ? 'Публикуем…' : 'Опубликовать' }}
+        <Icon name="upload" />{{ createBusy ? 'Публикуем…' : 'Опубликовать' }}
       </button>
       <div v-if="createStatus" class="message success">{{ createStatus }}</div>
       <div v-if="createError" class="message error">{{ createError }}</div>

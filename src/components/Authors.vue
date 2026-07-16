@@ -73,7 +73,7 @@ const authorsCountText = computed(() => loading.value ? 'загрузка…' : 
 
 <template>
   <section class="page-head authors-directory-head">
-    <h1>Авторы</h1>
+    <h1><Icon name="users" />Авторы</h1>
     <p class="muted">
       Каталог авторов в плотной витринной подаче: алфавитный фильтр, аватарки, логины, рейтинг и быстрый переход на персональную страницу по имени автора.
     </p>
@@ -90,28 +90,28 @@ const authorsCountText = computed(() => loading.value ? 'загрузка…' : 
 
     <div class="toolbar">
       <div class="field" style="min-width: 260px; flex: 2;">
-        <span class="label">Поиск</span>
+        <span class="label"><Icon name="search" />Поиск</span>
         <input v-model="search" class="input" placeholder="Имя, логин или email" />
       </div>
 
       <label class="chip">
         <input v-model="onlyFeatured" type="checkbox" />
-        <span>Только витрина</span>
+        <span><Icon name="star" />Только витрина</span>
       </label>
 
       <label class="chip">
         <input v-model="onlyClassics" type="checkbox" />
-        <span>Только классики</span>
+        <span><Icon name="award" />Только классики</span>
       </label>
 
       <label class="chip">
         <input v-model="onlyMemorial" type="checkbox" />
-        <span>Только страницы памяти</span>
+        <span><Icon name="heart" />Только страницы памяти</span>
       </label>
 
       <label class="chip">
         <input v-model="onlyChildren" type="checkbox" />
-        <span>Только детские аккаунты</span>
+        <span><Icon name="user" />Только детские аккаунты</span>
       </label>
 
       <button class="btn btn-outline" type="button" @click="selectedLetter = ''">Все буквы</button>

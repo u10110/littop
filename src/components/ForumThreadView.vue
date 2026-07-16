@@ -414,7 +414,7 @@ async function deletePost(post) {
           :disabled="topicEditBusy"
           @click="topicEditMode ? cancelTopicEdit() : startTopicEdit()"
         >
-          {{ topicEditMode ? 'Отменить редактирование темы' : 'Редактировать тему / секцию' }}
+          <Icon name="pencil" />{{ topicEditMode ? 'Отменить редактирование темы' : 'Редактировать тему / секцию' }}
         </button>
       </div>
       <div v-if="isAdmin && topic.sectionSlug === 'editor-column'" class="inline-actions">
@@ -425,7 +425,7 @@ async function deletePost(post) {
       <div class="inline-actions">
         <RouterLink class="btn btn-outline" :to="buildForumTopicPageLocation(topic)">Открыть тему</RouterLink>
         <button v-if="isAuthenticated" class="btn btn-primary" type="button" :disabled="threadBusy" @click="focusRootReplyForm">
-          Ответить на тему
+          <Icon name="reply" />Ответить на тему
         </button>
       </div>
     </div>
@@ -480,7 +480,7 @@ async function deletePost(post) {
     <hr class="divider" />
 
     <div class="section-head">
-      <h3>Обсуждение</h3>
+      <h3><Icon name="messages-square" />Обсуждение</h3>
       <span class="pill">{{ loading ? 'обновляем…' : `${flatPosts.length} сообщений` }}</span>
     </div>
 
@@ -524,7 +524,7 @@ async function deletePost(post) {
               :disabled="threadBusy"
               @click="startReply(post)"
             >
-              Добавить комментарий
+              <Icon name="message-square-plus" />Добавить комментарий
             </button>
             <button
               v-if="isAuthenticated && isOwnPost(post)"
@@ -533,7 +533,7 @@ async function deletePost(post) {
               :disabled="threadBusy"
               @click="startEdit(post)"
             >
-              Редактировать
+              <Icon name="pencil" />Редактировать
             </button>
             <button
               v-if="isAuthenticated && canDeletePost(post)"
@@ -542,7 +542,7 @@ async function deletePost(post) {
               :disabled="threadBusy"
               @click="deletePost(post)"
             >
-              Удалить
+              <Icon name="trash-2" />Удалить
             </button>
           </div>
 
@@ -556,7 +556,7 @@ async function deletePost(post) {
               <input :id="`reply-image-${post.id}`" class="input" type="file" accept="image/*" @change="handleReplyImageChange" />
             </div>
             <div class="inline-actions">
-              <button class="btn btn-primary" type="submit" :disabled="threadBusy">{{ threadBusy ? 'Публикуем…' : 'Опубликовать ответ' }}</button>
+              <button class="btn btn-primary" type="submit" :disabled="threadBusy"><Icon name="send" />{{ threadBusy ? 'Публикуем…' : 'Опубликовать ответ' }}</button>
               <button class="btn btn-outline" type="button" :disabled="threadBusy" @click="cancelReply">Отмена</button>
             </div>
           </form>
@@ -572,7 +572,7 @@ async function deletePost(post) {
               <div v-if="post.imageUrl" class="meta">Если файл не выбрать, текущая картинка сохранится.</div>
             </div>
             <div class="inline-actions">
-              <button class="btn btn-primary" type="submit" :disabled="threadBusy">{{ threadBusy ? 'Сохраняем…' : 'Сохранить' }}</button>
+              <button class="btn btn-primary" type="submit" :disabled="threadBusy"><Icon name="save" />{{ threadBusy ? 'Сохраняем…' : 'Сохранить' }}</button>
               <button class="btn btn-outline" type="button" :disabled="threadBusy" @click="cancelEdit">Отмена</button>
             </div>
           </form>
@@ -590,7 +590,7 @@ async function deletePost(post) {
         <label for="forum-root-image">Изображение</label>
         <input id="forum-root-image" class="input" type="file" accept="image/*" @change="handleRootImageChange" />
       </div>
-      <button class="btn btn-primary" type="submit" :disabled="threadBusy">{{ threadBusy ? 'Публикуем…' : 'Опубликовать ответ' }}</button>
+      <button class="btn btn-primary" type="submit" :disabled="threadBusy"><Icon name="send" />{{ threadBusy ? 'Публикуем…' : 'Опубликовать ответ' }}</button>
     </form>
     <div v-else class="message">Чтобы отвечать в темы, войди или зарегистрируйся в шапке.</div>
   </article>

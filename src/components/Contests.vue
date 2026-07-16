@@ -20,7 +20,7 @@ const draftContests = computed(() => contests.value.filter((item) => item.status
 
 <template>
   <section class="page-head">
-    <h1>Конкурсы</h1>
+    <h1><Icon name="trophy" />Конкурсы</h1>
     <p class="muted">
       Компонент переведён на live GraphQL-список <code>contests</code> и теперь разделяет активные, завершённые и черновые конкурсы
       по реальным backend-статусам.
@@ -40,7 +40,7 @@ const draftContests = computed(() => contests.value.filter((item) => item.status
 
   <section class="section-block">
     <div class="section-head">
-      <h2>Активные</h2>
+      <h2><Icon name="sparkles" />Активные</h2>
       <span class="pill good">accepting_entries / voting</span>
     </div>
     <div v-if="activeContests.length" class="grid">
@@ -61,7 +61,7 @@ const draftContests = computed(() => contests.value.filter((item) => item.status
 
   <section class="section-block">
     <div class="section-head">
-      <h2>Завершённые</h2>
+      <h2><Icon name="check-circle" />Завершённые</h2>
       <span class="pill">finished / cancelled</span>
     </div>
     <div v-if="archivedContests.length" class="grid">
@@ -80,7 +80,7 @@ const draftContests = computed(() => contests.value.filter((item) => item.status
 
   <section class="section-block">
     <div class="section-head">
-      <h2>Черновики</h2>
+      <h2><Icon name="file-edit" />Черновики</h2>
       <span class="pill warn">draft</span>
     </div>
     <div v-if="draftContests.length" class="grid">

@@ -51,7 +51,7 @@ watch(tracks, (items) => {
 
 <template>
   <section class="page-head">
-    <h1>Радио</h1>
+    <h1><Icon name="radio" />Радио</h1>
     <p class="muted">
       Здесь отображаются треки из <code>radioTracks</code> в backend. Аудио, загруженное из страницы «Мой кабинет»,
       после сохранения в папку и БД автоматически появляется в этом списке.
@@ -67,7 +67,7 @@ watch(tracks, (items) => {
   <section class="layout-columns">
     <div class="stack">
       <div class="section-head">
-        <h2>Плейлист</h2>
+        <h2><Icon name="list-music" />Плейлист</h2>
         <span class="pill">{{ loading ? 'загрузка…' : `${tracks.length} треков` }}</span>
       </div>
 
@@ -87,7 +87,7 @@ watch(tracks, (items) => {
             class="btn btn-sm btn-danger track-delete"
             type="button"
             @click.stop="deleteTrack(track)"
-          >Удалить</button>
+          ><Icon name="trash-2" />Удалить</button>
         </article>
       </div>
       <div v-else-if="!loading" class="empty-state">Треков пока нет. Компонент уже ждёт данные из radio_tracks без статических заглушек.</div>
@@ -104,7 +104,7 @@ watch(tracks, (items) => {
         </div>
         <div class="chips">
           <span class="pill">{{ ratingLabel(selectedTrack.averageRating, selectedTrack.ratingsCount) }}</span>
-          <a v-if="selectedTrack.sourceUrl" class="btn btn-outline" :href="selectedTrack.sourceUrl" target="_blank" rel="noreferrer">Источник</a>
+          <a v-if="selectedTrack.sourceUrl" class="btn btn-outline" :href="selectedTrack.sourceUrl" target="_blank" rel="noreferrer"><Icon name="external-link" />Источник</a>
         </div>
 
         <audio v-if="selectedTrack.audioUrl" controls preload="metadata" style="width: 100%;">

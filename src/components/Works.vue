@@ -415,7 +415,7 @@ function clearFilters() {
 
 <template>
   <section class="page-head">
-    <h1>Произведения</h1>
+    <h1><Icon name="book-open" />Произведения</h1>
     <p class="muted">
       Фильтры этой страницы читаются из адресной строки и синхронизируются обратно в URL. Можно открывать готовые ссылки
       вида <code>/works?mine=1</code> или <code>/works?section=poetry</code>.
@@ -425,25 +425,25 @@ function clearFilters() {
   <section class="panel stack">
     <div class="toolbar">
       <div class="field" style="min-width: 220px; flex: 1;">
-        <span class="label">Раздел</span>
+        <span class="label"><Icon name="list" />Раздел</span>
         <select v-model="sectionFilter" class="select">
           <option v-for="option in sectionOptions" :key="option.value || 'all'" :value="option.value">{{ option.label }}</option>
         </select>
       </div>
 
       <div class="field" style="min-width: 260px; flex: 2;">
-        <span class="label">Поиск</span>
+        <span class="label"><Icon name="search" />Поиск</span>
         <input v-model="search" class="input" placeholder="Название, summary или текст" />
       </div>
 
       <div class="inline-actions" style="flex-basis: 100%;">
         <button class="btn" :class="mineOnly ? 'btn-primary' : 'btn-outline'" type="button" @click="mineOnly = !mineOnly">
-          {{ mineOnly ? 'Показываются мои' : 'Только мои произведения' }}
+          <Icon name="user" />{{ mineOnly ? 'Показываются мои' : 'Только мои произведения' }}
         </button>
         <button class="btn" :class="todayOnly ? 'btn-primary' : 'btn-outline'" type="button" @click="todayOnly = !todayOnly">
-          {{ todayOnly ? 'За сегодня' : 'Произведения за сегодня' }}
+          <Icon name="calendar" />{{ todayOnly ? 'За сегодня' : 'Произведения за сегодня' }}
         </button>
-        <button class="btn btn-outline" type="button" @click="clearFilters">Сбросить</button>
+        <button class="btn btn-outline" type="button" @click="clearFilters"><Icon name="rotate-ccw" />Сбросить</button>
       </div>
     </div>
 
@@ -461,7 +461,7 @@ function clearFilters() {
   <section class="layout-columns">
     <div class="stack">
       <div class="section-head">
-        <h2>Каталог</h2>
+        <h2><Icon name="list" />Каталог</h2>
         <span class="pill">{{ loading ? 'загрузка…' : `${works.length} записей` }}</span>
       </div>
 

@@ -108,8 +108,8 @@ const healthTone = computed(() => {
   <section class="layout-columns home-top-columns">
     <div class="section-block editor-column-block">
       <div class="section-head">
-        <h2>Колонка редактора</h2>
-        <RouterLink to="/forum?section=editor-column" class="btn btn-outline">Все статьи</RouterLink>
+        <h2><Icon name="pen-line" />Колонка редактора</h2>
+        <RouterLink to="/forum?section=editor-column" class="btn btn-outline"><Icon name="arrow-right" />Все статьи</RouterLink>
       </div>
       <div v-if="editorColumnExtra.length" class="stack">
         <article v-for="topic in editorColumnExtra" :key="`edc-${topic.id}`" class="card">
@@ -157,8 +157,8 @@ const healthTone = computed(() => {
 
     <div class="section-block">
       <div class="section-head">
-        <h2>Анонсы</h2>
-        <RouterLink to="/works" class="btn btn-outline">Все произведения</RouterLink>
+        <h2><Icon name="bell" />Анонсы</h2>
+        <RouterLink to="/works" class="btn btn-outline"><Icon name="arrow-right" />Все произведения</RouterLink>
       </div>
       <div v-if="announcements.length" class="stack">
         <article v-for="work in announcements" :key="`announce-${work.id}`" class="card">
@@ -183,8 +183,8 @@ const healthTone = computed(() => {
 
   <section class="section-block">
     <div class="section-head">
-      <h2>Свежие произведения</h2>
-      <RouterLink to="/works" class="btn btn-outline">Открыть каталог</RouterLink>
+      <h2><Icon name="book-open" />Свежие произведения</h2>
+      <RouterLink to="/works" class="btn btn-outline"><Icon name="arrow-right" />Открыть каталог</RouterLink>
     </div>
 
     <div v-if="recentWorks.length" class="list-grid">
@@ -210,8 +210,8 @@ const healthTone = computed(() => {
   <section class="layout-columns">
     <div class="section-block">
       <div class="section-head">
-        <h2>Авторы</h2>
-        <RouterLink to="/authors" class="btn btn-outline">Все авторы</RouterLink>
+        <h2><Icon name="users" />Авторы</h2>
+        <RouterLink to="/authors" class="btn btn-outline"><Icon name="arrow-right" />Все авторы</RouterLink>
       </div>
       <div v-if="featuredAuthors.length || classicAuthors.length || onlineAuthors.length" class="stack">
         <article class="card">
@@ -242,8 +242,8 @@ const healthTone = computed(() => {
 
     <div class="section-block">
       <div class="section-head">
-        <h2>Форум</h2>
-        <RouterLink to="/forum" class="btn btn-outline">Открыть форум</RouterLink>
+        <h2><Icon name="messages-square" />Форум</h2>
+        <RouterLink to="/forum" class="btn btn-outline"><Icon name="arrow-right" />Открыть форум</RouterLink>
       </div>
       <div v-if="recentTopics.length" class="stack">
         <article v-for="topic in homeForumTopics" :key="topic.id" class="card">
@@ -269,8 +269,8 @@ const healthTone = computed(() => {
   <section class="layout-columns">
     <div class="section-block">
       <div class="section-head">
-        <h2>Конкурсы</h2>
-        <RouterLink to="/contests" class="btn btn-outline">Смотреть все</RouterLink>
+        <h2><Icon name="trophy" />Конкурсы</h2>
+        <RouterLink to="/contests" class="btn btn-outline"><Icon name="arrow-right" />Смотреть все</RouterLink>
       </div>
       <div v-if="contests.length" class="stack">
         <article v-for="contest in contests" :key="contest.id" class="card">
@@ -288,8 +288,8 @@ const healthTone = computed(() => {
 
     <div class="section-block">
       <div class="section-head">
-        <h2>Радио</h2>
-        <RouterLink to="/radio" class="btn btn-outline">Открыть радио</RouterLink>
+        <h2><Icon name="radio" />Радио</h2>
+        <RouterLink to="/radio" class="btn btn-outline"><Icon name="arrow-right" />Открыть радио</RouterLink>
       </div>
       <div v-if="radioTracks.length" class="stack">
         <article v-for="track in sortedRadioTracks" :key="track.id" class="card">

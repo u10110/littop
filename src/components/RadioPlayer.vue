@@ -17,13 +17,13 @@
         <!-- Кнопка Play/Pause -->
         <button class="play-btn" @click="togglePlay" :aria-label="isPlaying ? 'Пауза' : 'Играть'">
             <!-- Используем CSS-фигуры вместо текстовых символов -->
-            <i v-if="!isPlaying" class="icon-play"></i>
-            <i v-else class="icon-pause"></i>
+            <Icon v-if="!isPlaying" name="play" />
+            <Icon v-else name="pause" />
         </button>
   
         <!-- Управление громкостью -->
         <div class="volume-control">
-          <span class="volume-icon">🔊</span>
+          <span class="volume-icon"><Icon name="volume-2" /></span>
           <input 
             type="range" 
             min="0" 

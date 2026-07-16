@@ -472,10 +472,10 @@ async function deleteAuthorTrack(track) {
   <section class="page-head author-showcase-head">
     <div class="section-head">
       <div>
-        <h1>Страница автора</h1>
+        <h1><Icon name="user-circle" />Страница автора</h1>
         <p class="muted">Публичная авторская страница с произведениями, полученными отзывами и рецензиями, которые автор написал другим.</p>
       </div>
-      <RouterLink class="btn btn-outline" to="/authors">← К списку авторов</RouterLink>
+      <RouterLink class="btn btn-outline" to="/authors"><Icon name="arrow-left" />← К списку авторов</RouterLink>
     </div>
   </section>
 
@@ -506,7 +506,7 @@ async function deleteAuthorTrack(track) {
             <template v-else>{{ authorInitial }}</template>
           </div>
           <div class="author-name-block">
-            <div v-if="isBirthdayToday" class="author-birthday-banner">🎈 Сегодня — именинник!</div>
+            <div class="author-birthday-banner"><Icon name="gift" /> Сегодня — именинник!</div>
             <h2>{{ author.displayName }}</h2>
             <div class="author-login-link">[{{ author.login }}]</div>
           </div>
@@ -527,26 +527,26 @@ async function deleteAuthorTrack(track) {
           </div>
 
           <div class="stack">
-            <RouterLink v-if="canMessageAuthor" class="btn btn-outline" :to="{ path: '/messages', query: { with: author.login } }">Написать личное сообщение</RouterLink>
+            <RouterLink v-if="canMessageAuthor" class="btn btn-outline" :to="{ path: '/messages', query: { with: author.login } }"><Icon name="mail" />Написать личное сообщение</RouterLink>
             <button class="btn" :class="activeLedger === 'works' ? 'btn-primary' : 'btn-outline'" type="button" @click="activeLedger = 'works'">
-              ПРОИЗВЕДЕНИЯ
+              <Icon name="book-open" />ПРОИЗВЕДЕНИЯ
             </button>
             <RouterLink
               class="btn"
               :class="activeLedger === 'written' ? 'btn-primary' : 'btn-outline'"
               :to="{ name: 'author-feedback', params: { login: author.login, kind: 'received' } }"
             >
-              НАПИСАННЫЕ
+              <Icon name="pen-line" />НАПИСАННЫЕ
             </RouterLink>
             <RouterLink
               class="btn"
               :class="activeLedger === 'received' ? 'btn-primary' : 'btn-outline'"
               :to="{ name: 'author-feedback', params: { login: author.login, kind: 'written' } }"
             >
-              ПОЛУЧЕННЫЕ
+              <Icon name="inbox" />ПОЛУЧЕННЫЕ
             </RouterLink>
             <button class="btn" :class="activeLedger === 'audio' ? 'btn-primary' : 'btn-outline'" type="button" @click="activeLedger = 'audio'">
-              АУДИО
+              <Icon name="music" />АУДИО
             </button>
           </div>
 
@@ -559,7 +559,7 @@ async function deleteAuthorTrack(track) {
               target="_blank"
               rel="noreferrer"
             >
-              {{ link.label }}
+              <Icon name="external-link" />{{ link.label }}
             </a>
           </div>
         </article>
@@ -669,7 +669,7 @@ async function deleteAuthorTrack(track) {
 
           <form class="stack" @submit.prevent="submitAdminWork">
             <div class="section-head">
-              <h3 class="author-paper-title author-paper-title-sm">Добавить произведение</h3>
+              <h3 class="author-paper-title author-paper-title-sm"><Icon name="plus" />Добавить произведение</h3>
               <span class="pill">от имени классика</span>
             </div>
             <div class="grid-2">
@@ -704,7 +704,7 @@ async function deleteAuthorTrack(track) {
               placeholder="Полный текст произведения"
             />
             <div class="inline-actions">
-              <button class="btn btn-primary" type="submit" :disabled="adminWorkBusy">{{ adminWorkBusy ? 'Публикуем…' : 'Опубликовать произведение' }}</button>
+              <button class="btn btn-primary" type="submit" :disabled="adminWorkBusy"><Icon name="upload" />{{ adminWorkBusy ? 'Публикуем…' : 'Опубликовать произведение' }}</button>
             </div>
             <div v-if="adminWorkStatus" class="message success">{{ adminWorkStatus }}</div>
             <div v-if="adminWorkError" class="message error">{{ adminWorkError }}</div>

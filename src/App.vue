@@ -625,25 +625,25 @@ async function submitRestoreOwner() {
         <span class="burger-bar"></span>
       </button>
       <div class="logo-block">
-        <div class="logo"><RouterLink to="/"> Литопотам </RouterLink></div>
+        <div class="logo"><RouterLink to="/"><Icon name="feather" /> Литопотам </RouterLink></div>
       </div>
 
       <nav class="nav" aria-label="Главное меню">
-        <RouterLink to="/">Главная</RouterLink>
-        <RouterLink to="/works">Произведения</RouterLink>
-        <RouterLink to="/authors">Авторы</RouterLink>
-        <RouterLink to="/contests">Конкурсы</RouterLink>
-        <RouterLink to="/radio">Радио</RouterLink>
-        <RouterLink to="/forum">Форум</RouterLink>
-        <RouterLink v-if="isAuthenticated" to="/personal">Мой кабинет</RouterLink>
+        <RouterLink to="/"><Icon name="home" />Главная</RouterLink>
+        <RouterLink to="/works"><Icon name="book-open" />Произведения</RouterLink>
+        <RouterLink to="/authors"><Icon name="users" />Авторы</RouterLink>
+        <RouterLink to="/contests"><Icon name="trophy" />Конкурсы</RouterLink>
+        <RouterLink to="/radio"><Icon name="radio" />Радио</RouterLink>
+        <RouterLink to="/forum"><Icon name="messages-square" />Форум</RouterLink>
+        <RouterLink v-if="isAuthenticated" to="/personal"><Icon name="user-circle" />Мой кабинет</RouterLink>
         <RouterLink v-if="isAuthenticated" class="bell-btn" :class="unreadDialogsCount ? 'bell-btn-hot' : 'bell-btn-calm'" to="/messages" aria-label="Личные сообщения">
-          <span class="bell-icon">🔔</span>
+          <Icon name="bell" class="bell-icon" />
         </RouterLink>
       </nav>
 
       <div class="actions">
         <div v-if="isAuthenticated" class="user-menu-wrap">
-          <button class="btn btn-outline user-menu-trigger" type="button" @click="toggleUserCard">👤 {{ displayName }}</button>
+          <button class="btn btn-outline user-menu-trigger" type="button" @click="toggleUserCard"><Icon name="user-circle" /> {{ displayName }}</button>
           <div v-if="isUserCardOpen" class="auth-box user-card user-card-popup">
             <div class="stack">
               <div class="section-head">
@@ -656,23 +656,19 @@ async function submitRestoreOwner() {
             </div>
             <div class="inline-actions wrap-actions">
               <RouterLink class="btn btn-outline bell-btn" :class="unreadDialogsCount ? 'bell-btn-hot' : 'bell-btn-calm'" to="/messages">
-                <span class="bell-icon">🔔</span>
+                <Icon name="bell" class="bell-icon" />
                 <span>{{ unreadDialogsCount ? `Новых: ${unreadDialogsCount}` : 'Сообщения' }}</span>
               </RouterLink>
-              <RouterLink class="btn btn-outline" to="/personal">Мой кабинет</RouterLink>
-              <button v-if="hasStoredOwnerSession" class="btn btn-outline" type="button" @click="submitRestoreOwner">Вернуться во владельца</button>
-              <button class="btn btn-outline" type="button" @click="submitLogout">Выйти</button>
+              <RouterLink class="btn btn-outline" to="/personal"><Icon name="user-circle" />Мой кабинет</RouterLink>
+              <button v-if="hasStoredOwnerSession" class="btn btn-outline" type="button" @click="submitRestoreOwner"><Icon name="user-cog" />Вернуться во владельца</button>
+              <button class="btn btn-outline" type="button" @click="submitLogout"><Icon name="log-out" />Выйти</button>
             </div>
           </div>
         </div>
 
         <div v-else class="actions-compact">
           <button class="auth-icon-btn" type="button" aria-label="Войти или зарегистрироваться" @click="openAuthModal('login')">
-            <svg class="auth-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M9 4 H20 V20 H9" />
-              <path d="M3 12 H13" />
-              <path d="M13 8 L17 12 L13 16" />
-            </svg>
+            <Icon name="log-in" class="auth-icon" />
           </button>
         </div>
       </div>
@@ -686,14 +682,14 @@ async function submitRestoreOwner() {
         <button class="btn btn-ghost mobile-menu-close" type="button" aria-label="Закрыть меню" @click="mobileMenuOpen = false">&times;</button>
       </div>
       <nav class="mobile-nav" aria-label="Мобильное меню">
-        <RouterLink to="/" @click="mobileMenuOpen = false">Главная</RouterLink>
-        <RouterLink to="/works" @click="mobileMenuOpen = false">Произведения</RouterLink>
-        <RouterLink to="/authors" @click="mobileMenuOpen = false">Авторы</RouterLink>
-        <RouterLink to="/contests" @click="mobileMenuOpen = false">Конкурсы</RouterLink>
-        <RouterLink to="/radio" @click="mobileMenuOpen = false">Радио</RouterLink>
-        <RouterLink to="/forum" @click="mobileMenuOpen = false">Форум</RouterLink>
-        <RouterLink v-if="isAuthenticated" to="/personal" @click="mobileMenuOpen = false">Мой кабинет</RouterLink>
-        <RouterLink v-if="isAuthenticated" to="/messages" @click="mobileMenuOpen = false">Сообщения</RouterLink>
+        <RouterLink to="/" @click="mobileMenuOpen = false"><Icon name="home" />Главная</RouterLink>
+        <RouterLink to="/works" @click="mobileMenuOpen = false"><Icon name="book-open" />Произведения</RouterLink>
+        <RouterLink to="/authors" @click="mobileMenuOpen = false"><Icon name="users" />Авторы</RouterLink>
+        <RouterLink to="/contests" @click="mobileMenuOpen = false"><Icon name="trophy" />Конкурсы</RouterLink>
+        <RouterLink to="/radio" @click="mobileMenuOpen = false"><Icon name="radio" />Радио</RouterLink>
+        <RouterLink to="/forum" @click="mobileMenuOpen = false"><Icon name="messages-square" />Форум</RouterLink>
+        <RouterLink v-if="isAuthenticated" to="/personal" @click="mobileMenuOpen = false"><Icon name="user-circle" />Мой кабинет</RouterLink>
+        <RouterLink v-if="isAuthenticated" to="/messages" @click="mobileMenuOpen = false"><Icon name="messages-square" />Сообщения</RouterLink>
       </nav>
     </aside>
   </div>
@@ -706,7 +702,7 @@ async function submitRestoreOwner() {
       <div class="site-banner-inner">
         <template v-if="!siteBannerEditing">
           <span class="site-banner-text">{{ siteBanner || 'Литературное радио Литопотам' }}</span>
-          <button v-if="isAdmin" class="btn btn-sm btn-outline site-banner-edit-btn" type="button" @click="startEditBanner">Изменить</button>
+          <button v-if="isAdmin" class="btn btn-sm btn-outline site-banner-edit-btn" type="button" @click="startEditBanner"><Icon name="pencil" />Изменить</button>
         </template>
         <template v-else>
           <textarea v-model="siteBannerDraft" class="textarea site-banner-input" placeholder="Текст в шапке сайта"></textarea>
@@ -722,7 +718,7 @@ async function submitRestoreOwner() {
   <div v-if="isAdmin" class="site-header-admin">
     <span class="meta">Картинка шапки:</span>
     <input ref="headerImageInput" type="file" accept="image/*" :disabled="headerImageBusy" @change="onHeaderImageSelected" />
-    <button v-if="headerImageUrl" class="btn btn-sm btn-outline" type="button" :disabled="headerImageBusy" @click="clearHeaderImage">Убрать</button>
+    <button v-if="headerImageUrl" class="btn btn-sm btn-outline" type="button" :disabled="headerImageBusy" @click="clearHeaderImage"><Icon name="trash-2" />Убрать</button>
     <span v-if="headerImageBusy" class="meta">Загружаем…</span>
     <span v-else-if="headerImageUrl" class="meta">установлена</span>
     <span v-else class="meta">не задана</span>
@@ -736,7 +732,7 @@ async function submitRestoreOwner() {
             <h2 id="auth-modal-title">{{ authModalTitle }}</h2>
             <span class="meta">{{ authModalSubtitle }}</span>
           </div>
-          <button class="btn btn-ghost modal-close" type="button" @click="closeAuthModal" aria-label="Закрыть">×</button>
+          <button class="btn btn-ghost modal-close" type="button" @click="closeAuthModal" aria-label="Закрыть"><Icon name="x" /></button>
         </div>
 
         <div v-if="authMode === 'login' || authMode === 'register'" class="auth-toggle">
@@ -746,7 +742,7 @@ async function submitRestoreOwner() {
             type="button"
             @click="openAuthModal('login')"
           >
-            Вход
+            <Icon name="log-in" />Вход
           </button>
           <button
             class="btn"
@@ -754,13 +750,13 @@ async function submitRestoreOwner() {
             type="button"
             @click="openAuthModal('register')"
           >
-            Регистрация
+            <Icon name="user-plus" />Регистрация
           </button>
         </div>
 
         <div v-else class="inline-actions">
-          <button class="btn btn-outline" type="button" @click="openAuthModal('login')">Назад ко входу</button>
-          <button v-if="authMode !== 'register'" class="btn btn-outline" type="button" @click="openAuthModal('register')">Регистрация</button>
+          <button class="btn btn-outline" type="button" @click="openAuthModal('login')"><Icon name="arrow-left" />Назад ко входу</button>
+          <button v-if="authMode !== 'register'" class="btn btn-outline" type="button" @click="openAuthModal('register')"><Icon name="user-plus" />Регистрация</button>
         </div>
 
         <div v-if="visibleAuthError" class="message error">{{ visibleAuthError }}</div>
@@ -788,18 +784,18 @@ async function submitRestoreOwner() {
                 :aria-label="loginPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'"
                 @click="loginPasswordVisible = !loginPasswordVisible"
               >
-                {{ loginPasswordVisible ? '🙈' : '👁️' }}
+                <Icon :name="loginPasswordVisible ? 'eye-off' : 'eye'" />
               </button>
             </div>
           </div>
           <div class="inline-actions">
-            <button class="btn btn-primary" type="submit" :disabled="authBusy">{{ authBusy ? 'Входим…' : 'Войти' }}</button>
+            <button class="btn btn-primary" type="submit" :disabled="authBusy"><Icon name="log-in" />{{ authBusy ? 'Входим…' : 'Войти' }}</button>
             <button class="btn btn-ghost" type="button" @click="openAuthModal('forgot')">Забыли пароль?</button>
           </div>
           <div v-if="canReopenClosedAccount" class="message warn">
             <div>Аккаунт закрыт, но его ещё можно открыть{{ reopenUntilLabel && reopenUntilLabel !== '—' ? ` до ${reopenUntilLabel}` : '' }}.</div>
             <div class="inline-actions">
-              <button class="btn btn-primary" type="button" :disabled="authBusy" @click="submitReopenClosedAccount">Открыть аккаунт</button>
+              <button class="btn btn-primary" type="button" :disabled="authBusy" @click="submitReopenClosedAccount"><Icon name="rotate-ccw" />Открыть аккаунт</button>
             </div>
           </div>
           <div class="social-auth-block">
@@ -849,7 +845,7 @@ async function submitRestoreOwner() {
                 :aria-label="registerPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'"
                 @click="registerPasswordVisible = !registerPasswordVisible"
               >
-                {{ registerPasswordVisible ? '🙈' : '👁️' }}
+                <Icon :name="registerPasswordVisible ? 'eye-off' : 'eye'" />
               </button>
             </div>
           </div>
@@ -861,7 +857,7 @@ async function submitRestoreOwner() {
             </span>
           </label>
           <button class="btn btn-primary" type="submit" :disabled="authBusy">
-            {{ authBusy ? 'Создаём профиль…' : 'Создать профиль' }}
+            <Icon name="user-plus" />{{ authBusy ? 'Создаём профиль…' : 'Создать профиль' }}
           </button>
           <div class="social-auth-block">
             <div class="meta">Или зарегистрируйся через соцсеть</div>
@@ -885,7 +881,7 @@ async function submitRestoreOwner() {
             <input id="forgot-email" v-model="forgotForm.email" class="input" type="email" inputmode="email" autocomplete="email" required />
           </div>
           <button class="btn btn-primary" type="submit" :disabled="authBusy">
-            {{ authBusy ? 'Отправляем…' : 'Отправить письмо' }}
+            <Icon name="mail" />{{ authBusy ? 'Отправляем…' : 'Отправить письмо' }}
           </button>
         </form>
 
@@ -895,7 +891,7 @@ async function submitRestoreOwner() {
             <div class="password-input-row">
               <input id="reset-password" v-model="resetForm.password" class="input" :type="resetPasswordVisible ? 'text' : 'password'" autocomplete="new-password" required />
               <button class="btn btn-outline password-toggle" type="button" :aria-pressed="resetPasswordVisible" :aria-label="resetPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'" @click="resetPasswordVisible = !resetPasswordVisible">
-                {{ resetPasswordVisible ? '🙈' : '👁️' }}
+                <Icon :name="resetPasswordVisible ? 'eye-off' : 'eye'" />
               </button>
             </div>
           </div>
@@ -904,12 +900,12 @@ async function submitRestoreOwner() {
             <div class="password-input-row">
               <input id="reset-password-confirm" v-model="resetForm.confirmPassword" class="input" :type="resetConfirmPasswordVisible ? 'text' : 'password'" autocomplete="new-password" required />
               <button class="btn btn-outline password-toggle" type="button" :aria-pressed="resetConfirmPasswordVisible" :aria-label="resetConfirmPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'" @click="resetConfirmPasswordVisible = !resetConfirmPasswordVisible">
-                {{ resetConfirmPasswordVisible ? '🙈' : '👁️' }}
+                <Icon :name="resetConfirmPasswordVisible ? 'eye-off' : 'eye'" />
               </button>
             </div>
           </div>
           <button class="btn btn-primary" type="submit" :disabled="authBusy">
-            {{ authBusy ? 'Сохраняем…' : 'Сохранить новый пароль' }}
+            <Icon name="save" />{{ authBusy ? 'Сохраняем…' : 'Сохранить новый пароль' }}
           </button>
         </form>
       </div>

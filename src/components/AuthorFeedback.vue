@@ -105,7 +105,7 @@ watch([login, kind], load);
 <template>
   <main>
     <section class="panel stack author-feedback">
-      <RouterLink class="btn btn-outline" :to="backLink()">← К странице автора</RouterLink>
+      <RouterLink class="btn btn-outline" :to="backLink()"><Icon name="arrow-left" />← К странице автора</RouterLink>
       <div class="section-head">
         <div>
           <div class="author-paper-eyebrow">{{ eyebrow }}</div>

@@ -157,10 +157,10 @@ function openAuthModal(mode = 'login') {
   <section class="page-head">
     <div class="section-head">
       <div>
-        <h1>Личные сообщения</h1>
+        <h1><Icon name="messages-square" />Личные сообщения</h1>
         <p class="muted">Диалоги между авторами и читателями внутри сайта.</p>
       </div>
-      <RouterLink class="btn btn-outline" to="/authors">Найти собеседника</RouterLink>
+      <RouterLink class="btn btn-outline" to="/authors"><Icon name="user-search" />Найти собеседника</RouterLink>
     </div>
   </section>
 
@@ -176,7 +176,7 @@ function openAuthModal(mode = 'login') {
   <section v-else class="layout-columns forum-layout-columns">
     <article class="panel stack">
       <div class="section-head">
-        <h2>Диалоги</h2>
+        <h2><Icon name="message-square" />Диалоги</h2>
         <span class="pill">{{ pageLoading ? 'загрузка…' : `${dialogs.length} диалогов` }}</span>
       </div>
       <div v-if="pageError" class="message error">{{ pageError }}</div>
@@ -208,7 +208,7 @@ function openAuthModal(mode = 'login') {
           class="btn btn-outline"
           :to="buildAuthorPageLocation(selectedDialog.peer)"
         >
-          Страница автора
+          <Icon name="user-circle" />Страница автора
         </RouterLink>
       </div>
 
@@ -247,8 +247,8 @@ function openAuthModal(mode = 'login') {
           <textarea id="pm-body" v-model="draftMessageBody" class="textarea" placeholder="Напиши сообщение" required />
         </div>
         <div class="inline-actions">
-          <button class="btn btn-primary" type="submit" :disabled="sendBusy">{{ sendBusy ? 'Отправляем…' : 'Отправить' }}</button>
-          <RouterLink class="btn btn-outline" to="/authors">Открыть список авторов</RouterLink>
+          <button class="btn btn-primary" type="submit" :disabled="sendBusy"><Icon name="send" />{{ sendBusy ? 'Отправляем…' : 'Отправить' }}</button>
+          <RouterLink class="btn btn-outline" to="/authors"><Icon name="users" />Открыть список авторов</RouterLink>
         </div>
         <div v-if="sendStatus" class="message" :class="sendStatus.includes('отправлено') ? 'success' : 'error'">{{ sendStatus }}</div>
       </form>

@@ -637,12 +637,12 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
           <span class="note">Статус: {{ currentUser?.status || 'active' }}</span>
         </article>
         <article class="card stat">
-          <span class="meta">Произведения</span>
+          <span class="meta"><Icon name="file-text" />Произведения</span>
           <span class="value">{{ profile?.worksCountCached ?? 0 }}</span>
           <span class="note">Сохранено в профиле</span>
         </article>
         <article class="card stat">
-          <span class="meta">Рейтинг</span>
+          <span class="meta"><Icon name="star" />Рейтинг</span>
           <span class="value">{{ profile?.ratingTotal ?? 0 }}</span>
           <span class="note">Суммарная оценка автора</span>
         </article>
@@ -661,7 +661,7 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
       <section class="layout-columns personal-layout">
         <article class="panel">
           <div class="section-head">
-            <h2>Профиль</h2>
+            <h2><Icon name="pencil" />Профиль</h2>
             <span class="pill good">online</span>
           </div>
 
@@ -786,7 +786,7 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
       <section class="layout-columns personal-layout">
         <article class="panel">
           <div class="section-head">
-            <h2>Фото автора</h2>
+            <h2><Icon name="image" />Фото автора</h2>
             <span class="pill">Аватар + большое фото</span>
           </div>
 
@@ -844,7 +844,7 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
 
         <article class="panel">
           <div class="section-head">
-            <h2>Активность</h2>
+            <h2><Icon name="activity" />Активность</h2>
             <span class="pill">Данные из session/me</span>
           </div>
 
@@ -879,7 +879,7 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
       <section class="layout-columns personal-layout">
         <article class="panel">
           <div class="section-head">
-            <h2>Быстрые переходы</h2>
+            <h2><Icon name="compass" />Быстрые переходы</h2>
             <span class="meta">Из кабинета</span>
           </div>
           <div class="inline-actions">
@@ -892,7 +892,7 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
             <RouterLink class="btn btn-outline" to="/authors">Авторы</RouterLink>
             <RouterLink class="btn btn-outline" to="/forum">Форум</RouterLink>
             <RouterLink class="btn btn-outline" to="/messages">Личные сообщения</RouterLink>
-            <button class="btn btn-outline" type="button" :disabled="archiveBusy" @click="downloadWorksArchive">{{ archiveBusy ? 'Собираем архив…' : 'Скачать произведения архивом' }}</button>
+            <button class="btn btn-outline" type="button" :disabled="archiveBusy" @click="downloadWorksArchive"><Icon name="download" />{{ archiveBusy ? 'Собираем архив…' : 'Скачать произведения архивом' }}</button>
           </div>
           <div class="note">
             Кнопка «Мои произведения» открывает каталог сразу с фильтром <code>?mine=1</code> из адресной строки.
@@ -921,7 +921,7 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
 
         <article class="panel stack">
           <div class="section-head">
-            <h2>Персики</h2>
+            <h2><Icon name="coins" />Персики</h2>
             <span class="pill">баланс: {{ peachBalance }}</span>
           </div>
           <div class="note">
@@ -1071,7 +1071,7 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
       <section class="layout-columns personal-layout">
         <article class="panel">
           <div class="section-head">
-            <h2>Закрытие аккаунта</h2>
+            <h2><Icon name="user-x" />Закрытие аккаунта</h2>
             <span class="pill warn">soft delete</span>
           </div>
           <div class="note">
