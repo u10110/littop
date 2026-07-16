@@ -436,17 +436,14 @@ function clearFilters() {
         <input v-model="search" class="input" placeholder="Название, summary или текст" />
       </div>
 
-      <div class="field" style="min-width: 240px; flex: 1; align-self: end;">
-        <span class="label">Быстрый фильтр</span>
-        <div class="inline-actions">
-          <button class="btn" :class="mineOnly ? 'btn-primary' : 'btn-outline'" type="button" @click="mineOnly = !mineOnly">
-            {{ mineOnly ? 'Показываются мои' : 'Только мои произведения' }}
-          </button>
-          <button class="btn" :class="todayOnly ? 'btn-primary' : 'btn-outline'" type="button" @click="todayOnly = !todayOnly">
-            {{ todayOnly ? 'За сегодня' : 'Произведения за сегодня' }}
-          </button>
-          <button class="btn btn-outline" type="button" @click="clearFilters">Сбросить</button>
-        </div>
+      <div class="inline-actions" style="flex-basis: 100%;">
+        <button class="btn" :class="mineOnly ? 'btn-primary' : 'btn-outline'" type="button" @click="mineOnly = !mineOnly">
+          {{ mineOnly ? 'Показываются мои' : 'Только мои произведения' }}
+        </button>
+        <button class="btn" :class="todayOnly ? 'btn-primary' : 'btn-outline'" type="button" @click="todayOnly = !todayOnly">
+          {{ todayOnly ? 'За сегодня' : 'Произведения за сегодня' }}
+        </button>
+        <button class="btn btn-outline" type="button" @click="clearFilters">Сбросить</button>
       </div>
     </div>
 
