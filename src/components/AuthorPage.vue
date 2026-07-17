@@ -517,7 +517,7 @@ async function deleteAuthorAccount() {
             <template v-else>{{ authorInitial }}</template>
           </div>
           <div class="author-name-block">
-            <div class="author-birthday-banner"><Icon name="gift" /> Сегодня — именинник!</div>
+            <div v-if="isBirthdayToday" class="author-birthday-banner"><Icon name="gift" /> Сегодня — именинник!</div>
             <h2>{{ author.displayName }}</h2>
             <div class="author-login-link">[{{ author.login }}]</div>
           </div>
