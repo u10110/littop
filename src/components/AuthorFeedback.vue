@@ -26,8 +26,8 @@ const isWritten = computed(() => kind.value === 'written');
 
 const title = computed(() =>
   isWritten.value
-    ? 'Полученные — что автор написал другим'
-    : 'Написанные — отзывы, написанные автору',
+    ? 'Написанные — что автор написал другим'
+    : 'Полученные — отзывы, написанные автору',
 );
 const eyebrow = computed(() =>
   isWritten.value
