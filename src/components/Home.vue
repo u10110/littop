@@ -37,7 +37,11 @@ const editorColumnExtra = computed(() => {
     out.push(t);
     if (out.length >= 12) break;
   }
-  out.sort((a, b) => (Number(b?.repliesCount) || 0) - (Number(a?.repliesCount) || 0));
+  out.sort((a, b) => {
+    const da = new Date(a?.lastPostAt || a?.createdAt || 0).getTime() || 0;
+    const db = new Date(b?.lastPostAt || b?.createdAt || 0).getTime() || 0;
+    return db - da;
+  });
   return out;
 });
 const contests = computed(() => result.value?.contests ?? []);
