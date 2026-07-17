@@ -27,7 +27,33 @@ import AuthForm from './components/AuthForm.vue';
 const endpoint = getGraphqlEndpoint();
 const route = useRoute();
 const router = useRouter();
+onMounted(() => {
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', recalcNav);
+    recalcNav();
+  }
+});
+onBeforeUnmount(() => {
+  if (typeof window !== 'undefined') window.removeEventListener('resize', recalcNav);
+});
 const mobileMenuOpen = ref(false);
+const navOverflowOpen = ref(false);
+const navEl = ref(null);
+const viewportWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1280);
+const SM_BREAKPOINT = 720;
+const navOverflow = computed(() => viewportWidth.value <= SM_BREAKPOINT || Boolean(navEl.value && navEl.value.scrollWidth > navEl.value.clientWidth + 1));
+function recalcNav() {
+  viewportWidth.value = typeof window !== 'undefined' ? window.innerWidth : 1280;
+  requestAnimationFrame(() => {
+    if (navEl.value && navEl.value.scrollWidth > navEl.value.clientWidth + 1) navOverflow.value = true;
+    else navOverflow.value = false;
+  });
+}
+function toggleNavOverflow() {
+  if (!navOverflow.value) return;
+  navOverflowOpen.value = !navOverflowOpen.value;
+}
+function closeNavOverflow() { navOverflowOpen.value = false; }
 const authMode = ref('login');
 const authSuccess = ref('');
 const authLocalError = ref('');
@@ -624,7 +650,7 @@ async function submitRestoreOwner() {
 
 <template>
   <header class="site-header" :style="headerStyle">
-    <div class="navwrap">
+    <div class="navwrap" :class='{ "nav-overflow": navOverflow }'>
       <button class="burger-btn" type="button" :aria-expanded="mobileMenuOpen" aria-label="Открыть меню" @click="mobileMenuOpen = !mobileMenuOpen">
         <span class="burger-bar"></span>
         <span class="burger-bar"></span>
@@ -634,7 +660,7 @@ async function submitRestoreOwner() {
         <div class="logo"><RouterLink to="/"><Icon name="feather" /> Литопотам </RouterLink></div>
       </div>
 
-      <nav class="nav" aria-label="Главное меню">
+      <nav class="nav" :class='{ "nav-hidden": navOverflow }' ref="navEl" aria-label="Главное меню">
         <RouterLink to="/"><Icon name="home" />Главная</RouterLink>
         <RouterLink to="/works"><Icon name="book-open" />Произведения</RouterLink>
         <RouterLink to="/authors"><Icon name="users" />Авторы</RouterLink>
@@ -646,6 +672,22 @@ async function submitRestoreOwner() {
           <Icon name="bell" class="bell-icon" />
         </RouterLink>
       </nav>
+
+      <button v-if="navOverflow" class="burger-btn desktop-burger" type="button" :aria-expanded="navOverflowOpen" aria-label="Открыть меню" @click="toggleNavOverflow">
+        <span class="burger-bar"></span>
+        <span class="burger-bar"></span>
+        <span class="burger-bar"></span>
+      </button>
+      <div v-if="navOverflow" class="desktop-nav-dropdown" :class="{ 'is-open': navOverflowOpen }" @click.self="closeNavOverflow">
+        <RouterLink to="/" @click="closeNavOverflow"><Icon name="home" />Главная</RouterLink>
+        <RouterLink to="/works" @click="closeNavOverflow"><Icon name="book-open" />Произведения</RouterLink>
+        <RouterLink to="/authors" @click="closeNavOverflow"><Icon name="users" />Авторы</RouterLink>
+        <RouterLink to="/contests" @click="closeNavOverflow"><Icon name="trophy" />Конкурсы</RouterLink>
+        <RouterLink to="/radio" @click="closeNavOverflow"><Icon name="radio" />Радио</RouterLink>
+        <RouterLink to="/forum" @click="closeNavOverflow"><Icon name="messages-square" />Форум</RouterLink>
+        <RouterLink v-if="isAuthenticated" to="/personal" @click="closeNavOverflow"><Icon name="user-circle" />Мой кабинет</RouterLink>
+        <RouterLink v-if="isAuthenticated" to="/messages" @click="closeNavOverflow"><Icon name="messages-square" />Сообщения</RouterLink>
+      </div>
 
       <div class="actions">
         <div v-if="isAuthenticated" class="user-menu-wrap">
