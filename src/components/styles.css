@@ -1661,7 +1661,7 @@ hr.divider {
   display: flex;
   align-items: center;
   overflow: hidden;
-  background: linear-gradient(135deg, #6d28d9, #db2777);
+  background: transparent;
 }
 .top-banner .header-banner-media {
   position: absolute;
