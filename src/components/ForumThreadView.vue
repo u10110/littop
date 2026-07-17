@@ -9,6 +9,8 @@ import {
   CREATE_FORUM_POST_MUTATION,
   DELETE_FORUM_POST_MUTATION,
   DELETE_FORUM_TOPIC_MUTATION,
+  CLOSE_FORUM_TOPIC_MUTATION,
+  OPEN_FORUM_TOPIC_MUTATION,
   FORUM_SECTIONS_QUERY,
   UPDATE_FORUM_POST_MUTATION,
   UPDATE_FORUM_TOPIC_MUTATION,
@@ -360,6 +362,34 @@ async function submitEdit(post) {
   }
 }
 
+async function closeTopic() {
+  if (!props.topic?.id) return;
+  threadBusy.value = true;
+  threadStatus.value = '';
+  try {
+    await apolloClient.mutate({ mutation: CLOSE_FORUM_TOPIC_MUTATION, variables: { topicId: props.topic.id } });
+    emit('refresh');
+  } catch (mutationError) {
+    threadStatus.value = mutationError.message;
+  } finally {
+    threadBusy.value = false;
+  }
+}
+
+async function openTopic() {
+  if (!props.topic?.id) return;
+  threadBusy.value = true;
+  threadStatus.value = '';
+  try {
+    await apolloClient.mutate({ mutation: OPEN_FORUM_TOPIC_MUTATION, variables: { topicId: props.topic.id } });
+    emit('refresh');
+  } catch (mutationError) {
+    threadStatus.value = mutationError.message;
+  } finally {
+    threadBusy.value = false;
+  }
+}
+
 async function deleteTopic() {
   if (!props.topic?.id) return;
   const confirmed = globalThis.confirm?.('Удалить эту тему форума? Все сообщения внутри тоже исчезнут.') ?? true;
@@ -416,6 +446,7 @@ async function deletePost(post) {
         <div class="chips">
           <span class="pill">{{ topic.sectionSlug }}</span>
           <span v-if="topic.isPinned" class="pill warn">закреп</span>
+        <span v-if="topic.status === 'closed'" class="pill warn">Закрыта</span>
         </div>
         <h2>{{ topic.title }}</h2>
         <div class="meta">
@@ -432,6 +463,15 @@ async function deletePost(post) {
           @click="topicEditMode ? cancelTopicEdit() : startTopicEdit()"
         >
           <Icon name="pencil" />{{ topicEditMode ? 'Отменить редактирование темы' : 'Редактировать тему / секцию' }}
+        </button>
+        <button
+          v-if="canManageTopic"
+          class="btn btn-outline"
+          type="button"
+          :disabled="threadBusy"
+          @click="topic.status === 'closed' ? openTopic() : closeTopic()"
+        >
+          {{ topic.status === 'closed' ? 'Открыть тему' : 'Закрыть тему' }}
         </button>
         <button
           v-if="canManageTopic"

@@ -898,6 +898,24 @@ export const DELETE_FORUM_TOPIC_MUTATION = gql`
   }
 `;
 
+export const CLOSE_FORUM_TOPIC_MUTATION = gql`
+  mutation CloseForumTopic($topicId: ID!) {
+    closeForumTopic(topicId: $topicId) {
+      id
+      status
+    }
+  }
+`;
+
+export const OPEN_FORUM_TOPIC_MUTATION = gql`
+  mutation OpenForumTopic($topicId: ID!) {
+    openForumTopic(topicId: $topicId) {
+      id
+      status
+    }
+  }
+`;
+
 export const PRIVATE_DIALOGS_QUERY = gql`
   ${AUTHOR_CARD_FIELDS}
   query PrivateDialogs($limit: Int!) {
