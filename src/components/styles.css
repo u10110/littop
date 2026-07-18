@@ -1525,6 +1525,9 @@ hr.divider {
 }
 
 .user-menu-trigger {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
   white-space: nowrap;
 }
 
@@ -1906,6 +1909,9 @@ hr.divider {
   }
   .burger-btn {
     display: inline-flex;
+  }
+  .user-menu-trigger {
+    max-width: 140px;
   }
   .mobile-menu-backdrop {
     display: block;
