@@ -98,6 +98,8 @@ main {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  flex-shrink: 0;
+  min-width: 0;
 }
 
 .logo {
@@ -117,6 +119,8 @@ main {
   gap: 8px;
   align-items: center;
   justify-content: center;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .nav a {
@@ -139,6 +143,8 @@ main {
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .actions-compact {
