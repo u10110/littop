@@ -1916,6 +1916,12 @@ hr.divider {
   .burger-btn {
     display: inline-flex;
   }
+  .desktop-burger {
+    display: none !important;
+  }
+  .desktop-nav-dropdown {
+    display: none !important;
+  }
   .user-menu-trigger {
     max-width: 140px;
   }
