@@ -88,10 +88,11 @@ main {
 
 .navwrap {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
   padding: 14px 0;
+  flex-wrap: nowrap;
 }
 
 .logo-block {
@@ -115,7 +116,7 @@ main {
 
 .nav {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
   align-items: center;
   justify-content: center;
@@ -1903,7 +1904,7 @@ hr.divider {
   .navwrap {
     flex-direction: row;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
   .actions {
     flex-direction: row;
