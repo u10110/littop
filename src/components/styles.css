@@ -1360,6 +1360,27 @@ hr.divider {
   width: 100%;
 }
 
+.work-media-top {
+  margin-bottom: 18px;
+  gap: 14px;
+}
+
+.media-pdf-row {
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.media-pdf-row .pdf-link {
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.media-pdf-row .pdf-link:hover {
+  text-decoration: underline;
+}
+
 .work-reaction-row {
   flex-wrap: wrap;
 }

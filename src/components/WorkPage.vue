@@ -528,7 +528,10 @@ async function softDeleteCurrentWork() {
             <input id="edit-work-pdf" class="input" type="file" :accept="pdfMeta.accept" :disabled="editPdfBusy" @change="handleEditPdfChange" />
             <div class="meta">Подходит для рукописи, презентации или приложения к произведению.</div>
             <div v-if="editPdfFile" class="pill">Выбран: {{ editPdfFile.name }}</div>
-            <div v-else-if="work.pdfUrl" class="pill good">Загружен: {{ work.pdfFileName || 'PDF' }}</div>
+            <div v-else-if="work.pdfUrl" class="inline-actions">
+              <span class="pill good">Загружен: {{ work.pdfFileName || 'PDF' }}</span>
+              <button type="button" class="btn btn-ghost btn-sm" :disabled="editPdfBusy" @click="removeEditPdf"><Icon name="x" />Удалить</button>
+            </div>
             <div v-if="editPdfStatus" class="message" :class="editPdfStatus.includes('прикреплён') ? 'success' : 'error'">{{ editPdfStatus }}</div>
           </div>
 
@@ -537,7 +540,10 @@ async function softDeleteCurrentWork() {
             <input id="edit-work-audio" class="input" type="file" :accept="audioMeta.accept" :disabled="editAudioBusy" @change="handleEditAudioChange" />
             <div class="meta">Можно приложить чтение, песню, демо или озвучку произведения.</div>
             <div v-if="editAudioFile" class="pill">Выбран: {{ editAudioFile.name }}</div>
-            <div v-else-if="work.audioUrl" class="pill good">Загружен: {{ work.audioFileName || 'аудио' }}</div>
+            <div v-else-if="work.audioUrl" class="inline-actions">
+              <span class="pill good">Загружен: {{ work.audioFileName || 'аудио' }}</span>
+              <button type="button" class="btn btn-ghost btn-sm" :disabled="editAudioBusy" @click="removeEditAudio"><Icon name="x" />Удалить</button>
+            </div>
             <div v-if="editAudioStatus" class="message" :class="editAudioStatus.includes('прикреплено') ? 'success' : 'error'">{{ editAudioStatus }}</div>
           </div>
         </div>
@@ -548,31 +554,22 @@ async function softDeleteCurrentWork() {
         </div>
       </form>
 
-      <div v-if="renderedWorkBody" class="work-body rich-text-rendered" v-html="renderedWorkBody" />
-      <div v-else class="prewrap">Текст пока не добавлен.</div>
-
-      <div v-if="work.pdfUrl || work.audioUrl" class="stack work-media-block">
-        <div class="section-head">
-          <h3><Icon name="file-text" />Материалы произведения</h3>
-          <span class="pill">вложения</span>
-        </div>
-
-        <div v-if="work.pdfUrl" class="stack media-preview-card">
-          <div class="inline-actions">
-            <strong>{{ work.pdfFileName || 'PDF-файл' }}</strong>
-            <a class="btn btn-outline btn-sm" :href="work.pdfUrl" target="_blank" rel="noopener noreferrer"><Icon name="file-text" />Открыть PDF</a>
-          </div>
-          <iframe class="work-pdf-frame" :src="work.pdfUrl" title="PDF произведения" loading="lazy" />
-        </div>
-
+      <div v-if="work.audioUrl || work.pdfUrl" class="stack work-media-block work-media-top">
         <div v-if="work.audioUrl" class="stack media-preview-card">
           <div class="inline-actions">
-            <strong>{{ work.audioFileName || 'Аудиофайл' }}</strong>
-            <a class="btn btn-outline btn-sm" :href="work.audioUrl" target="_blank" rel="noopener noreferrer"><Icon name="download" />Скачать аудио</a>
+            <strong><Icon name="music" />{{ work.audioFileName || 'Аудиофайл' }}</strong>
           </div>
           <audio class="work-audio-player" :src="work.audioUrl" controls preload="metadata" />
         </div>
+        <div v-if="work.pdfUrl" class="inline-actions media-pdf-row">
+          <Icon name="file-text" />
+          <a class="pdf-link" :href="work.pdfUrl" target="_blank" rel="noopener noreferrer">{{ work.pdfFileName || 'PDF-файл' }}</a>
+          <a class="btn btn-outline btn-sm" :href="work.pdfUrl" target="_blank" rel="noopener noreferrer"><Icon name="download" />Скачать</a>
+        </div>
       </div>
+
+      <div v-if="renderedWorkBody" class="work-body rich-text-rendered" v-html="renderedWorkBody" />
+      <div v-else class="prewrap">Текст пока не добавлен.</div>
     </article>
 
     <WorkDiscussionPanel :work="work" @refresh="refreshCurrentWork" />
