@@ -52,6 +52,10 @@ const editPdfBusy = ref(false);
 const editPdfStatus = ref('');
 const audioMeta = getWorkMediaMeta('audio');
 const pdfMeta = getWorkMediaMeta('pdf');
+const editPdfUrl = ref(null);
+const editPdfFileName = ref(null);
+const editAudioUrl = ref(null);
+const editAudioFileName = ref(null);
 
 async function handleEditAudioChange(event) {
   editAudioFile.value = event?.target?.files?.[0] ?? null;
@@ -65,8 +69,8 @@ async function uploadEditAudio() {
   try {
     const asset = await uploadWorkMedia({ kind: 'audio', file });
     if (asset?.url) {
-      work.value.audioUrl = asset.url;
-      work.value.audioFileName = asset.fileName || file.name;
+      editAudioUrl.value = asset.url;
+      editAudioFileName.value = asset.fileName || file.name;
       editAudioStatus.value = 'Аудио прикреплено. Сохрани произведение.';
     }
   } catch (error) {
@@ -76,8 +80,8 @@ async function uploadEditAudio() {
   }
 }
 function removeEditAudio() {
-  work.value.audioUrl = null;
-  work.value.audioFileName = null;
+  editAudioUrl.value = null;
+  editAudioFileName.value = null;
   editAudioFile.value = null;
   editAudioStatus.value = '';
 }
@@ -94,8 +98,8 @@ async function uploadEditPdf() {
   try {
     const asset = await uploadWorkMedia({ kind: 'pdf', file });
     if (asset?.url) {
-      work.value.pdfUrl = asset.url;
-      work.value.pdfFileName = asset.fileName || file.name;
+      editPdfUrl.value = asset.url;
+      editPdfFileName.value = asset.fileName || file.name;
       editPdfStatus.value = 'PDF прикреплён. Сохрани произведение.';
     }
   } catch (error) {
@@ -105,8 +109,8 @@ async function uploadEditPdf() {
   }
 }
 function removeEditPdf() {
-  work.value.pdfUrl = null;
-  work.value.pdfFileName = null;
+  editPdfUrl.value = null;
+  editPdfFileName.value = null;
   editPdfFile.value = null;
   editPdfStatus.value = '';
 }
@@ -172,6 +176,10 @@ function syncEditForm(sourceWork = work.value) {
     body: sourceWork?.body || '<p></p>',
     projectFormat: sourceWork?.projectFormat || '',
   };
+  editPdfUrl.value = sourceWork?.pdfUrl || null;
+  editPdfFileName.value = sourceWork?.pdfFileName || null;
+  editAudioUrl.value = sourceWork?.audioUrl || null;
+  editAudioFileName.value = sourceWork?.audioFileName || null;
 }
 
 function normalizeOptional(value) {
@@ -268,13 +276,13 @@ async function submitWorkUpdate() {
     // Загружаем выбранные файлы (паттерн как в ЛК: upload перед сохранением)
     if (editPdfFile.value) {
       const pdfAsset = await uploadWorkMedia({ kind: 'pdf', file: editPdfFile.value });
-      work.value.pdfUrl = pdfAsset?.url || null;
-      work.value.pdfFileName = pdfAsset?.fileName || editPdfFile.value.name;
+      editPdfUrl.value = pdfAsset?.url || null;
+      editPdfFileName.value = pdfAsset?.fileName || editPdfFile.value.name;
     }
     if (editAudioFile.value) {
       const audioAsset = await uploadWorkMedia({ kind: 'audio', file: editAudioFile.value });
-      work.value.audioUrl = audioAsset?.url || null;
-      work.value.audioFileName = audioAsset?.fileName || editAudioFile.value.name;
+      editAudioUrl.value = audioAsset?.url || null;
+      editAudioFileName.value = audioAsset?.fileName || editAudioFile.value.name;
     }
 
     await apolloClient.mutate({
@@ -288,10 +296,10 @@ async function submitWorkUpdate() {
           body: normalizeBody(editForm.value.body),
           excerpt: buildExcerpt(editForm.value.summary, editForm.value.body),
           projectFormat: editForm.value.sectionCode === 'project' ? normalizeOptional(editForm.value.projectFormat) : null,
-          pdfUrl: work.value.pdfUrl || null,
-          pdfFileName: work.value.pdfFileName || null,
-          audioUrl: work.value.audioUrl || null,
-          audioFileName: work.value.audioFileName || null,
+          pdfUrl: editPdfUrl.value || null,
+          pdfFileName: editPdfFileName.value || null,
+          audioUrl: editAudioUrl.value || null,
+          audioFileName: editAudioFileName.value || null,
         },
       },
     });
@@ -542,8 +550,8 @@ async function softDeleteCurrentWork() {
             <input id="edit-work-pdf" class="input" type="file" :accept="pdfMeta.accept" :disabled="editPdfBusy" @change="handleEditPdfChange" />
             <div class="meta">Подходит для рукописи, презентации или приложения к произведению.</div>
             <div v-if="editPdfFile" class="pill">Выбран: {{ editPdfFile.name }}</div>
-            <div v-else-if="work.pdfUrl" class="inline-actions">
-              <span class="pill good">Загружен: {{ work.pdfFileName || 'PDF' }}</span>
+            <div v-else-if="editPdfUrl" class="inline-actions">
+              <span class="pill good">Загружен: {{ editPdfFileName || 'PDF' }}</span>
               <button type="button" class="btn btn-ghost btn-sm" :disabled="editPdfBusy" @click="removeEditPdf"><Icon name="x" />Удалить</button>
             </div>
             <div v-if="editPdfStatus" class="message" :class="editPdfStatus.includes('прикреплён') ? 'success' : 'error'">{{ editPdfStatus }}</div>
@@ -554,8 +562,8 @@ async function softDeleteCurrentWork() {
             <input id="edit-work-audio" class="input" type="file" :accept="audioMeta.accept" :disabled="editAudioBusy" @change="handleEditAudioChange" />
             <div class="meta">Можно приложить чтение, песню, демо или озвучку произведения.</div>
             <div v-if="editAudioFile" class="pill">Выбран: {{ editAudioFile.name }}</div>
-            <div v-else-if="work.audioUrl" class="inline-actions">
-              <span class="pill good">Загружен: {{ work.audioFileName || 'аудио' }}</span>
+            <div v-else-if="editAudioUrl" class="inline-actions">
+              <span class="pill good">Загружен: {{ editAudioFileName || 'аудио' }}</span>
               <button type="button" class="btn btn-ghost btn-sm" :disabled="editAudioBusy" @click="removeEditAudio"><Icon name="x" />Удалить</button>
             </div>
             <div v-if="editAudioStatus" class="message" :class="editAudioStatus.includes('прикреплено') ? 'success' : 'error'">{{ editAudioStatus }}</div>
