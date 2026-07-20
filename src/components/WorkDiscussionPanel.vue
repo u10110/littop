@@ -21,6 +21,7 @@ import { flattenThreadTree } from '../lib/discussion.js';
 import { formatDate } from '../lib/format.js';
 import { getAuthorDisplayName, getAuthorInitial } from '../lib/forum.js';
 import { buildAuthorPageLocation } from '../lib/routes.js';
+import { renderRichTextHtml } from '../lib/richText.js';
 import { useSession } from '../lib/session.js';
 
 const props = defineProps({
@@ -684,7 +685,7 @@ function ledgerSummary(ledger, noun) {
             <RouterLink v-if="comment.replyToAuthor?.login" :to="buildAuthorPageLocation(comment.replyToAuthor)">{{ authorLabel(comment.replyToAuthor) }}</RouterLink>
             <template v-else>{{ authorLabel(comment.replyToAuthor) }}</template>
           </div>
-          <div class="comment-body prewrap">{{ comment.body }}</div>
+          <div class="comment-body prewrap rich-text-rendered" v-html="renderRichTextHtml(comment.body)" />
 
           <div class="inline-actions forum-post-actions">
             <button

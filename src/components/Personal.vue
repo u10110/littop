@@ -697,7 +697,7 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
             </div>
             <div class="inline-card">
               <div class="meta">О себе</div>
-              <div>{{ profile?.bio || 'Пока без описания.' }}</div>
+              <div class="rich-text-rendered" v-html="renderRichTextHtml(profile?.bio || 'Пока без описания.')" />
             </div>
           </div>
         </article>

@@ -10,6 +10,7 @@ import {
   SEND_PRIVATE_MESSAGE_MUTATION,
 } from '../lib/graphql.js';
 import { formatDateTime } from '../lib/format.js';
+import { renderRichTextHtml } from '../lib/richText.js';
 import { buildAuthorPageLocation, normalizeRouteParam } from '../lib/routes.js';
 import { useSession } from '../lib/session.js';
 
@@ -239,7 +240,7 @@ function openAuthModal(mode = 'login') {
             <RouterLink v-else-if="message.sender?.login" :to="buildAuthorPageLocation(message.sender)">{{ message.sender?.displayName || message.sender?.login }}</RouterLink>
             <template v-else>{{ message.sender?.displayName || message.sender?.login }}</template> · {{ formatDateTime(message.createdAt) }}
           </div>
-          <div class="prewrap">{{ message.body }}</div>
+          <div class="prewrap rich-text-rendered" v-html="renderRichTextHtml(message.body)" />
         </article>
       </div>
       <div v-else class="empty-state">Сообщений пока нет — можно начать разговор первой.</div>

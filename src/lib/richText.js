@@ -22,13 +22,20 @@ export function isRichTextEmpty(value) {
   return !stripHtml(value);
 }
 
+export function linkify(text) {
+  return String(text).replace(
+    /(https?:\/\/[^\s<>"']+)/gi,
+    '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>',
+  );
+}
+
 export function renderRichTextHtml(value) {
   const raw = String(value ?? '').trim();
   if (!raw) return '';
   if (/<[a-z][\s\S]*>/i.test(raw)) {
-    return sanitizeRichTextHtml(raw);
+    return linkify(sanitizeRichTextHtml(raw));
   }
-  return raw
+  return linkify(raw)
     .split(/\n{2,}/)
     .map((paragraph) => `<p>${paragraph.replace(/\n/g, '<br />')}</p>`)
     .join('');

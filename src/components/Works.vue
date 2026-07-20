@@ -16,6 +16,7 @@ import { flattenThreadTree } from '../lib/discussion.js';
 import { uploadForumPostImage } from '../lib/forumImages.js';
 import { getAuthorDisplayName, getAuthorInitial } from '../lib/forum.js';
 import { buildAuthorPageLocation, buildWorkPageLocation } from '../lib/routes.js';
+import { renderRichTextHtml } from '../lib/richText.js';
 import { useSession } from '../lib/session.js';
 
 const route = useRoute();
@@ -518,9 +519,9 @@ function clearFilters() {
           <RouterLink class="btn btn-outline" :to="buildWorkPageLocation(selectedWork)">Страница произведения</RouterLink>
         </div>
 
-        <div v-if="selectedWork.body" class="prewrap" v-html="selectedWork.body" />
-        <div v-else-if="selectedWork.summary" class="prewrap" v-html="selectedWork.summary" />
-        <div v-else-if="selectedWork.excerpt" class="prewrap" v-html="selectedWork.excerpt" />
+        <div v-if="selectedWork.body" class="prewrap rich-text-rendered" v-html="renderRichTextHtml(selectedWork.body)" />
+        <div v-else-if="selectedWork.summary" class="prewrap rich-text-rendered" v-html="renderRichTextHtml(selectedWork.summary)" />
+        <div v-else-if="selectedWork.excerpt" class="prewrap rich-text-rendered" v-html="renderRichTextHtml(selectedWork.excerpt)" />
         <div v-else class="prewrap">Текст пока не добавлен.</div>
 
         <div v-if="isAuthenticated" class="stack">
@@ -604,7 +605,7 @@ function clearFilters() {
                 <span class="meta">· {{ formatDate(comment.createdAt) }}</span>
               </div>
               <div v-if="comment.replyToAuthor" class="forum-reply-note">Ответ пользователю {{ authorLabel(comment.replyToAuthor) }}</div>
-              <div class="comment-body prewrap">{{ comment.body }}</div>
+              <div class="comment-body prewrap rich-text-rendered" v-html="renderRichTextHtml(comment.body)" />
               <img v-if="comment.imageUrl" :src="comment.imageUrl" class="forum-post-image" alt="Картинка к комментарию" />
               <div v-if="isAuthenticated" class="inline-actions forum-post-actions">
                 <button class="btn btn-outline" type="button" :disabled="commentBusy" @click="startReply(comment)">Ответить</button>

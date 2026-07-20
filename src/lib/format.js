@@ -1,4 +1,4 @@
-import { stripHtml } from './richText.js';
+import { linkify, stripHtml } from './richText.js';
 
 const workSectionLabels = {
   poetry: 'Поэзия',
@@ -68,8 +68,9 @@ export function formatContestScope(scope) {
 export function excerptText(value, maxLength = 180) {
   const normalized = stripHtml(value);
   if (!normalized) return 'Текст пока не добавлен.';
-  if (normalized.length <= maxLength) return normalized;
-  return `${normalized.slice(0, maxLength).trimEnd()}…`;
+  const linked = linkify(normalized);
+  if (linked.length <= maxLength) return linked;
+  return `${linked.slice(0, maxLength).trimEnd()}…`;
 }
 
 export function formatBirthday(value) {
