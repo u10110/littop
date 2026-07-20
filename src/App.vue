@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, provide, reactive, ref, watch } from 'vue';
 import { useQuery } from '@vue/apollo-composable';
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router';
 
@@ -111,17 +111,20 @@ const {
 const displayName = computed(() => currentUser.value?.profile?.displayName || currentUser.value?.login || 'Автор');
 const isAdmin = computed(() => currentUser.value?.role === 'admin');
 const siteBanner = ref('<p>Литературное радио Литопотам</p>');
-const siteTagline = ref('<p>Литопотам — писать, читать, оценивать</p>');
-const siteTaglineEditing = ref(false);
-const siteTaglineDraft = ref('');
-const siteTaglineBusy = ref(false);
+const siteTaglineState = reactive({
+  isAdmin: false,
+  value: '<p>Литопотам — писать, читать, оценивать</p>',
+  editing: false,
+  draft: '',
+  busy: false,
+});
 
 async function loadSiteBanner() {
   try {
     const { data } = await apolloClient.query({ query: SITE_SETTINGS_QUERY, fetchPolicy: 'network-only' });
     const settings = data?.siteSettings ?? [];
     siteBanner.value = settings.find((s) => s.key === 'site_banner')?.value ?? '';
-    siteTagline.value = settings.find((s) => s.key === 'site_tagline')?.value ?? '<p>Литопотам — писать, читать, оценивать</p>';
+    siteTaglineState.value = settings.find((s) => s.key === 'site_tagline')?.value ?? '<p>Литопотам — писать, читать, оценивать</p>';
     headerImageUrl.value = settings.find((s) => s.key === 'header_image_url')?.value ?? '';
   } catch {
     siteBanner.value = '';
@@ -162,37 +165,32 @@ async function clearHeaderImage() {
   }
 }
 function startEditTagline() {
-  siteTaglineDraft.value = siteTagline.value;
-  siteTaglineEditing.value = true;
+  siteTaglineState.draft = siteTaglineState.value;
+  siteTaglineState.editing = true;
 }
 function cancelEditTagline() {
-  siteTaglineEditing.value = false;
-  siteTaglineDraft.value = '';
+  siteTaglineState.editing = false;
+  siteTaglineState.draft = '';
 }
 async function saveTagline() {
-  siteTaglineBusy.value = true;
+  siteTaglineState.busy = true;
   try {
-    const sanitized = isRichTextEmpty(siteTaglineDraft.value) ? '' : sanitizeRichTextHtml(siteTaglineDraft.value);
+    const sanitized = isRichTextEmpty(siteTaglineState.draft) ? '' : sanitizeRichTextHtml(siteTaglineState.draft);
     await apolloClient.mutate({ mutation: UPDATE_SITE_SETTING_MUTATION, variables: { key: 'site_tagline', value: sanitized } });
-    siteTagline.value = sanitized;
-    siteTaglineEditing.value = false;
+    siteTaglineState.value = sanitized;
+    siteTaglineState.editing = false;
   } catch {
     // ошибка сохранения настройки
   } finally {
-    siteTaglineBusy.value = false;
+    siteTaglineState.busy = false;
   }
 }
+siteTaglineState.startEdit = startEditTagline;
+siteTaglineState.cancelEdit = cancelEditTagline;
+siteTaglineState.save = saveTagline;
+watch(isAdmin, (v) => { siteTaglineState.isAdmin = v; }, { immediate: true });
 onMounted(loadSiteBanner);
-provide('siteTagline', {
-  isAdmin,
-  value: siteTagline,
-  editing: siteTaglineEditing,
-  draft: siteTaglineDraft,
-  busy: siteTaglineBusy,
-  startEdit: startEditTagline,
-  cancelEdit: cancelEditTagline,
-  save: saveTagline,
-});
+provide('siteTagline', siteTaglineState);
 const unreadDialogsCount = ref(0);
 const visibleAuthError = computed(() => authLocalError.value || authError.value);
 const canReopenClosedAccount = computed(() => authMode.value === 'login' && authMeta.value?.code === 'ACCOUNT_REOPEN_AVAILABLE' && String(loginForm.value.identifier || '').trim() && String(loginForm.value.password || '').trim());

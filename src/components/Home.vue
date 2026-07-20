@@ -22,11 +22,11 @@ const { result, loading, error } = useQuery(HOME_QUERY, null, {
 });
 
 const siteTagline = inject('siteTagline', {
-  value: ref('<p>Литопотам — писать, читать, оценивать</p>'),
-  editing: ref(false),
-  draft: ref(''),
-  busy: ref(false),
-  isAdmin: ref(false),
+  value: '<p>Литопотам — писать, читать, оценивать</p>',
+  editing: false,
+  draft: '',
+  busy: false,
+  isAdmin: false,
   startEdit: () => {},
   cancelEdit: () => {},
   save: async () => {},
