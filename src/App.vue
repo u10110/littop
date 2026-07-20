@@ -111,15 +111,17 @@ const {
 const displayName = computed(() => currentUser.value?.profile?.displayName || currentUser.value?.login || 'Автор');
 const isAdmin = computed(() => currentUser.value?.role === 'admin');
 const siteBanner = ref('<p>Литературное радио Литопотам</p>');
-const siteBannerEditing = ref(false);
-const siteBannerDraft = ref('');
-const siteBannerBusy = ref(false);
+const siteTagline = ref('<p>Литопотам — писать, читать, оценивать</p>');
+const siteTaglineEditing = ref(false);
+const siteTaglineDraft = ref('');
+const siteTaglineBusy = ref(false);
 
 async function loadSiteBanner() {
   try {
     const { data } = await apolloClient.query({ query: SITE_SETTINGS_QUERY, fetchPolicy: 'network-only' });
     const settings = data?.siteSettings ?? [];
     siteBanner.value = settings.find((s) => s.key === 'site_banner')?.value ?? '';
+    siteTagline.value = settings.find((s) => s.key === 'site_tagline')?.value ?? '<p>Литопотам — писать, читать, оценивать</p>';
     headerImageUrl.value = settings.find((s) => s.key === 'header_image_url')?.value ?? '';
   } catch {
     siteBanner.value = '';
@@ -159,28 +161,38 @@ async function clearHeaderImage() {
     headerImageBusy.value = false;
   }
 }
-function startEditBanner() {
-  siteBannerDraft.value = siteBanner.value;
-  siteBannerEditing.value = true;
+function startEditTagline() {
+  siteTaglineDraft.value = siteTagline.value;
+  siteTaglineEditing.value = true;
 }
-function cancelEditBanner() {
-  siteBannerEditing.value = false;
-  siteBannerDraft.value = '';
+function cancelEditTagline() {
+  siteTaglineEditing.value = false;
+  siteTaglineDraft.value = '';
 }
-async function saveBanner() {
-  siteBannerBusy.value = true;
+async function saveTagline() {
+  siteTaglineBusy.value = true;
   try {
-    const sanitized = isRichTextEmpty(siteBannerDraft.value) ? '' : sanitizeRichTextHtml(siteBannerDraft.value);
-    await apolloClient.mutate({ mutation: UPDATE_SITE_SETTING_MUTATION, variables: { key: 'site_banner', value: sanitized } });
-    siteBanner.value = sanitized;
-    siteBannerEditing.value = false;
+    const sanitized = isRichTextEmpty(siteTaglineDraft.value) ? '' : sanitizeRichTextHtml(siteTaglineDraft.value);
+    await apolloClient.mutate({ mutation: UPDATE_SITE_SETTING_MUTATION, variables: { key: 'site_tagline', value: sanitized } });
+    siteTagline.value = sanitized;
+    siteTaglineEditing.value = false;
   } catch {
     // ошибка сохранения настройки
   } finally {
-    siteBannerBusy.value = false;
+    siteTaglineBusy.value = false;
   }
 }
 onMounted(loadSiteBanner);
+provide('siteTagline', {
+  isAdmin,
+  value: siteTagline,
+  editing: siteTaglineEditing,
+  draft: siteTaglineDraft,
+  busy: siteTaglineBusy,
+  startEdit: startEditTagline,
+  cancelEdit: cancelEditTagline,
+  save: saveTagline,
+});
 const unreadDialogsCount = ref(0);
 const visibleAuthError = computed(() => authLocalError.value || authError.value);
 const canReopenClosedAccount = computed(() => authMode.value === 'login' && authMeta.value?.code === 'ACCOUNT_REOPEN_AVAILABLE' && String(loginForm.value.identifier || '').trim() && String(loginForm.value.password || '').trim());
@@ -749,26 +761,7 @@ async function submitRestoreOwner() {
     <div v-if="headerImageUrl" class="header-banner-media">
       <img :src="headerImageUrl" alt="Шапка сайта" class="header-banner-img" />
     </div>
-    <div v-if="siteBanner || isAdmin" class="site-banner site-banner-overlay">
-      <div class="site-banner-inner">
-        <template v-if="!siteBannerEditing">
-          <span class="site-banner-text" v-html="sanitizeRichTextHtml(siteBanner || '<p>Литературное радио Литопотам</p>')"></span>
-          <button v-if="isAdmin" class="btn btn-sm btn-outline site-banner-edit-btn" type="button" @click="startEditBanner"><Icon name="pencil" />Изменить</button>
-        </template>
-        <template v-else>
-          <RichTextEditor
-            v-model="siteBannerDraft"
-            editor-id="site-banner-draft"
-            label=""
-            placeholder="Текст в шапке сайта"
-          />
-          <div class="inline-actions">
-            <button class="btn btn-sm btn-primary" type="button" :disabled="siteBannerBusy" @click="saveBanner">Сохранить</button>
-            <button class="btn btn-sm btn-outline" type="button" :disabled="siteBannerBusy" @click="cancelEditBanner">Отмена</button>
-          </div>
-        </template>
-      </div>
-    </div>
+    <div v-if="siteBanner" class="site-banner site-banner-overlay" v-html="sanitizeRichTextHtml(siteBanner || '')"></div>
   </div>
 
   <div v-if="isAdmin" class="site-header-admin">

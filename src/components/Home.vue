@@ -1,9 +1,12 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, inject } from 'vue';
 import { useQuery } from '@vue/apollo-composable';
 import { RouterLink } from 'vue-router';
 
 import { HOME_QUERY } from '../lib/graphql.js';
+import Icon from '../components/Icon.vue';
+import RichTextEditor from './RichTextEditor.vue';
+import { sanitizeRichTextHtml } from '../lib/richText.js';
 import {
   excerptText,
   formatContestScope,
@@ -16,6 +19,17 @@ import { buildAuthorPageLocation, buildForumTopicPageLocation, buildWorkPageLoca
 
 const { result, loading, error } = useQuery(HOME_QUERY, null, {
   fetchPolicy: 'cache-and-network',
+});
+
+const siteTagline = inject('siteTagline', {
+  value: ref('<p>Литопотам — писать, читать, оценивать</p>'),
+  editing: ref(false),
+  draft: ref(''),
+  busy: ref(false),
+  isAdmin: ref(false),
+  startEdit: () => {},
+  cancelEdit: () => {},
+  save: async () => {},
 });
 
 const health = computed(() => result.value?.health ?? null);
@@ -37,11 +51,7 @@ const editorColumnExtra = computed(() => {
     out.push(t);
     if (out.length >= 12) break;
   }
-  out.sort((a, b) => {
-    const da = new Date(a?.lastPostAt || a?.createdAt || 0).getTime() || 0;
-    const db = new Date(b?.lastPostAt || b?.createdAt || 0).getTime() || 0;
-    return db - da;
-  });
+  out.sort((a, b) => (Number(b?.repliesCount) || 0) - (Number(a?.repliesCount) || 0));
   return out;
 });
 const contests = computed(() => result.value?.contests ?? []);
@@ -77,8 +87,23 @@ const healthTone = computed(() => {
 
 <template>
   <section class="hero">
-      <h1>Литопотам — писать, читать, оценивать</h1>
-       <p>Регистрация для авторов, публикация стихов, прозы и проектов. Оценки и комментарии от читателей. Форум для живого общения.</p>
+    <template v-if="!siteTagline.editing">
+      <h1 v-html="sanitizeRichTextHtml(siteTagline.value || '<p>Литопотам — писать, читать, оценивать</p>')"></h1>
+      <p>Регистрация для авторов, публикация стихов, прозы и проектов. Оценки и комментарии от читателей. Форум для живого общения.</p>
+      <button v-if="siteTagline.isAdmin" class="btn btn-sm btn-outline site-banner-edit-btn" type="button" @click="siteTagline.startEdit"><Icon name="pencil" />Изменить</button>
+    </template>
+    <template v-else>
+      <RichTextEditor
+        v-model="siteTagline.draft"
+        editor-id="home-tagline-draft"
+        label=""
+        placeholder="Текст на главной"
+      />
+      <div class="inline-actions">
+        <button class="btn btn-sm btn-primary" type="button" :disabled="siteTagline.busy" @click="siteTagline.save">Сохранить</button>
+        <button class="btn btn-sm btn-outline" type="button" :disabled="siteTagline.busy" @click="siteTagline.cancelEdit">Отмена</button>
+      </div>
+    </template>
     <div class="chips">
    
     </div>
@@ -112,8 +137,8 @@ const healthTone = computed(() => {
   <section class="layout-columns home-top-columns">
     <div class="section-block editor-column-block">
       <div class="section-head">
-        <h2><Icon name="pen-line" />Колонка редактора</h2>
-        <RouterLink to="/forum?section=editor-column" class="btn btn-outline"><Icon name="arrow-right" />Все статьи</RouterLink>
+        <h2>Колонка редактора</h2>
+        <RouterLink to="/forum?section=editor-column" class="btn btn-outline">Все статьи</RouterLink>
       </div>
       <div v-if="editorColumnExtra.length" class="stack">
         <article v-for="topic in editorColumnExtra" :key="`edc-${topic.id}`" class="card">
@@ -161,8 +186,8 @@ const healthTone = computed(() => {
 
     <div class="section-block">
       <div class="section-head">
-        <h2><Icon name="bell" />Анонсы</h2>
-        <RouterLink to="/works" class="btn btn-outline"><Icon name="arrow-right" />Все произведения</RouterLink>
+        <h2>Анонсы</h2>
+        <RouterLink to="/works" class="btn btn-outline">Все произведения</RouterLink>
       </div>
       <div v-if="announcements.length" class="stack">
         <article v-for="work in announcements" :key="`announce-${work.id}`" class="card">
@@ -187,8 +212,8 @@ const healthTone = computed(() => {
 
   <section class="section-block">
     <div class="section-head">
-      <h2><Icon name="book-open" />Свежие произведения</h2>
-      <RouterLink to="/works" class="btn btn-outline"><Icon name="arrow-right" />Открыть каталог</RouterLink>
+      <h2>Свежие произведения</h2>
+      <RouterLink to="/works" class="btn btn-outline">Открыть каталог</RouterLink>
     </div>
 
     <div v-if="recentWorks.length" class="list-grid">
@@ -214,8 +239,8 @@ const healthTone = computed(() => {
   <section class="layout-columns">
     <div class="section-block">
       <div class="section-head">
-        <h2><Icon name="users" />Авторы</h2>
-        <RouterLink to="/authors" class="btn btn-outline"><Icon name="arrow-right" />Все авторы</RouterLink>
+        <h2>Авторы</h2>
+        <RouterLink to="/authors" class="btn btn-outline">Все авторы</RouterLink>
       </div>
       <div v-if="featuredAuthors.length || classicAuthors.length || onlineAuthors.length" class="stack">
         <article class="card">
@@ -246,8 +271,8 @@ const healthTone = computed(() => {
 
     <div class="section-block">
       <div class="section-head">
-        <h2><Icon name="messages-square" />Форум</h2>
-        <RouterLink to="/forum" class="btn btn-outline"><Icon name="arrow-right" />Открыть форум</RouterLink>
+        <h2>Форум</h2>
+        <RouterLink to="/forum" class="btn btn-outline">Открыть форум</RouterLink>
       </div>
       <div v-if="recentTopics.length" class="stack">
         <article v-for="topic in homeForumTopics" :key="topic.id" class="card">
@@ -273,8 +298,8 @@ const healthTone = computed(() => {
   <section class="layout-columns">
     <div class="section-block">
       <div class="section-head">
-        <h2><Icon name="trophy" />Конкурсы</h2>
-        <RouterLink to="/contests" class="btn btn-outline"><Icon name="arrow-right" />Смотреть все</RouterLink>
+        <h2>Конкурсы</h2>
+        <RouterLink to="/contests" class="btn btn-outline">Смотреть все</RouterLink>
       </div>
       <div v-if="contests.length" class="stack">
         <article v-for="contest in contests" :key="contest.id" class="card">
@@ -292,8 +317,8 @@ const healthTone = computed(() => {
 
     <div class="section-block">
       <div class="section-head">
-        <h2><Icon name="radio" />Радио</h2>
-        <RouterLink to="/radio" class="btn btn-outline"><Icon name="arrow-right" />Открыть радио</RouterLink>
+        <h2>Радио</h2>
+        <RouterLink to="/radio" class="btn btn-outline">Открыть радио</RouterLink>
       </div>
       <div v-if="radioTracks.length" class="stack">
         <article v-for="track in sortedRadioTracks" :key="track.id" class="card">
