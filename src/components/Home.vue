@@ -1,5 +1,5 @@
 <script setup>
-import { computed, inject } from 'vue';
+import { computed, inject, ref } from 'vue';
 import { useQuery } from '@vue/apollo-composable';
 import { RouterLink } from 'vue-router';
 
