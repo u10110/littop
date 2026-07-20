@@ -58,6 +58,8 @@ export const WORK_PREVIEW_FIELDS = gql`
     publishedAt
     createdAt
     updatedAt
+    announcementActive
+    announcementCount
     author {
       ...AuthorCardFields
     }
