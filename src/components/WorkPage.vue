@@ -265,6 +265,18 @@ async function submitWorkUpdate() {
   deleteStatus.value = '';
 
   try {
+    // Загружаем выбранные файлы (паттерн как в ЛК: upload перед сохранением)
+    if (editPdfFile.value) {
+      const pdfAsset = await uploadWorkMedia({ kind: 'pdf', file: editPdfFile.value });
+      work.value.pdfUrl = pdfAsset?.url || null;
+      work.value.pdfFileName = pdfAsset?.fileName || editPdfFile.value.name;
+    }
+    if (editAudioFile.value) {
+      const audioAsset = await uploadWorkMedia({ kind: 'audio', file: editAudioFile.value });
+      work.value.audioUrl = audioAsset?.url || null;
+      work.value.audioFileName = audioAsset?.fileName || editAudioFile.value.name;
+    }
+
     await apolloClient.mutate({
       mutation: UPDATE_WORK_MUTATION,
       variables: {
@@ -285,6 +297,8 @@ async function submitWorkUpdate() {
     });
     editMode.value = false;
     editStatus.value = 'Изменения сохранены.';
+    editPdfFile.value = null;
+    editAudioFile.value = null;
     await refreshCurrentWork();
   } catch (mutationError) {
     editStatus.value = mutationError.message;
