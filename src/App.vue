@@ -23,6 +23,8 @@ import { formatBirthday, formatDateTime } from './lib/format.js';
 import { setDocumentTitle } from './lib/pageTitle.js';
 import { buildAuthorPageLocation } from './lib/routes.js';
 import AuthForm from './components/AuthForm.vue';
+import RichTextEditor from './components/RichTextEditor.vue';
+import { isRichTextEmpty, sanitizeRichTextHtml } from './lib/richText.js';
 
 const endpoint = getGraphqlEndpoint();
 const route = useRoute();
@@ -108,7 +110,7 @@ const {
 
 const displayName = computed(() => currentUser.value?.profile?.displayName || currentUser.value?.login || 'Автор');
 const isAdmin = computed(() => currentUser.value?.role === 'admin');
-const siteBanner = ref('');
+const siteBanner = ref('<p>Литературное радио Литопотам</p>');
 const siteBannerEditing = ref(false);
 const siteBannerDraft = ref('');
 const siteBannerBusy = ref(false);
@@ -168,8 +170,9 @@ function cancelEditBanner() {
 async function saveBanner() {
   siteBannerBusy.value = true;
   try {
-    await apolloClient.mutate({ mutation: UPDATE_SITE_SETTING_MUTATION, variables: { key: 'site_banner', value: siteBannerDraft.value } });
-    siteBanner.value = siteBannerDraft.value;
+    const sanitized = isRichTextEmpty(siteBannerDraft.value) ? '' : sanitizeRichTextHtml(siteBannerDraft.value);
+    await apolloClient.mutate({ mutation: UPDATE_SITE_SETTING_MUTATION, variables: { key: 'site_banner', value: sanitized } });
+    siteBanner.value = sanitized;
     siteBannerEditing.value = false;
   } catch {
     // ошибка сохранения настройки
@@ -749,11 +752,16 @@ async function submitRestoreOwner() {
     <div v-if="siteBanner || isAdmin" class="site-banner site-banner-overlay">
       <div class="site-banner-inner">
         <template v-if="!siteBannerEditing">
-          <span class="site-banner-text">{{ siteBanner || 'Литературное радио Литопотам' }}</span>
+          <span class="site-banner-text" v-html="sanitizeRichTextHtml(siteBanner || '<p>Литературное радио Литопотам</p>')"></span>
           <button v-if="isAdmin" class="btn btn-sm btn-outline site-banner-edit-btn" type="button" @click="startEditBanner"><Icon name="pencil" />Изменить</button>
         </template>
         <template v-else>
-          <textarea v-model="siteBannerDraft" class="textarea site-banner-input" placeholder="Текст в шапке сайта"></textarea>
+          <RichTextEditor
+            v-model="siteBannerDraft"
+            editor-id="site-banner-draft"
+            label=""
+            placeholder="Текст в шапке сайта"
+          />
           <div class="inline-actions">
             <button class="btn btn-sm btn-primary" type="button" :disabled="siteBannerBusy" @click="saveBanner">Сохранить</button>
             <button class="btn btn-sm btn-outline" type="button" :disabled="siteBannerBusy" @click="cancelEditBanner">Отмена</button>

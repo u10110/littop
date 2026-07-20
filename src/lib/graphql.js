@@ -763,6 +763,15 @@ export const ACTIVATE_WORK_ANNOUNCEMENT_MUTATION = gql`
   }
 `;
 
+export const DEACTIVATE_WORK_ANNOUNCEMENT_MUTATION = gql`
+  ${WORK_PREVIEW_FIELDS}
+  mutation DeactivateWorkAnnouncement($workId: ID!) {
+    deactivateWorkAnnouncement(workId: $workId) {
+      ...WorkPreviewFields
+    }
+  }
+`;
+
 export const TOGGLE_WORK_LIKE_MUTATION = gql`
   ${WORK_PREVIEW_FIELDS}
   mutation ToggleWorkLike($workId: ID!) {

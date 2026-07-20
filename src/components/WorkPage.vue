@@ -7,6 +7,7 @@ import RichTextEditor from './RichTextEditor.vue';
 import { apolloClient } from '../lib/apollo.js';
 import {
   ACTIVATE_WORK_ANNOUNCEMENT_MUTATION,
+  DEACTIVATE_WORK_ANNOUNCEMENT_MUTATION,
   DELETE_WORK_MUTATION,
   UPDATE_WORK_MUTATION,
   WORK_QUERY,
@@ -46,7 +47,11 @@ const editForm = ref({
 const editAudioFile = ref(null);
 const editAudioBusy = ref(false);
 const editAudioStatus = ref('');
+const editPdfFile = ref(null);
+const editPdfBusy = ref(false);
+const editPdfStatus = ref('');
 const audioMeta = getWorkMediaMeta('audio');
+const pdfMeta = getWorkMediaMeta('pdf');
 
 async function handleEditAudioChange(event) {
   editAudioFile.value = event?.target?.files?.[0] ?? null;
@@ -76,6 +81,35 @@ function removeEditAudio() {
   editAudioFile.value = null;
   editAudioStatus.value = '';
 }
+
+async function handleEditPdfChange(event) {
+  editPdfFile.value = event?.target?.files?.[0] ?? null;
+  editPdfStatus.value = '';
+}
+async function uploadEditPdf() {
+  const file = editPdfFile.value;
+  if (!file) return;
+  editPdfBusy.value = true;
+  editPdfStatus.value = '';
+  try {
+    const asset = await uploadWorkMedia({ kind: 'pdf', file });
+    if (asset?.url) {
+      work.value.pdfUrl = asset.url;
+      work.value.pdfFileName = asset.fileName || file.name;
+      editPdfStatus.value = 'PDF прикреплён. Сохрани произведение.';
+    }
+  } catch (error) {
+    editPdfStatus.value = error instanceof Error ? error.message : 'Не удалось загрузить PDF.';
+  } finally {
+    editPdfBusy.value = false;
+  }
+}
+function removeEditPdf() {
+  work.value.pdfUrl = null;
+  work.value.pdfFileName = null;
+  editPdfFile.value = null;
+  editPdfStatus.value = '';
+}
 let workRequestVersion = 0;
 
 const projectFormats = [
@@ -98,6 +132,7 @@ const isOwner = computed(() => {
 const isAdmin = computed(() => currentUser.value?.role === 'admin');
 const canManageWork = computed(() => Boolean(isOwner.value || isAdmin.value));
 const canActivateAnnouncement = computed(() => Boolean(isAuthenticated.value && work.value && !work.value.announcementActive));
+const canDeactivateAnnouncement = computed(() => Boolean(isAdmin.value && work.value?.announcementActive));
 const renderedWorkBody = computed(() => renderRichTextHtml(work.value?.body || work.value?.summary || work.value?.excerpt || ''));
 
 onMounted(() => {
@@ -260,6 +295,10 @@ async function submitWorkUpdate() {
 
 function requestAnnouncement() {
   if (!work.value || !canActivateAnnouncement.value) return;
+  if (!isAuthenticated.value) {
+    announcementStatus.value = 'Войдите, чтобы анонсировать произведение.';
+    return;
+  }
   if (isAdmin.value) {
     activateAnnouncement();
     return;
@@ -284,6 +323,26 @@ async function activateAnnouncement() {
       },
     });
     announcementStatus.value = 'произведение анонсировано';
+    await refreshCurrentWork();
+  } catch (mutationError) {
+    announcementStatus.value = mutationError.message;
+  } finally {
+    announcementBusy.value = false;
+  }
+}
+
+async function deactivateAnnouncement() {
+  if (!work.value || !canDeactivateAnnouncement.value) return;
+  announcementBusy.value = true;
+  announcementStatus.value = '';
+  try {
+    await apolloClient.mutate({
+      mutation: DEACTIVATE_WORK_ANNOUNCEMENT_MUTATION,
+      variables: {
+        workId: work.value.id,
+      },
+    });
+    announcementStatus.value = 'произведение убрано из анонсов';
     await refreshCurrentWork();
   } catch (mutationError) {
     announcementStatus.value = mutationError.message;
@@ -380,6 +439,16 @@ async function softDeleteCurrentWork() {
             @click="requestAnnouncement"
           >
             <Icon name="megaphone" />{{ work.announcementActive ? 'Уже в анонсах' : announcementBusy ? 'Добавляем…' : 'Анонс' }}
+            <span v-if="!work.announcementActive && work.announcementCount > 0" class="pill" style="margin-left:8px">анонсов: {{ work.announcementCount }}</span>
+          </button>
+          <button
+            v-if="canDeactivateAnnouncement"
+            class="btn btn-outline"
+            type="button"
+            :disabled="announcementBusy"
+            @click="deactivateAnnouncement"
+          >
+            <Icon name="x" />Снять с анонса
           </button>
           <button
             v-if="canManageWork"
@@ -410,7 +479,7 @@ async function softDeleteCurrentWork() {
         <div class="auth-modal confirm-modal">
           <p class="confirm-modal-text">
             После анонсирования это произведение появится на главной, чтобы его увидели больше читателей.<br />
-            С вашего счета спишется 50 персиков. Продолжим?
+            С вашего счета спишется 50 персиков. После анонса произведение появится на главной в секции «Анонсы». Продолжим?
           </p>
           <div class="inline-actions">
             <button class="btn btn-primary" type="button" :disabled="announcementBusy" @click="confirmAnnouncement">Продолжить</button>
@@ -453,19 +522,24 @@ async function softDeleteCurrentWork() {
           placeholder="Полный текст произведения"
         />
 
-        <div class="field">
-          <label for="edit-work-audio">Аудиофайл произведения</label>
-          <input id="edit-work-audio" class="input" type="file" :accept="audioMeta.accept" :disabled="editAudioBusy" @change="handleEditAudioChange" />
-          <div v-if="work.audioUrl" class="inline-actions">
-            <span class="pill good">Сейчас прикреплено: {{ work.audioFileName || 'аудио' }}</span>
-            <button class="btn btn-sm btn-outline" type="button" :disabled="editAudioBusy" @click="uploadEditAudio">{{ editAudioBusy ? 'Загружаем…' : 'Заменить аудио' }}</button>
-            <button class="btn btn-sm btn-danger" type="button" :disabled="editAudioBusy" @click="removeEditAudio">Убрать аудио</button>
+        <div class="media-upload-grid">
+          <div class="field media-upload-card">
+            <label for="edit-work-pdf"><Icon name="file-text" />PDF-файл</label>
+            <input id="edit-work-pdf" class="input" type="file" :accept="pdfMeta.accept" :disabled="editPdfBusy" @change="handleEditPdfChange" />
+            <div class="meta">Подходит для рукописи, презентации или приложения к произведению.</div>
+            <div v-if="editPdfFile" class="pill">Выбран: {{ editPdfFile.name }}</div>
+            <div v-else-if="work.pdfUrl" class="pill good">Загружен: {{ work.pdfFileName || 'PDF' }}</div>
+            <div v-if="editPdfStatus" class="message" :class="editPdfStatus.includes('прикреплён') ? 'success' : 'error'">{{ editPdfStatus }}</div>
           </div>
-          <div v-else-if="editAudioFile" class="inline-actions">
-            <span class="pill">Выбран: {{ editAudioFile.name }}</span>
-            <button class="btn btn-sm btn-primary" type="button" :disabled="editAudioBusy" @click="uploadEditAudio">{{ editAudioBusy ? 'Загружаем…' : 'Прикрепить аудио' }}</button>
+
+          <div class="field media-upload-card">
+            <label for="edit-work-audio"><Icon name="music" />Аудиофайл</label>
+            <input id="edit-work-audio" class="input" type="file" :accept="audioMeta.accept" :disabled="editAudioBusy" @change="handleEditAudioChange" />
+            <div class="meta">Можно приложить чтение, песню, демо или озвучку произведения.</div>
+            <div v-if="editAudioFile" class="pill">Выбран: {{ editAudioFile.name }}</div>
+            <div v-else-if="work.audioUrl" class="pill good">Загружен: {{ work.audioFileName || 'аудио' }}</div>
+            <div v-if="editAudioStatus" class="message" :class="editAudioStatus.includes('прикреплено') ? 'success' : 'error'">{{ editAudioStatus }}</div>
           </div>
-          <div v-if="editAudioStatus" class="message" :class="editAudioStatus.includes('прикреплено') ? 'success' : 'error'">{{ editAudioStatus }}</div>
         </div>
 
         <div class="inline-actions">
