@@ -27,6 +27,13 @@ export function getGraphqlEndpoint() {
 export function resolveBackendBaseUrl(graphqlEndpoint = getGraphqlEndpoint()) {
   const endpoint = resolveGraphqlEndpoint(graphqlEndpoint);
 
+  // Relative endpoint (e.g. "/api"): WORK_MEDIA_ENDPOINT already includes the
+  // "/api" prefix, so the base is just the current origin (prevents "/api/api").
+  if (!/^https?:\/\//i.test(endpoint)) {
+    const origin = (typeof globalThis.location !== 'undefined' && globalThis.location.origin) || '';
+    return origin;
+  }
+
   try {
     const url = new URL(endpoint);
     const normalizedPath = url.pathname.replace(/\/+$/, '') || '/';
