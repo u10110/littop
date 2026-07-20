@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
 import { useQuery } from '@vue/apollo-composable';
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router';
 
