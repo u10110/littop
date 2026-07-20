@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRoute } from 'vue-router';
 import JSZip from 'jszip';
 
 import WorkPublishForm from './WorkPublishForm.vue';
@@ -15,6 +15,7 @@ import { VueDatePicker } from '@vuepic/vue-datepicker' // Добавили фи�
 import '@vuepic/vue-datepicker/dist/main.css'
 
 import { ru } from 'date-fns/locale'
+import { startOfMonth, isSameMonth, format as formatMonth, parseISO } from 'date-fns'
 
 import {
   ADMIN_CREATE_MANAGED_AUTHOR_MUTATION,
@@ -23,6 +24,7 @@ import {
   MY_MANAGED_AUTHORS_QUERY,
   MY_PEACH_TRANSACTIONS_QUERY,
   MY_RATING_EVENTS_QUERY,
+  MY_GRANTED_PEACHES_QUERY,
   PURCHASE_AUDIO_UPLOAD_PACK_MUTATION,
   REQUEST_ADMIN_REVIEW_MUTATION,
   RADIO_TRACKS_BY_CREATOR_QUERY,
@@ -118,9 +120,47 @@ const adminGrantForm = ref({
   note: '',
 });
 
+// --- Пак 19: сворачиваемые блоки статистики и публикации ---
+const ratingOpen = ref(false);
+const peachOpen = ref(false);
+const adminGrantedOpen = ref(false);
+const managedOpen = ref(false);
+const publishOpen = ref(false);
+const adminGrantedPeaches = ref([]);
+const ratingMonth = ref(startOfMonth(new Date()));
+const peachMonth = ref(startOfMonth(new Date()));
+const adminGrantedMonth = ref(startOfMonth(new Date()));
+const route = useRoute();
+
+function inMonth(iso, monthDate) {
+  if (!iso) return false;
+  try {
+    return isSameMonth(parseISO(iso), monthDate);
+  } catch {
+    return false;
+  }
+}
+function monthLabel(monthDate) {
+  return formatMonth(monthDate, 'LLLL yyyy', { locale: ru });
+}
+
+const ratingEventsMonth = computed(() => ratingEvents.value.filter((e) => inMonth(e.createdAt, ratingMonth.value)));
+const peachTransactionsMonth = computed(() => peachTransactions.value.filter((t) => inMonth(t.createdAt, peachMonth.value)));
+const adminGrantedMonthList = computed(() => adminGrantedPeaches.value.filter((t) => inMonth(t.createdAt, adminGrantedMonth.value)));
+
+const ratingMonthPoints = computed(() => ratingEventsMonth.value.reduce((sum, e) => sum + (Number(e.points) || 0), 0));
+const peachMonthDelta = computed(() => peachTransactionsMonth.value.reduce((sum, t) => sum + (Number(t.amount) || 0), 0));
+const adminGrantedMonthTotal = computed(() => adminGrantedMonthList.value.reduce((sum, t) => sum + (Number(t.amount) || 0), 0));
+
 onMounted(async () => {
   await bootstrapSession();
   await loadExtraCabinetData();
+  if (route.hash === '#publish-work') {
+    publishOpen.value = true;
+    setTimeout(() => {
+      document.getElementById('publish-work')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 300);
+  }
 });
 
 function syncProfileForm({ clearSuccess = false } = {}) {
@@ -172,16 +212,24 @@ async function loadExtraCabinetData() {
     return;
   }
   try {
-    const [{ data: ratingData }, { data: peachData }, managedResult] = await Promise.all([
-      apolloClient.query({ query: MY_RATING_EVENTS_QUERY, variables: { limit: 100 }, fetchPolicy: 'network-only' }),
-      apolloClient.query({ query: MY_PEACH_TRANSACTIONS_QUERY, variables: { limit: 100 }, fetchPolicy: 'network-only' }),
-      isAdmin.value
-        ? apolloClient.query({ query: MY_MANAGED_AUTHORS_QUERY, variables: { limit: 100 }, fetchPolicy: 'network-only' })
-        : Promise.resolve({ data: { myManagedAuthors: [] } }),
-    ]);
-    ratingEvents.value = ratingData?.myRatingEvents ?? [];
-    peachTransactions.value = peachData?.myPeachTransactions ?? [];
+    const queries = [
+      apolloClient.query({ query: MY_RATING_EVENTS_QUERY, variables: { limit: 500 }, fetchPolicy: 'network-only' }),
+      apolloClient.query({ query: MY_PEACH_TRANSACTIONS_QUERY, variables: { limit: 500 }, fetchPolicy: 'network-only' }),
+    ];
+    if (isAdmin.value) {
+      queries.push(
+        apolloClient.query({ query: MY_MANAGED_AUTHORS_QUERY, variables: { limit: 100 }, fetchPolicy: 'network-only' }),
+        apolloClient.query({ query: MY_GRANTED_PEACHES_QUERY, variables: { limit: 500 }, fetchPolicy: 'network-only' }),
+      );
+    } else {
+      queries.push(Promise.resolve({ data: { myManagedAuthors: [] } }));
+    }
+    const results = await Promise.all(queries);
+    const [ratingData, peachData, managedResult, grantedResult] = results;
+    ratingEvents.value = ratingData?.data?.myRatingEvents ?? [];
+    peachTransactions.value = peachData?.data?.myPeachTransactions ?? [];
     managedAuthors.value = managedResult?.data?.myManagedAuthors ?? [];
+    adminGrantedPeaches.value = grantedResult?.data?.myGrantedPeaches ?? [];
   } catch {
     // Не роняем кабинет, если дополнительные блоки временно недоступны.
   }
@@ -884,8 +932,7 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
           </div>
           <div class="inline-actions">
             <RouterLink class="btn btn-primary" :to="myWorksLink">Мои произведения</RouterLink>
-            <a class="btn btn-outline" href="#publish-work">Добавить публикацию</a>
-            <a class="btn btn-outline" href="#upload-audio">Добавить аудио</a>
+            <button class="btn btn-primary btn-lg" type="button" @click="publishOpen = true; $nextTick(() => document.getElementById('publish-work')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))"><Icon name="pen-line" />Опубликовать новое произведение</button>
             <RouterLink v-if="currentUser?.login" class="btn btn-outline" :to="myAuthorPageLink">Авторская страница</RouterLink>
             <RouterLink class="btn btn-outline" to="/radio">Радио</RouterLink>
             <RouterLink class="btn btn-outline" to="/works">Все произведения</RouterLink>
@@ -907,16 +954,30 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
             <h2>Рейтинговые начисления</h2>
             <span class="pill">{{ ratingEvents.length }} событий</span>
           </div>
-          <div v-if="ratingEvents.length" class="stack">
-            <div v-for="event in ratingEvents" :key="event.id" class="inline-card">
-              <div class="section-head">
-                <strong>{{ event.label }}</strong>
-                <span class="pill good">+{{ event.points }}</span>
-              </div>
-              <div class="meta">{{ formatDateTime(event.createdAt) }}</div>
-            </div>
+          <div class="inline-actions">
+            <button class="btn btn-outline" type="button" @click="ratingOpen = !ratingOpen">
+              <Icon name="chevron-down" /> {{ ratingOpen ? 'Скрыть начисления' : 'Показать начисления' }}
+            </button>
+            <RouterLink class="btn btn-outline" to="/statistics">Статистика и суммы</RouterLink>
           </div>
-          <div v-else class="empty-state">Начислений пока нет.</div>
+          <div v-if="ratingOpen" class="stack stat-panel">
+            <div class="filter-row">
+              <label>Месяц:</label>
+              <VueDatePicker v-model="ratingMonth" :enable-time-picker="false" auto-apply :locale="ru" format="MMMM yyyy" />
+              <span class="pill good">+{{ ratingMonthPoints }} за {{ monthLabel(ratingMonth) }}</span>
+            </div>
+            <div v-if="ratingEventsMonth.length" class="stack">
+              <div v-for="event in ratingEventsMonth" :key="event.id" class="inline-card">
+                <div class="section-head">
+                  <strong>{{ event.label }}</strong>
+                  <span class="pill good">+{{ event.points }}</span>
+                </div>
+                <div class="meta">{{ formatDateTime(event.createdAt) }}</div>
+              </div>
+            </div>
+            <div v-else class="empty-state">Нет начислений за {{ monthLabel(ratingMonth) }}.</div>
+          </div>
+          <div v-if="!ratingOpen && !ratingEvents.length" class="empty-state">Начислений пока нет.</div>
         </article>
 
         <article class="panel stack">
@@ -950,16 +1011,34 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
           </form>
           <div v-if="peachStatus" class="message" :class="peachStatus.includes('куплен') || peachStatus.includes('начислены') ? 'success' : 'error'">{{ peachStatus }}</div>
           <div v-if="reviewStatus" class="message" :class="reviewStatus.includes('отправлена') ? 'success' : 'error'">{{ reviewStatus }}</div>
-          <div v-if="peachTransactions.length" class="stack">
-            <div v-for="transaction in peachTransactions" :key="transaction.id" class="inline-card">
-              <div class="section-head">
-                <strong>{{ transaction.note || transaction.kind }}</strong>
-                <span class="pill" :class="transaction.amount >= 0 ? 'good' : 'warn'">{{ transaction.amount > 0 ? '+' : '' }}{{ transaction.amount }}</span>
-              </div>
-              <div class="meta">{{ formatDateTime(transaction.createdAt) }}</div>
-            </div>
+          <div class="section-head" style="margin-top: 1rem;">
+            <h3>Персиковые приобретения и траты</h3>
+            <span class="pill">{{ peachTransactions.length }} операций</span>
           </div>
-          <div v-else class="empty-state">История персиков пока пуста.</div>
+          <div class="inline-actions">
+            <button class="btn btn-outline" type="button" @click="peachOpen = !peachOpen">
+              <Icon name="chevron-down" /> {{ peachOpen ? 'Скрыть историю' : 'Показать историю' }}
+            </button>
+            <RouterLink class="btn btn-outline" to="/statistics">Статистика и суммы</RouterLink>
+          </div>
+          <div v-if="peachOpen" class="stack stat-panel">
+            <div class="filter-row">
+              <label>Месяц:</label>
+              <VueDatePicker v-model="peachMonth" :enable-time-picker="false" auto-apply :locale="ru" format="MMMM yyyy" />
+              <span class="pill" :class="peachMonthDelta >= 0 ? 'good' : 'warn'">{{ peachMonthDelta > 0 ? '+' : '' }}{{ peachMonthDelta }} за {{ monthLabel(peachMonth) }}</span>
+            </div>
+            <div v-if="peachTransactionsMonth.length" class="stack">
+              <div v-for="transaction in peachTransactionsMonth" :key="transaction.id" class="inline-card">
+                <div class="section-head">
+                  <strong>{{ transaction.note || transaction.kind }}</strong>
+                  <span class="pill" :class="transaction.amount >= 0 ? 'good' : 'warn'">{{ transaction.amount > 0 ? '+' : '' }}{{ transaction.amount }}</span>
+                </div>
+                <div class="meta">{{ formatDateTime(transaction.createdAt) }}</div>
+              </div>
+            </div>
+            <div v-else class="empty-state">Нет операций за {{ monthLabel(peachMonth) }}.</div>
+          </div>
+          <div v-if="!peachOpen && !peachTransactions.length" class="empty-state">История персиков пока пуста.</div>
         </article>
       </section>
 
@@ -969,6 +1048,12 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
             <h2>Управляемые аккаунты</h2>
             <span class="pill">{{ managedAuthors.length }} профилей</span>
           </div>
+          <div class="inline-actions">
+            <button class="btn btn-outline" type="button" @click="managedOpen = !managedOpen">
+              <Icon name="chevron-down" /> {{ managedOpen ? 'Скрыть аккаунты' : 'Показать аккаунты' }}
+            </button>
+          </div>
+          <div v-if="managedOpen">
           <div class="note">Владелец сайта может создавать специальные авторские аккаунты без выхода из своего профиля, переключаться между ними и помечать их как классиков или страницы памяти.</div>
           <form class="stack" @submit.prevent="submitManagedAuthor">
             <div class="grid-2">
@@ -1041,6 +1126,7 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
               </div>
             </div>
           </div>
+          </div>
         </article>
 
         <article class="panel stack">
@@ -1066,6 +1152,35 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
             </div>
           </form>
         </article>
+
+        <article class="panel">
+          <div class="section-head">
+            <h2>Кому начислил персики</h2>
+            <span class="pill">{{ adminGrantedPeaches.length }} операций</span>
+          </div>
+          <div class="inline-actions">
+            <button class="btn btn-outline" type="button" @click="adminGrantedOpen = !adminGrantedOpen">
+              <Icon name="chevron-down" /> {{ adminGrantedOpen ? 'Скрыть' : 'Показать выданные' }}
+            </button>
+          </div>
+          <div v-if="adminGrantedOpen" class="stack stat-panel">
+            <div class="filter-row">
+              <label>Месяц:</label>
+              <VueDatePicker v-model="adminGrantedMonth" :enable-time-picker="false" auto-apply :locale="ru" format="MMMM yyyy" />
+              <span class="pill good">+{{ adminGrantedMonthTotal }} за {{ monthLabel(adminGrantedMonth) }}</span>
+            </div>
+            <div v-if="adminGrantedMonthList.length" class="stack">
+              <div v-for="tx in adminGrantedMonthList" :key="tx.id" class="inline-card">
+                <div class="section-head">
+                  <strong>{{ tx.note || tx.kind }}</strong>
+                  <span class="pill good">+{{ tx.amount }}</span>
+                </div>
+                <div class="meta">{{ formatDateTime(tx.createdAt) }}</div>
+              </div>
+            </div>
+            <div v-else class="empty-state">Нет выданных персиков за {{ monthLabel(adminGrantedMonth) }}.</div>
+          </div>
+        </article>
       </section>
 
       <section class="layout-columns personal-layout">
@@ -1088,83 +1203,16 @@ async function submitAccountClosure() {  const confirmed = globalThis.confirm?.(
       </section>
 
       <section id="publish-work" class="section-block">
-        <div v-if="publishStatus" class="message success">{{ publishStatus }}</div>
-        <WorkPublishForm @created="handleWorkCreated" />
-      </section>
-
-      <section id="upload-audio" class="section-block">
-        <article class="panel">
-          <div class="section-head">
-            <h2>Добавить аудио</h2>
-            <span class="pill">Файл → папка + БД</span>
-          </div>
-
-          <p class="note">
-            Загруженный аудиофайл сохраняется на сервере, запись попадает в <code>radio_tracks</code>, а трек сразу
-            появляется на странице «Радио». Один слот = одна загрузка. Остаток слотов: <strong>{{ audioUploadSlots }}</strong>.
-          </p>
-
-          <div v-if="audioError" class="message error">{{ audioError }}</div>
-          <div v-if="audioSuccess" class="message success">{{ audioSuccess }}</div>
-
-          <form class="auth-grid" @submit.prevent="submitAudio">
-            <div class="field">
-              <label for="audio-title">Название аудио</label>
-              <input id="audio-title" v-model="audioForm.title" class="input" required placeholder="Например, Вечерний эфир" />
-            </div>
-
-            <div class="field">
-              <label for="audio-author">Подпись автора</label>
-              <input id="audio-author" v-model="audioForm.authorName" class="input" placeholder="Кто автор трека (если не вы)" />
-            </div>
-
-            <div class="field">
-              <label for="audio-file">Аудиофайл</label>
-              <input
-                id="audio-file"
-                ref="audioFileInput"
-                class="input"
-                type="file"
-                accept="audio/*"
-                :required="!editingTrackId"
-                @change="handleAudioFileChange"
-              />
-            </div>
-
-            <div class="inline-actions">
-              <button class="btn btn-primary" type="submit" :disabled="audioBusy || (!editingTrackId && audioUploadSlots <= 0)">
-                {{ audioBusy ? (editingTrackId ? 'Сохраняем…' : 'Загружаем…') : (editingTrackId ? 'Сохранить изменения' : 'Загрузить аудио') }}
-              </button>
-              <button class="btn btn-outline" type="button" :disabled="audioBusy" @click="resetAudioForm">
-                {{ editingTrackId ? 'Отмена' : 'Сбросить' }}
-              </button>
-              <button v-if="!editingTrackId" class="btn btn-outline" type="button" :disabled="peachBusy" @click="purchaseAudioPack">
-                Купить ещё 20 слотов
-              </button>
-              <RouterLink class="btn btn-outline" to="/radio">Открыть радио</RouterLink>
-            </div>
-            <div v-if="audioUploadSlots <= 0 && !editingTrackId" class="message">Чтобы загрузить аудио, сначала купи пакет из 20 слотов за 100 персиков.</div>
-          </form>
-
-          <div v-if="myTracks.length" class="stack my-tracks-block">
-            <div class="section-head">
-              <h3>Мои загрузки</h3>
-              <span class="pill">{{ myTracks.length }}</span>
-            </div>
-            <ol class="author-works-ledger">
-              <li v-for="track in myTracks" :key="track.id" class="author-works-ledger-item">
-                <div class="author-work-body">
-                  <div class="author-work-title">{{ track.title }}</div>
-                  <div class="author-work-meta">{{ track.authorName || 'Автор не указан' }}</div>
-                </div>
-                <div class="inline-actions">
-                  <button class="btn btn-sm btn-outline" type="button" @click="editTrack(track)">Редактировать</button>
-                  <button class="btn btn-sm btn-danger" type="button" @click="deleteTrack(track)">Удалить</button>
-                </div>
-              </li>
-            </ol>
-          </div>
-        </article>
+        <div class="section-head">
+          <h2>Новая публикация</h2>
+          <button class="btn btn-primary btn-lg" type="button" @click="publishOpen = !publishOpen">
+            <Icon name="pen-line" /> {{ publishOpen ? 'Скрыть форму' : 'Опубликовать новое произведение' }}
+          </button>
+        </div>
+        <div v-if="publishOpen" class="stack">
+          <div v-if="publishStatus" class="message success">{{ publishStatus }}</div>
+          <WorkPublishForm @created="handleWorkCreated" />
+        </div>
       </section>
     </template>
   </section>

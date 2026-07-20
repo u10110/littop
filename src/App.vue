@@ -681,6 +681,7 @@ async function submitRestoreOwner() {
         <RouterLink to="/radio"><Icon name="radio" />Радио</RouterLink>
         <RouterLink to="/forum"><Icon name="messages-square" />Форум</RouterLink>
         <RouterLink v-if="isAuthenticated" to="/personal"><Icon name="user-circle" />Мой кабинет</RouterLink>
+        <RouterLink v-if="isAuthenticated" class="btn btn-primary" to="/personal#publish-work"><Icon name="pen-line" />Опубликовать</RouterLink>
         <RouterLink v-if="isAuthenticated" class="bell-btn" :class="unreadDialogsCount ? 'bell-btn-hot' : 'bell-btn-calm'" to="/messages" aria-label="Личные сообщения">
           <Icon name="bell" class="bell-icon" />
         </RouterLink>
@@ -750,6 +751,7 @@ async function submitRestoreOwner() {
         <RouterLink to="/radio" @click="mobileMenuOpen = false"><Icon name="radio" />Радио</RouterLink>
         <RouterLink to="/forum" @click="mobileMenuOpen = false"><Icon name="messages-square" />Форум</RouterLink>
         <RouterLink v-if="isAuthenticated" to="/personal" @click="mobileMenuOpen = false"><Icon name="user-circle" />Мой кабинет</RouterLink>
+        <RouterLink v-if="isAuthenticated" class="btn btn-primary" to="/personal#publish-work" @click="mobileMenuOpen = false"><Icon name="pen-line" />Опубликовать</RouterLink>
         <RouterLink v-if="isAuthenticated" to="/messages" @click="mobileMenuOpen = false"><Icon name="messages-square" />Сообщения</RouterLink>
       </nav>
     </aside>

@@ -14,6 +14,7 @@ import PrivateMessages from '../components/PrivateMessages.vue';
 import SocialAuthCallback from '../components/SocialAuthCallback.vue';
 import TermsAgreement from '../components/TermsAgreement.vue';
 import Login from '../components/Login.vue';
+import Statistics from '../components/Statistics.vue';
 
 const routes = [
   { path: '/', name: 'home', component: Home },
@@ -31,6 +32,7 @@ const routes = [
   { path: '/terms', name: 'terms', component: TermsAgreement },
   { path: '/auth/callback', name: 'social-auth-callback', component: SocialAuthCallback },
   { path: '/login', name: 'login', component: Login, meta: { title: 'Вход' } },
+  { path: '/statistics', name: 'statistics', component: Statistics },
 ];
 
 const router = createRouter({

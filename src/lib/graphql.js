@@ -632,6 +632,19 @@ export const MY_PEACH_TRANSACTIONS_QUERY = gql`
   }
 `;
 
+export const MY_GRANTED_PEACHES_QUERY = gql`
+  query MyGrantedPeaches($limit: Int!) {
+    myGrantedPeaches(limit: $limit) {
+      id
+      amount
+      kind
+      note
+      createdAt
+      targetUserId
+    }
+  }
+`;
+
 export const ADMIN_CREATE_MANAGED_AUTHOR_MUTATION = gql`
   ${AUTHOR_CARD_FIELDS}
   mutation AdminCreateManagedAuthor($input: CreateManagedAuthorInput!) {
