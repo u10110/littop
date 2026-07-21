@@ -365,6 +365,10 @@ function onAuthSuccess(message) {
   closeAuthModal();
 }
 
+function openPublishForm() {
+  router.push({ path: '/personal', query: { ...route.query, publish: '1' } });
+}
+
 function handleOpenAuthEvent(event) {
   openAuthModal(event?.detail?.mode === 'register' ? 'register' : 'login');
 }
@@ -706,7 +710,7 @@ async function submitRestoreOwner() {
         <RouterLink to="/radio"><Icon name="radio" />Радио</RouterLink>
         <RouterLink to="/forum"><Icon name="messages-square" />Форум</RouterLink>
         <RouterLink v-if="isAuthenticated" to="/personal"><Icon name="user-circle" />Мой кабинет</RouterLink>
-        <RouterLink v-if="isAuthenticated" class="btn btn-primary" to="/personal#publish-work"><Icon name="pen-line" />Опубликовать</RouterLink>
+        <button v-if="isAuthenticated" type="button" class="btn btn-primary" @click="openPublishForm"><Icon name="pen-line" />Опубликовать</button>
         <RouterLink v-if="isAuthenticated" class="bell-btn" :class="unreadDialogsCount ? 'bell-btn-hot' : 'bell-btn-calm'" to="/messages" aria-label="Личные сообщения">
           <Icon name="bell" class="bell-icon" />
         </RouterLink>

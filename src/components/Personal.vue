@@ -157,9 +157,9 @@ onMounted(async () => {
   await loadExtraCabinetData();
 });
 watch(
-  () => route.hash,
-  (hash) => {
-    if (hash === '#publish-work') {
+  () => route.query.publish,
+  (val) => {
+    if (val === '1') {
       publishOpen.value = true;
       setTimeout(() => {
         document.getElementById('publish-work')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
