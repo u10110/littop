@@ -155,13 +155,19 @@ const adminGrantedMonthTotal = computed(() => adminGrantedMonthList.value.reduce
 onMounted(async () => {
   await bootstrapSession();
   await loadExtraCabinetData();
-  if (route.hash === '#publish-work') {
-    publishOpen.value = true;
-    setTimeout(() => {
-      document.getElementById('publish-work')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 300);
-  }
 });
+watch(
+  () => route.hash,
+  (hash) => {
+    if (hash === '#publish-work') {
+      publishOpen.value = true;
+      setTimeout(() => {
+        document.getElementById('publish-work')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 300);
+    }
+  },
+  { immediate: true }
+);
 
 function syncProfileForm({ clearSuccess = false } = {}) {
   if (clearSuccess) {

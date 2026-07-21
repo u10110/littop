@@ -132,6 +132,31 @@ async function loadSiteBanner() {
   }
 }
 
+const siteBannerEditing = ref(false);
+const siteBannerDraft = ref('');
+const siteBannerBusy = ref(false);
+function startEditBanner() {
+  siteBannerDraft.value = siteBanner.value;
+  siteBannerEditing.value = true;
+}
+function cancelEditBanner() {
+  siteBannerEditing.value = false;
+  siteBannerDraft.value = '';
+}
+async function saveBanner() {
+  siteBannerBusy.value = true;
+  try {
+    const sanitized = isRichTextEmpty(siteBannerDraft.value) ? '' : sanitizeRichTextHtml(siteBannerDraft.value);
+    await apolloClient.mutate({ mutation: UPDATE_SITE_SETTING_MUTATION, variables: { key: 'site_banner', value: sanitized } });
+    siteBanner.value = sanitized;
+    siteBannerEditing.value = false;
+  } catch {
+    // ошибка сохранения настройки
+  } finally {
+    siteBannerBusy.value = false;
+  }
+}
+
 const headerImageUrl = ref('');
 const headerImageBusy = ref(false);
 const headerImageInput = ref(null);
@@ -761,7 +786,26 @@ async function submitRestoreOwner() {
     <div v-if="headerImageUrl" class="header-banner-media">
       <img :src="headerImageUrl" alt="Шапка сайта" class="header-banner-img" />
     </div>
-    <div v-if="siteBanner" class="site-banner site-banner-overlay" v-html="sanitizeRichTextHtml(siteBanner || '')"></div>
+    <div v-if="siteBanner || isAdmin" class="site-banner site-banner-overlay">
+      <div class="site-banner-inner">
+        <template v-if="!siteBannerEditing">
+          <span class="site-banner-text" v-html="sanitizeRichTextHtml(siteBanner || '<p>Литературное радио Литопотам</p>')"></span>
+          <button v-if="isAdmin" class="btn btn-sm btn-outline site-banner-edit-btn" type="button" @click="startEditBanner"><Icon name="pencil" />Изменить</button>
+        </template>
+        <template v-else>
+          <RichTextEditor
+            v-model="siteBannerDraft"
+            editor-id="site-banner-draft"
+            label=""
+            placeholder="Текст в шапке сайта"
+          />
+          <div class="inline-actions">
+            <button class="btn btn-sm btn-primary" type="button" :disabled="siteBannerBusy" @click="saveBanner">Сохранить</button>
+            <button class="btn btn-sm btn-outline" type="button" :disabled="siteBannerBusy" @click="cancelEditBanner">Отмена</button>
+          </div>
+        </template>
+      </div>
+    </div>
   </div>
 
   <div v-if="isAdmin" class="site-header-admin">
