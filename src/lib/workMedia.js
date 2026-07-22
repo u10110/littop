@@ -5,7 +5,7 @@ import {
   resolveBackendBaseUrl,
 } from './auth.js';
 
-export const WORK_MEDIA_ENDPOINT = '/api/works/upload-file';
+export const WORK_MEDIA_ENDPOINT = '/works/upload-file';
 
 const WORK_MEDIA_META = {
   pdf: {
