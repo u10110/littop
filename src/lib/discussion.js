@@ -12,6 +12,7 @@ export function buildThreadTree(items = [], options = {}) {
     idKey = 'id',
     parentKey = 'parentId',
     authorKey = 'author',
+    processText = null,
   } = options;
 
   const nodes = Array.isArray(items)
@@ -20,6 +21,7 @@ export function buildThreadTree(items = [], options = {}) {
         children: [],
         depth: 0,
         replyToAuthor: null,
+        bodyHtml: processText ? processText(item?.body ?? '') : undefined,
       }))
     : [];
 

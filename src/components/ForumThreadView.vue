@@ -19,6 +19,7 @@ import { formatDate } from '../lib/format.js';
 import { uploadForumPostImage, uploadForumTopicImage } from '../lib/forumImages.js';
 import { flattenForumPostTree, getAuthorDisplayName, getAuthorInitial } from '../lib/forum.js';
 import { buildAuthorPageLocation, buildForumTopicPageLocation } from '../lib/routes.js';
+import { linkify } from '../lib/richText.js';
 import { useSession } from '../lib/session.js';
 
 const props = defineProps({
@@ -71,6 +72,7 @@ const { result: sectionsResult } = useQuery(FORUM_SECTIONS_QUERY, {}, {
 
 const sections = computed(() => sectionsResult.value?.forumSections ?? []);
 const flatPosts = computed(() => flattenForumPostTree(props.topic?.posts ?? []));
+const topicBodyHtml = computed(() => linkify(props.topic?.body ?? ''));
 const currentUserId = computed(() => String(currentUser.value?.id || ''));
 const isAdmin = computed(() => currentUser.value?.role === 'admin');
 const canManageTopic = computed(() => {
@@ -538,7 +540,7 @@ async function deletePost(post) {
           <strong v-else>{{ authorLabel(topic.author) }}</strong>
           <span v-if="topic.author?.city" class="meta">· {{ topic.author.city }}</span>
         </div>
-        <div class="prewrap">{{ topic.body || 'Текст темы не указан.' }}</div>
+        <div class="prewrap" v-html="topicBodyHtml || 'Текст темы не указан.'"></div>
         <img v-if="topic.imageUrl" :src="topic.imageUrl" class="forum-topic-hero-image" alt="картинка темы" />
       </div>
     </article>
@@ -579,7 +581,7 @@ async function deletePost(post) {
             <RouterLink v-if="post.replyToAuthor?.login" class="user-inline-link" :to="buildAuthorPageLocation(post.replyToAuthor)">{{ authorLabel(post.replyToAuthor) }}</RouterLink>
             <template v-else>{{ authorLabel(post.replyToAuthor) }}</template>
           </div>
-          <div class="post-body prewrap">{{ post.body }}</div>
+          <div class="post-body prewrap" v-html="post.bodyHtml || ''"></div>
           <img v-if="post.imageUrl" :src="post.imageUrl" class="forum-post-image" alt="изображение сообщения" />
 
           <div class="inline-actions forum-post-actions">

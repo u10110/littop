@@ -1,4 +1,5 @@
 import { buildThreadTree, flattenThreadTree } from './discussion.js';
+import { linkify, sanitizeRichTextHtml } from './richText.js';
 
 export function buildForumTopicLookupVariables(value) {
   const normalized = String(value || '').trim();
@@ -22,14 +23,24 @@ export function getAuthorInitial(author) {
   return source ? source[0].toUpperCase() : 'П';
 }
 
-export function buildForumPostTree(posts = []) {
+// Forum post bodies are plain user text. Make links clickable but never
+// inject raw HTML: sanitize first, then linkify the remaining URLs.
+function forumRichText(text) {
+  return linkify(sanitizeRichTextHtml(text ?? ''));
+}
+
+export function buildForumPostTree(posts = [], options = {}) {
+  const { processText = forumRichText } = options;
   return buildThreadTree(posts, {
     parentKey: 'parentPostId',
+    processText,
   });
 }
 
-export function flattenForumPostTree(posts = []) {
+export function flattenForumPostTree(posts = [], options = {}) {
+  const { processText = forumRichText } = options;
   return flattenThreadTree(posts, {
     parentKey: 'parentPostId',
+    processText,
   });
 }
