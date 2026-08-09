@@ -242,3 +242,6 @@ nav.menu a:hover{color:var(--terra);background:var(--cream)}
 
 /* Fix homepage column structure: sidebar stays next to content; radio spans home-main. */
 .home-main>.live-radio{margin-top:28px;min-height:0;width:100%}.home-main>.live-radio .radio-now{padding:14px}.home-main>.live-radio .radio-list{display:grid;grid-template-columns:1fr 1fr;gap:0 24px}.home-main>.live-radio .radio-list li{padding:9px 0}.contest-and-radio{display:contents}@media(max-width:700px){.home-main>.live-radio .radio-list{grid-template-columns:1fr}}
+
+/* Homepage sidebar: visitors returned by the live todayVisitors feed. */
+.today-visitors{border-bottom:0}.visitor-list{margin-top:12px}.visitor-list>a{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:9px;align-items:center;padding:8px 0;border-top:1px solid #eee9e1}.visitor-list img{width:30px;height:30px;border-radius:50%;object-fit:cover}.visitor-list span{display:grid;gap:2px}.visitor-list b{font-size:11px;line-height:1.25}.visitor-list small,.visitor-list i{font-size:9px;color:#918a81;font-style:normal}.visitor-list i{white-space:nowrap}.visitor-list>a:hover b{color:var(--terra)}
