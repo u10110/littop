@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 258 58" role="img" aria-labelledby="title desc">
+  <title id="title">Littop — литература без границ</title>
+  <desc id="desc">Логотип: раскрытая книга и перо</desc>
+  <g fill="none" stroke="#554234" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 43.5c8.5-4.2 17.2-4.2 26 0 8.6-4.2 17.3-4.2 26 0V20.2c-8.7-4.1-17.4-4.1-26 0-8.8-4.1-17.5-4.1-26 0z" stroke-width="2.15"/>
+    <path d="M30 20.3v23.2M8.5 23.3c6.8-2.6 13.5-2.6 20.3 0M51.5 23.3c-6.8-2.6-13.5-2.6-20.3 0" stroke-width="1.35" opacity=".72"/>
+    <path d="M19.5 18.6C22.7 8.5 30.6 3.6 42.8 4.2c-.8 12.2-7.8 18.9-20.8 20.3 5.2-4.8 10.3-9.1 16.5-13.3" stroke-width="2.1"/>
+    <path d="M20.7 17.9 16 29.5" stroke-width="1.75"/>
+  </g>
+  <text x="69" y="34" fill="#30271f" font-family="Georgia, 'Times New Roman', serif" font-size="31" font-weight="700" letter-spacing="-.8">Littop</text>
+  <text x="71" y="48" fill="#8b8177" font-family="Inter, Arial, sans-serif" font-size="8.2" letter-spacing="1.15">ЛИТЕРАТУРА БЕЗ ГРАНИЦ</text>
+</svg>
