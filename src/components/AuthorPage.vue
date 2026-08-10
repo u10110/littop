@@ -134,104 +134,16 @@ async function loadAuthorWorks(authorId) {
 </script>
 
 <template>
-  <section class="page-head author-showcase-head">
-    <div class="section-head">
-      <div>
-        <h1>Страница автора</h1>
-        <p class="muted">Публичная авторская страница в литературной подаче, с большим фото и отдельной аватаркой автора.</p>
-      </div>
-      <RouterLink class="btn btn-outline" to="/authors">← К списку авторов</RouterLink>
-    </div>
-  </section>
-
-  <div v-if="pageError" class="message error">{{ pageError }}</div>
-
-  <section v-if="pageLoading" class="panel stack">
-    <div class="empty-state">Загружаем страницу автора…</div>
-  </section>
-
-  <section v-else-if="notFound" class="panel stack">
-    <div class="empty-state">Автор с таким логином не найден.</div>
-  </section>
-
-  <section v-else-if="hasAuthor" class="author-showcase-page">
-    <div class="author-cover-card" :class="{ 'author-cover-card-empty': !author.coverImageUrl }">
-      <img v-if="author.coverImageUrl" :src="author.coverImageUrl" class="author-cover-image" alt="Большое фото автора" />
-      <div v-else class="author-cover-placeholder">
-        <div class="author-paper-eyebrow">Большое фото автора</div>
-        <strong>Здесь может быть крупный снимок, загруженный из кабинета.</strong>
-      </div>
-    </div>
-
-    <div class="author-showcase-shell">
-      <aside class="author-showcase-sidebar">
-        <article class="author-profile-rail">
-          <div class="author-portrait author-portrait-photo">
-            <img v-if="author.avatarUrl" :src="author.avatarUrl" class="author-portrait-image" alt="Аватар автора" />
-            <template v-else>{{ authorInitial }}</template>
-          </div>
-          <div class="author-name-block">
-            <h2>{{ author.displayName }}</h2>
-            <div class="author-login-link">[{{ author.login }}]</div>
-          </div>
-
-          <div class="author-status-strip">
-            <span v-if="author.isFeatured" class="author-status-pill">Автор витрины</span>
-            <span v-else-if="author.isClassic" class="author-status-pill">Классик</span>
-            <span v-else class="author-status-pill">Публичная страница</span>
-          </div>
-
-          <div class="author-facts-list">
-            <div v-for="fact in authorFacts" :key="fact.label" class="author-fact-row">
-              <span>{{ fact.label }}</span>
-              <strong>{{ fact.value }}</strong>
-            </div>
-          </div>
-
-          <a
-            v-if="author.websiteUrl"
-            class="author-portal-link"
-            :href="author.websiteUrl"
-            target="_blank"
-            rel="noreferrer"
-          >
-            {{ profileLinkLabel }}
-          </a>
-        </article>
-      </aside>
-
-      <div class="author-showcase-main">
-        <article class="author-paper-card">
-          <div class="author-paper-eyebrow">Информация об авторе</div>
-          <h2 class="author-paper-title">{{ author.displayName }}</h2>
-          <div class="author-paper-meta">@{{ author.login }} · на сайте с {{ formatDate(author.registeredAt) }}</div>
-          <div class="author-paper-text">
-            {{ author.bio || 'Автор пока не добавил подробную биографию. Здесь будет литературная визитка, заметки о себе и авторские ссылки.' }}
-          </div>
-        </article>
-
-        <section class="author-paper-card">
-          <div class="section-head">
-            <div>
-              <div class="author-paper-eyebrow">Авторская лента</div>
-              <h3 class="author-paper-title author-paper-title-sm">Произведения</h3>
-            </div>
-            <span class="author-counter">{{ worksLoading ? 'обновляем…' : `${workRows.length} записей` }}</span>
-          </div>
-
-          <ol v-if="workRows.length" class="author-works-ledger">
-            <li v-for="work in workRows" :key="work.id" class="author-works-ledger-item">
-              <div class="author-work-order">{{ work.order }}.</div>
-              <div class="author-work-body">
-                <RouterLink class="author-work-title" :to="buildWorkPageLocation(work)">{{ work.title }}</RouterLink>
-                <div class="author-work-meta">{{ work.metaLine }}</div>
-                <div class="author-work-excerpt">{{ excerptText(work.summary || work.excerpt || work.body, 260) }}</div>
-              </div>
-            </li>
-          </ol>
-          <div v-else-if="!worksLoading" class="empty-state author-empty-ledger">У этого автора пока нет опубликованных произведений.</div>
-        </section>
-      </div>
-    </div>
-  </section>
+  <main class="container author-public-page">
+    <RouterLink class="back" to="/authors">← Все авторы</RouterLink>
+    <p v-if="pageError" class="ref-error">{{ pageError }}</p>
+    <section v-else-if="pageLoading" class="detail-loading">Загружаем страницу автора…</section>
+    <section v-else-if="notFound" class="detail-loading">Автор с таким логином не найден.</section>
+    <section v-else-if="hasAuthor">
+      <header class="profile-hero"><div class="portrait"><img v-if="author.avatarUrl" :src="author.avatarUrl" :alt="author.displayName"><span v-else>{{ authorInitial }}</span></div><div><p class="author-profile-kicker">Публичная страница автора</p><h1>{{ author.displayName || author.login }}</h1><p class="profile-meta">@{{ author.login }} · {{ author.city || 'Littop' }} · на сайте с {{ formatDate(author.registeredAt) }}</p><p>{{ excerptText(author.bio, 240) || 'Автор пока не добавил биографию.' }}</p></div><a v-if="author.websiteUrl" class="btn btn-primary" :href="author.websiteUrl" target="_blank" rel="noreferrer">{{ profileLinkLabel }}</a></header>
+      <section class="statgrid"><div class="s"><b>{{ author.ratingTotal }}</b><small>рейтинг автора</small></div><div class="s"><b>{{ authorWorks.length || author.worksCountCached }}</b><small>произведений</small></div><div class="s"><b>{{ author.isFeatured ? '★' : '—' }}</b><small>{{ author.isFeatured ? 'автор витрины' : 'статус автора' }}</small></div><div class="s"><b>{{ author.isClassic ? '✓' : '—' }}</b><small>{{ author.isClassic ? 'классик' : 'публичный профиль' }}</small></div></section>
+      <nav class="profile-tabs"><a class="active">Произведения</a><a>Об авторе</a></nav>
+      <section><div class="section-title"><div><span class="catalog-kicker">Авторская лента</span><h2>Произведения</h2></div><small>{{ worksLoading ? 'обновляем…' : `${workRows.length} публикаций` }}</small></div><div v-if="workRows.length" class="work-list"><article v-for="work in workRows" :key="work.id" class="work-row"><span class="work-kind">{{ work.order }} · {{ formatWorkSection(work.sectionCode) }}</span><div><RouterLink :to="buildWorkPageLocation(work)"><b>{{ work.title }}</b></RouterLink><small>{{ work.metaLine }}</small><p>{{ excerptText(work.summary || work.excerpt || work.body, 170) }}</p></div><RouterLink class="btn btn-outline" :to="buildWorkPageLocation(work)">Читать</RouterLink></article></div><div v-else-if="!worksLoading" class="catalog-empty"><h2>Публикаций пока нет</h2><p>Автор ещё не добавил произведения.</p></div></section>
+    </section>
+  </main>
 </template>
