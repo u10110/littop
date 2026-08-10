@@ -10,6 +10,7 @@ import {
   parseSocialAuthCallbackParams,
 } from './lib/auth.js';
 import { useSession } from './lib/session.js';
+import referenceLogo from './assets/new-reference/littop-reference-logo.png';
 
 const endpoint = getGraphqlEndpoint();
 const route = useRoute();
@@ -229,46 +230,7 @@ async function submitLogout() {
 </script>
 
 <template>
-  <header>
-    <div class="navwrap">
-      <div class="logo-block">
-        <div class="logo">Литопотам</div>
-        <div class="logo-subtitle">Vue 3 + Vue Apollo + GraphQL backend</div>
-      </div>
-
-      <nav class="nav" aria-label="Главное меню">
-        <RouterLink to="/">Главная</RouterLink>
-        <RouterLink to="/works">Произведения</RouterLink>
-        <RouterLink to="/authors">Авторы</RouterLink>
-        <RouterLink to="/contests">Конкурсы</RouterLink>
-        <RouterLink to="/radio">Радио</RouterLink>
-        <RouterLink to="/forum">Форум</RouterLink>
-        <RouterLink to="/personal">Мой кабинет</RouterLink>
-      </nav>
-
-      <div class="actions">
-        <div v-if="isAuthenticated" class="auth-box user-card">
-          <div class="stack">
-            <div class="section-head">
-              <strong>{{ displayName }}</strong>
-              <span class="pill good">онлайн</span>
-            </div>
-            <div class="meta">@{{ currentUser?.login }} · {{ currentUser?.email }}</div>
-            <div class="meta">Роль: {{ currentUser?.role }} · статус: {{ currentUser?.status }}</div>
-          </div>
-          <div class="inline-actions">
-            <RouterLink class="btn btn-outline" to="/personal">Мой кабинет</RouterLink>
-            <button class="btn btn-outline" type="button" @click="submitLogout">Выйти</button>
-          </div>
-        </div>
-
-        <div v-else class="actions-compact">
-          <button class="btn btn-primary" type="button" @click="openAuthModal('login')">Войти</button>
-          <button class="btn btn-outline" type="button" @click="openAuthModal('register')">Регистрация</button>
-        </div>
-      </div>
-    </div>
-  </header>
+  <header class="top"><div class="wrap"><RouterLink to="/" class="logo" aria-label="Littop — на главную"><img :src="referenceLogo" alt="Littop — Литература без границ"></RouterLink><div class="search" role="search"><input aria-label="Поиск по сайту" placeholder="Поиск по сайту"><span class="search-icon" aria-hidden="true">🔎</span></div><div class="header-actions"><template v-if="isAuthenticated"><RouterLink class="header-login" to="/personal">{{ displayName }}</RouterLink><button class="header-register" type="button" @click="submitLogout">Выйти</button></template><template v-else><button class="header-login" type="button" @click="openAuthModal('login')">Войти</button><button class="header-register" type="button" @click="openAuthModal('register')">Регистрация</button></template></div><nav class="menu" aria-label="Основная навигация"><RouterLink to="/works">⌑ Произведения</RouterLink><RouterLink to="/authors">♙ Авторы</RouterLink><RouterLink to="/forum">◌ Сообщество</RouterLink><RouterLink to="/forum">▤ Журнал</RouterLink><RouterLink to="/contests">☆ Конкурсы</RouterLink><RouterLink to="/radio">◉ Радио</RouterLink><RouterLink to="/personal">▣ Ещё</RouterLink></nav></div></header>
 
   <Transition name="fade-modal">
     <div v-if="isAuthModalOpen" class="modal-backdrop" @click.self="closeAuthModal">
@@ -377,8 +339,6 @@ async function submitLogout() {
 
     <RouterView />
 
-    <footer class="footer">
-      Фронт подключён к backend через Apollo Client. Текущий endpoint: <code>{{ endpoint }}</code>
-    </footer>
+    <footer class="foot"><div class="wrap"><div class="cols"><div><div class="logo">Лито<b>потам</b></div><p class="small">Творческая площадка для авторов и читателей.</p></div><div><h4>Творчество</h4><RouterLink to="/works">Произведения</RouterLink><RouterLink to="/authors">Авторы</RouterLink><RouterLink to="/works">Рубрики</RouterLink></div><div><h4>Сообщество</h4><RouterLink to="/forum">Форум</RouterLink><RouterLink to="/contests">Конкурсы</RouterLink><RouterLink to="/radio">Радио</RouterLink></div><div><h4>Автору</h4><RouterLink to="/personal">Мой кабинет</RouterLink><RouterLink to="/authors">Авторская страница</RouterLink><RouterLink to="/forum">Редакция</RouterLink></div></div><div class="copy">littop 2026 ©</div></div></footer>
   </main>
 </template>

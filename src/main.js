@@ -3,6 +3,7 @@ import { DefaultApolloClient } from '@vue/apollo-composable';
 
 import './style.css';
 import './components/styles.css';
+import './assets/littop-reference.css';
 import router from './router';
 import App from './App.vue';
 import { apolloClient } from './lib/apollo.js';
