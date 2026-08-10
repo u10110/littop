@@ -233,117 +233,20 @@ async function softDeleteCurrentWork() {
 </script>
 
 <template>
-  <section class="page-head">
-    <div class="section-head">
-      <div>
-        <h1>Страница произведения</h1>
-        <p class="muted">Полный текст, отзывы, лайки и списки читателей доступны по прямой публичной ссылке.</p>
-      </div>
-      <RouterLink class="btn btn-outline" to="/works">← К каталогу произведений</RouterLink>
-    </div>
-  </section>
-
-  <div v-if="workError" class="message error">{{ workError }}</div>
-
-  <section v-if="workLoading" class="panel stack">
-    <div class="empty-state">Загружаем произведение…</div>
-  </section>
-
-  <section v-else-if="notFound" class="panel stack">
-    <div class="empty-state">Произведение не найдено.</div>
-  </section>
-
-  <section v-else-if="work" class="stack">
-    <article class="panel stack">
-      <div class="chips">
-        <span class="pill">{{ formatWorkSection(work.sectionCode) }}</span>
-        <span class="pill">{{ ratingLabel(work.averageRating, work.ratingsCount) }}</span>
-        <span class="pill">отзывов: {{ work.commentsCount }}</span>
-        <span class="pill">лайков: {{ work.likesCount }}</span>
-        <span v-if="work.projectFormat" class="pill">{{ work.projectFormat }}</span>
-        <span v-if="work.status && work.status !== 'published'" class="pill warn">{{ work.status }}</span>
-      </div>
-
-      <div class="section-head work-page-head-row">
-        <div>
-          <h2>{{ work.title }}</h2>
-          <div class="meta">
-            {{ authorLabel(work.author) }} · {{ formatDate(work.publishedAt || work.createdAt) }}
-          </div>
-        </div>
-        <div class="inline-actions">
-          <RouterLink
-            v-if="work.author?.login"
-            class="btn btn-outline"
-            :to="buildAuthorPageLocation(work.author)"
-          >
-            Страница автора
-          </RouterLink>
-          <button
-            v-if="isOwner"
-            class="btn btn-outline"
-            type="button"
-            :disabled="editBusy || deleteBusy"
-            @click="editMode ? cancelEditing() : startEditing()"
-          >
-            {{ editMode ? 'Отменить редактирование' : 'Редактировать произведение' }}
-          </button>
-          <button
-            v-if="isOwner"
-            class="btn btn-danger"
-            type="button"
-            :disabled="editBusy || deleteBusy"
-            @click="softDeleteCurrentWork"
-          >
-            {{ deleteBusy ? 'Архивируем…' : 'Удалить' }}
-          </button>
-        </div>
-      </div>
-
-      <div v-if="editStatus" class="message" :class="editStatus.includes('сохранены') ? 'success' : 'error'">{{ editStatus }}</div>
-      <div v-if="deleteStatus" class="message" :class="deleteStatus.includes('архив') ? 'success' : 'error'">{{ deleteStatus }}</div>
-
-      <form v-if="editMode && isOwner" class="stack work-edit-form" @submit.prevent="submitWorkUpdate">
-        <div class="field">
-          <label for="edit-work-section">Раздел</label>
-          <select id="edit-work-section" v-model="editForm.sectionCode" class="select">
-            <option value="poetry">Поэзия</option>
-            <option value="prose">Проза</option>
-            <option value="project">Творческий проект</option>
-          </select>
-        </div>
-
-        <div v-if="editForm.sectionCode === 'project'" class="field">
-          <label for="edit-work-project-format">Формат проекта</label>
-          <select id="edit-work-project-format" v-model="editForm.projectFormat" class="select">
-            <option v-for="option in projectFormats" :key="option.value || 'default'" :value="option.value">{{ option.label }}</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label for="edit-work-title">Заголовок</label>
-          <input id="edit-work-title" v-model="editForm.title" class="input" required />
-        </div>
-
-        <div class="field">
-          <label for="edit-work-summary">Краткое описание</label>
-          <textarea id="edit-work-summary" v-model="editForm.summary" class="textarea" placeholder="2–3 предложения о публикации" />
-        </div>
-
-        <div class="field">
-          <label for="edit-work-body">Текст</label>
-          <textarea id="edit-work-body" v-model="editForm.body" class="textarea" placeholder="Полный текст произведения" />
-        </div>
-
-        <div class="inline-actions">
-          <button class="btn btn-primary" type="submit" :disabled="editBusy">{{ editBusy ? 'Сохраняем…' : 'Сохранить' }}</button>
-          <button class="btn btn-outline" type="button" :disabled="editBusy" @click="cancelEditing">Отмена</button>
-        </div>
-      </form>
-
-      <div v-else class="prewrap">{{ work.body || work.summary || work.excerpt || 'Текст пока не добавлен.' }}</div>
-    </article>
-
-    <WorkDiscussionPanel :work="work" @refresh="refreshCurrentWork" />
-  </section>
+  <main class="detail-shell">
+    <RouterLink class="detail-back" to="/works">← Вернуться к каталогу</RouterLink>
+    <p v-if="workError" class="ref-error">{{ workError }}</p>
+    <section v-else-if="workLoading" class="detail-loading">Загружаем произведение…</section>
+    <section v-else-if="notFound" class="detail-loading">Произведение не найдено.</section>
+    <section v-else-if="work" class="detail-main">
+      <article class="detail-content"><header class="work-head"><span>{{ formatWorkSection(work.sectionCode) }}</span><h1>{{ work.title }}</h1><RouterLink v-if="work.author?.login" :to="buildAuthorPageLocation(work.author)">{{ authorLabel(work.author) }}</RouterLink><p>{{ formatDate(work.publishedAt || work.createdAt) }} · ◉ {{ work.viewsCount || 0 }} · ♡ {{ work.likesCount || 0 }} · 💬 {{ work.commentsCount }}</p></header>
+        <div class="work-actions"><span>★ {{ ratingLabel(work.averageRating, work.ratingsCount) }}</span><RouterLink v-if="work.author?.login" :to="buildAuthorPageLocation(work.author)">Страница автора</RouterLink><button v-if="isOwner" type="button" @click="editMode ? cancelEditing() : startEditing()">{{ editMode ? 'Отменить' : 'Редактировать' }}</button><button v-if="isOwner" type="button" :disabled="deleteBusy" @click="softDeleteCurrentWork">{{ deleteBusy ? 'Архивируем…' : 'Удалить' }}</button></div>
+        <p v-if="editStatus" class="ref-error">{{ editStatus }}</p><p v-if="deleteStatus" class="ref-error">{{ deleteStatus }}</p>
+        <form v-if="editMode && isOwner" class="work-edit-form" @submit.prevent="submitWorkUpdate"><label>Раздел<select v-model="editForm.sectionCode"><option value="poetry">Поэзия</option><option value="prose">Проза</option><option value="project">Творческий проект</option></select></label><label>Заголовок<input v-model="editForm.title" required></label><label>Краткое описание<textarea v-model="editForm.summary"/></label><label>Текст<textarea v-model="editForm.body"/></label><button type="submit" :disabled="editBusy">{{ editBusy ? 'Сохраняем…' : 'Сохранить' }}</button></form>
+        <div v-else class="work-text">{{ work.body || work.summary || work.excerpt || 'Текст пока не добавлен.' }}</div>
+        <WorkDiscussionPanel :work="work" @refresh="refreshCurrentWork" />
+      </article>
+      <aside class="detail-side"><div class="detail-cover"><span>{{ String(work.title || 'L').slice(0,1).toUpperCase() }}</span><small>{{ formatWorkSection(work.sectionCode) }}</small></div><div class="work-info"><h2>О произведении</h2><p>{{ work.summary || work.excerpt || 'Аннотация пока не добавлена.' }}</p><dl><dt>Раздел</dt><dd>{{ formatWorkSection(work.sectionCode) }}</dd><dt>Рейтинг</dt><dd>{{ ratingLabel(work.averageRating, work.ratingsCount) }}</dd><dt>Опубликовано</dt><dd>{{ formatDate(work.publishedAt || work.createdAt) }}</dd></dl></div></aside>
+    </section>
+  </main>
 </template>
