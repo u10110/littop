@@ -69,31 +69,13 @@ async function refreshTopicPage() {
 </script>
 
 <template>
-  <section class="page-head">
-    <div class="section-head">
-      <div>
-        <h1>Тема форума</h1>
-        <p class="muted">Отдельная страница темы с полным обсуждением, ветками ответов и редактированием только своих сообщений.</p>
-      </div>
-      <RouterLink class="btn btn-outline" to="/forum">← Ко всему форуму</RouterLink>
-    </div>
-  </section>
-
-  <div v-if="topicError" class="message error">{{ topicError }}</div>
-
-  <section v-if="topicLoading" class="panel stack">
-    <div class="empty-state">Загружаем тему…</div>
-  </section>
-
-  <section v-else-if="notFound" class="panel stack">
-    <div class="empty-state">Тема не найдена.</div>
-  </section>
-
-  <ForumThreadView
-    v-else-if="topic"
-    :topic="topic"
-    :loading="topicLoading"
-    :error="topicError"
-    @refresh="refreshTopicPage"
-  />
+  <main class="forum-ref topic-ref">
+    <section class="topic-layout-single">
+      <RouterLink class="back" to="/forum">← Все темы форума</RouterLink>
+      <p v-if="topicError" class="ref-error">{{ topicError }}</p>
+      <section v-else-if="topicLoading" class="detail-loading">Загружаем тему…</section>
+      <section v-else-if="notFound" class="detail-loading">Тема не найдена.</section>
+      <ForumThreadView v-else-if="topic" :topic="topic" :loading="topicLoading" :error="topicError" @refresh="refreshTopicPage" />
+    </section>
+  </main>
 </template>
