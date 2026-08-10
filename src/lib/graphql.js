@@ -37,6 +37,7 @@ export const WORK_PREVIEW_FIELDS = gql`
     ratingsCount
     averageRating
     likesCount
+    viewsCount
     likedByMe
     publishedAt
     createdAt
