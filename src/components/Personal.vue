@@ -214,7 +214,7 @@ async function submitProfileImage(kind) {
 </script>
 
 <template>
-  <section class="section-block">
+  <section class="section-block personal-ref">
     <div class="page-head">
       <div class="chips">
         <span class="pill">Личный раздел</span>
