@@ -49,7 +49,7 @@ function openAuth(mode) { window.dispatchEvent(new CustomEvent('littop:open-auth
           <div class="home-title"><h1>Лучшие произведения недели</h1><RouterLink to="/works">Смотреть все <b>›</b></RouterLink></div>
           <div v-if="weeklyWorks.length" class="weekly-list">
             <RouterLink v-for="(work, index) in weeklyWorks" :key="work.id" :to="buildWorkPageLocation(work)" class="weekly-work">
-              <img :src="workImages[index % workImages.length]" :alt="work.title"><div><h3>{{ work.title }}</h3><p>{{ authorName(work.author) }}</p><em>{{ formatWorkSection(work.sectionCode) }}</em><small>◉ {{ work.commentsCount || 0 }} &nbsp; ♡ {{ work.likesCount || 0 }}</small></div>
+              <img :src="workImages[index % workImages.length]" :alt="work.title"><div><h3>{{ work.title }}</h3><p>{{ authorName(work.author) }}</p><em>{{ formatWorkSection(work.sectionCode) }}</em><small>♡ {{ work.likesCount || 0 }}</small></div>
             </RouterLink>
           </div>
           <p v-else class="ref-empty">Опубликованные произведения появятся здесь автоматически.</p>
