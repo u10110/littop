@@ -10,6 +10,8 @@ import Forum from '../components/Forum.vue';
 import ForumTopicPage from '../components/ForumTopicPage.vue';
 import Personal from '../components/Personal.vue';
 import SocialAuthCallback from '../components/SocialAuthCallback.vue';
+import ReferenceInfoPage from '../components/ReferenceInfoPage.vue';
+import ReferenceEditorialPage from '../components/ReferenceEditorialPage.vue';
 
 const routes = [
   { path: '/', name: 'home', component: Home },
@@ -22,6 +24,23 @@ const routes = [
   { path: '/forum', name: 'forum', component: Forum },
   { path: '/forum/:slugOrId', name: 'forum-topic-public', component: ForumTopicPage },
   { path: '/personal', name: 'personal', component: Personal },
+  { path: '/activity', name: 'activity', component: ReferenceInfoPage, meta: { referencePage: 'activity' } },
+  { path: '/reviews', name: 'reviews', component: ReferenceInfoPage, meta: { referencePage: 'reviews' } },
+  { path: '/albums', name: 'albums', component: ReferenceInfoPage, meta: { referencePage: 'albums' } },
+  { path: '/blogs', name: 'blogs', component: ReferenceInfoPage, meta: { referencePage: 'blogs' } },
+  { path: '/about', name: 'about', component: ReferenceInfoPage, meta: { referencePage: 'about' } },
+  { path: '/contacts', name: 'contacts', component: ReferenceInfoPage, meta: { referencePage: 'contacts' } },
+  { path: '/rubrics', name: 'rubrics', component: ReferenceEditorialPage, meta: { referencePage: 'rubrics' } },
+  { path: '/showcase', name: 'showcase', component: ReferenceEditorialPage, meta: { referencePage: 'showcase' } },
+  { path: '/forum-sections', name: 'forum-sections', component: ReferenceEditorialPage, meta: { referencePage: 'forum-sections' } },
+  { path: '/promotion', name: 'promotion', component: ReferenceEditorialPage, meta: { referencePage: 'promotion' } },
+  { path: '/editorial-queue', name: 'editorial-queue', component: ReferenceEditorialPage, meta: { referencePage: 'editorial-queue' } },
+  { path: '/login', redirect: '/personal' },
+  { path: '/account', redirect: '/personal' },
+  { path: '/books', redirect: '/works' },
+  { path: '/book', redirect: '/works' },
+  { path: '/author-page', redirect: '/authors' },
+  { path: '/forum-topic', redirect: '/forum' },
   { path: '/auth/callback', name: 'social-auth-callback', component: SocialAuthCallback },
 ];
 
