@@ -223,11 +223,15 @@ async function softDeleteCurrentWork() {
 }
 
 function plainText(value) {
-  return String(value || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  return String(value || '').replace(/<[^>]*>/g, ' ').replace(/\r/g, '').replace(/[ \t]+/g, ' ').trim();
 }
 
 const readingText = computed(() => plainText(work.value?.body || work.value?.summary || work.value?.excerpt || 'Текст пока не добавлен.'));
-const readingParagraphs = computed(() => readingText.value.split(/\n{2,}|(?<=[.!?])\s{2,}/).map((paragraph) => paragraph.trim()).filter(Boolean));
+const readingParagraphs = computed(() => readingText.value.split(/\n{2,}/).map((paragraph) => paragraph.trim()).filter(Boolean));
+const previewParagraphs = computed(() => {
+  const paragraphs = readingParagraphs.value.slice(0, 2);
+  return paragraphs.length > 1 ? paragraphs : [...paragraphs, 'Откройте читалку, чтобы прочитать произведение целиком.'];
+});
 const readerDialog = ref(null);
 function openReader() { readerDialog.value?.showModal?.(); }
 function closeReader() { readerDialog.value?.close?.(); }
@@ -250,7 +254,7 @@ function closeReader() { readerDialog.value?.close?.(); }
               <p class="genres">{{ formatWorkSection(work.sectionCode) }}</p>
               <p class="dates">Опубликовано: {{ formatDate(work.publishedAt || work.createdAt) }}<br>Обновлено: {{ formatDate(work.updatedAt || work.publishedAt || work.createdAt) }}</p>
               <div class="work-actions"><span>◉ {{ work.viewsCount || 0 }}</span><span>♡ {{ work.likesCount || 0 }}</span><span>★ {{ ratingLabel(work.averageRating, work.ratingsCount) }}</span><button type="button">↗ Поделиться⌄</button><button v-if="isOwner" type="button" @click="editMode ? cancelEditing() : startEditing()">{{ editMode ? 'Отменить' : 'Редактировать' }}</button></div>
-              <article class="excerpt excerpt-preview"><p v-for="(paragraph, index) in readingParagraphs.slice(0, 2)" :key="index">{{ paragraph }}</p></article>
+              <article class="excerpt excerpt-preview"><p v-for="(paragraph, index) in previewParagraphs" :key="index">{{ paragraph }}</p></article>
               <button class="btn btn-primary read-full" type="button" @click="openReader">Читать полностью</button>
             </div>
           </div>
