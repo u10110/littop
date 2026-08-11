@@ -206,21 +206,12 @@ async function submitWorkUpdate() {
 async function softDeleteCurrentWork() {
   if (!work.value) return;
   const confirmed = globalThis.confirm?.('Убрать произведение в архив? Удаление будет мягким — через статус archived.') ?? true;
-  if (!confirmed) {
-    return;
-  }
-
+  if (!confirmed) return;
   deleteBusy.value = true;
   deleteStatus.value = '';
   editStatus.value = '';
-
   try {
-    await apolloClient.mutate({
-      mutation: DELETE_WORK_MUTATION,
-      variables: {
-        workId: work.value.id,
-      },
-    });
+    await apolloClient.mutate({ mutation: DELETE_WORK_MUTATION, variables: { workId: work.value.id } });
     deleteStatus.value = 'Произведение убрано в архив.';
     editMode.value = false;
     await refreshCurrentWork();
@@ -230,23 +221,46 @@ async function softDeleteCurrentWork() {
     deleteBusy.value = false;
   }
 }
+
+function plainText(value) {
+  return String(value || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+const readingText = computed(() => plainText(work.value?.body || work.value?.summary || work.value?.excerpt || 'Текст пока не добавлен.'));
+const readingParagraphs = computed(() => readingText.value.split(/\n{2,}|(?<=[.!?])\s{2,}/).map((paragraph) => paragraph.trim()).filter(Boolean));
+const readerDialog = ref(null);
+function openReader() { readerDialog.value?.showModal?.(); }
+function closeReader() { readerDialog.value?.close?.(); }
 </script>
 
 <template>
-  <main class="detail-shell">
-    <RouterLink class="detail-back" to="/works">← Вернуться к каталогу</RouterLink>
-    <p v-if="workError" class="ref-error">{{ workError }}</p>
-    <section v-else-if="workLoading" class="detail-loading">Загружаем произведение…</section>
-    <section v-else-if="notFound" class="detail-loading">Произведение не найдено.</section>
-    <section v-else-if="work" class="detail-main">
-      <article class="detail-content"><header class="work-head"><span>{{ formatWorkSection(work.sectionCode) }}</span><h1>{{ work.title }}</h1><RouterLink v-if="work.author?.login" :to="buildAuthorPageLocation(work.author)">{{ authorLabel(work.author) }}</RouterLink><p>{{ formatDate(work.publishedAt || work.createdAt) }} · ◉ {{ work.viewsCount || 0 }} · ♡ {{ work.likesCount || 0 }} · 💬 {{ work.commentsCount }}</p></header>
-        <div class="work-actions"><span>★ {{ ratingLabel(work.averageRating, work.ratingsCount) }}</span><RouterLink v-if="work.author?.login" :to="buildAuthorPageLocation(work.author)">Страница автора</RouterLink><button v-if="isOwner" type="button" @click="editMode ? cancelEditing() : startEditing()">{{ editMode ? 'Отменить' : 'Редактировать' }}</button><button v-if="isOwner" type="button" :disabled="deleteBusy" @click="softDeleteCurrentWork">{{ deleteBusy ? 'Архивируем…' : 'Удалить' }}</button></div>
-        <p v-if="editStatus" class="ref-error">{{ editStatus }}</p><p v-if="deleteStatus" class="ref-error">{{ deleteStatus }}</p>
-        <form v-if="editMode && isOwner" class="work-edit-form" @submit.prevent="submitWorkUpdate"><label>Раздел<select v-model="editForm.sectionCode"><option value="poetry">Поэзия</option><option value="prose">Проза</option><option value="project">Творческий проект</option></select></label><label>Заголовок<input v-model="editForm.title" required></label><label>Краткое описание<textarea v-model="editForm.summary"/></label><label>Текст<textarea v-model="editForm.body"/></label><button type="submit" :disabled="editBusy">{{ editBusy ? 'Сохраняем…' : 'Сохранить' }}</button></form>
-        <div v-else class="work-text">{{ work.body || work.summary || work.excerpt || 'Текст пока не добавлен.' }}</div>
-        <WorkDiscussionPanel :work="work" @refresh="refreshCurrentWork" />
-      </article>
-      <aside class="detail-side"><div class="detail-cover"><span>{{ String(work.title || 'L').slice(0,1).toUpperCase() }}</span><small>{{ formatWorkSection(work.sectionCode) }}</small></div><div class="work-info"><h2>О произведении</h2><p>{{ work.summary || work.excerpt || 'Аннотация пока не добавлена.' }}</p><dl><dt>Раздел</dt><dd>{{ formatWorkSection(work.sectionCode) }}</dd><dt>Рейтинг</dt><dd>{{ ratingLabel(work.averageRating, work.ratingsCount) }}</dd><dt>Опубликовано</dt><dd>{{ formatDate(work.publishedAt || work.createdAt) }}</dd></dl></div></aside>
-    </section>
+  <main class="detail-ref">
+    <div class="detail-shell">
+      <section class="detail-main">
+        <p v-if="workError" class="ref-error">{{ workError }}</p>
+        <section v-else-if="workLoading" class="detail-loading">Загружаем произведение…</section>
+        <section v-else-if="notFound" class="detail-loading">Произведение не найдено.</section>
+        <template v-else-if="work">
+          <div class="crumbs"><RouterLink to="/">Главная</RouterLink> › <RouterLink to="/works">Произведения</RouterLink> › {{ formatWorkSection(work.sectionCode) }}</div>
+          <div class="work-head">
+            <div class="detail-cover"><span>{{ String(work.title || 'L').slice(0, 1).toUpperCase() }}</span><small>{{ formatWorkSection(work.sectionCode) }}</small></div>
+            <div class="work-info">
+              <h1>{{ work.title }}</h1>
+              <RouterLink v-if="work.author?.login" :to="buildAuthorPageLocation(work.author)">{{ authorLabel(work.author) }}</RouterLink>
+              <p class="genres">{{ formatWorkSection(work.sectionCode) }}</p>
+              <p class="dates">Опубликовано: {{ formatDate(work.publishedAt || work.createdAt) }}<br>Обновлено: {{ formatDate(work.updatedAt || work.publishedAt || work.createdAt) }}</p>
+              <div class="work-actions"><span>◉ {{ work.viewsCount || 0 }}</span><span>♡ {{ work.likesCount || 0 }}</span><span>★ {{ ratingLabel(work.averageRating, work.ratingsCount) }}</span><button type="button">↗ Поделиться⌄</button><button v-if="isOwner" type="button" @click="editMode ? cancelEditing() : startEditing()">{{ editMode ? 'Отменить' : 'Редактировать' }}</button></div>
+              <article class="excerpt excerpt-preview"><p v-for="(paragraph, index) in readingParagraphs.slice(0, 2)" :key="index">{{ paragraph }}</p></article>
+              <button class="btn btn-primary read-full" type="button" @click="openReader">Читать полностью</button>
+            </div>
+          </div>
+          <form v-if="editMode && isOwner" class="work-edit-form" @submit.prevent="submitWorkUpdate"><label>Раздел<select v-model="editForm.sectionCode"><option value="poetry">Поэзия</option><option value="prose">Проза</option><option value="project">Творческий проект</option></select></label><label>Заголовок<input v-model="editForm.title" required></label><label>Краткое описание<textarea v-model="editForm.summary" /></label><label>Текст<textarea v-model="editForm.body" /></label><button type="submit" :disabled="editBusy">{{ editBusy ? 'Сохраняем…' : 'Сохранить' }}</button><button type="button" :disabled="deleteBusy" @click="softDeleteCurrentWork">{{ deleteBusy ? 'Архивируем…' : 'Удалить' }}</button></form>
+          <p v-if="editStatus || deleteStatus" class="ref-error">{{ editStatus || deleteStatus }}</p>
+          <WorkDiscussionPanel :work="work" @refresh="refreshCurrentWork" />
+          <dialog ref="readerDialog" class="book-reader" :aria-label="`Читалка: ${work.title}`" @click.self="closeReader"><div class="reader-bar"><div><span>{{ work.title }}</span><small>{{ authorLabel(work.author) }}</small></div><button type="button" class="reader-close" aria-label="Закрыть чтение" @click="closeReader">×</button></div><article class="reader-page"><p class="reader-kicker">{{ formatWorkSection(work.sectionCode) }}</p><h1>{{ work.title }}</h1><p v-for="(paragraph, index) in readingParagraphs" :key="index">{{ paragraph }}</p></article></dialog>
+        </template>
+      </section>
+      <aside v-if="work" class="detail-side"><section class="author-card"><h2>Об авторе</h2><div class="author-top"><div class="author-avatar">{{ authorLabel(work.author).slice(0, 1) }}</div><p><b>{{ authorLabel(work.author) }}</b><span>Автор произведения</span></p></div><div class="author-stats"><b>{{ work.author?.worksCount || '—' }}<small>произведения</small></b><b>{{ work.author?.followersCount || '—' }}<small>подписчики</small></b><b>{{ ratingLabel(work.averageRating, work.ratingsCount) }}<small>рейтинг</small></b></div><RouterLink v-if="work.author?.login" class="btn btn-primary" :to="buildAuthorPageLocation(work.author)">Страница автора</RouterLink></section><section class="mini-works"><h2>О произведении</h2><p>{{ work.summary || work.excerpt || 'Аннотация пока не добавлена.' }}</p><p class="detail-meta">Комментарии: {{ work.commentsCount || 0 }}</p></section></aside>
+    </div>
   </main>
 </template>
