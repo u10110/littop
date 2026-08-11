@@ -223,7 +223,15 @@ async function softDeleteCurrentWork() {
 }
 
 function plainText(value) {
-  return String(value || '').replace(/<[^>]*>/g, ' ').replace(/\r/g, '').replace(/[ \t]+/g, ' ').trim();
+  return String(value || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(?:p|div|h[1-6]|li|blockquote)>/gi, '\n\n')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\r/g, '')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/ *\n */g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
 const readingText = computed(() => plainText(work.value?.body || work.value?.summary || work.value?.excerpt || 'Текст пока не добавлен.'));
