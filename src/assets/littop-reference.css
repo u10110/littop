@@ -201,7 +201,7 @@ nav.menu a:hover{color:var(--terra);background:var(--cream)}
 @media(max-width:1024px){.top nav.menu{display:flex!important;align-items:center}.top .search{display:none}.top .wrap{height:auto;min-height:66px;flex-wrap:wrap}.top nav.menu{order:3;flex:0 0 100%;overflow-x:auto;white-space:nowrap;padding-bottom:2px}}
 
 /* Reference-style global header (Littop dashboard mockup) */
-.top{background:var(--white);border-bottom:1px solid #e9e3d9;position:sticky;top:0;z-index:40;box-shadow:none}
+.top{background:var(--white);border-bottom:1px solid #e9e3d9;position:sticky;top:0;z-index:1000;box-shadow:none}
 .top .wrap{height:auto;min-height:126px;display:grid;grid-template-columns:210px minmax(230px,1fr) auto;grid-template-rows:76px 49px;gap:0 30px;align-items:center;padding-top:0;padding-bottom:0}
 .top .logo{grid-row:1;grid-column:1;display:flex;align-items:center;width:190px;padding:0}.top .logo img{width:184px;height:auto;max-width:none;display:block}
 .top .search{grid-row:1;grid-column:2;margin:0;display:flex;align-items:center;gap:8px;min-width:0;height:38px;padding:0 12px;background:#fff;border:1px solid #ddd6cb;border-radius:7px;box-shadow:none}.top .search input{min-width:0;color:var(--ink);font-size:13px}.top .search input::placeholder{color:#9b958d}.search-icon{font-size:17px;line-height:1;color:#615b52}
