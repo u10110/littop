@@ -225,7 +225,7 @@ nav.menu a:hover{color:var(--terra);background:var(--cream)}
 .catalog-card{transition:box-shadow .16s,border-color .16s,transform .16s}.catalog-card:hover{border-color:#c9b9a1;box-shadow:0 5px 15px rgba(61,49,32,.08);transform:translateY(-1px)}.catalog-cover{display:block;width:80px;height:114px}.catalog-cover img{display:block}.catalog-card h2 .work-link{color:var(--ink);font:inherit}.catalog-card h2 .work-link:hover{color:var(--terra);text-decoration:underline}@media(max-width:550px){.catalog-cover{width:65px;height:96px}}
 
 /* Navigation icons, matching the supplied expansion mockup */
-.top nav.menu>a,.more-menu summary{display:inline-flex;align-items:center;gap:6px}.more-panel a{display:flex;align-items:center;gap:8px;width:100%;box-sizing:border-box}.menu-ic{width:16px;height:16px;flex:0 0 16px;fill:none;stroke:currentColor;stroke-width:1.55;stroke-linecap:round;stroke-linejoin:round}.more-panel .menu-ic{width:15px;height:15px;flex-basis:15px}@media(max-width:700px){.top nav.menu>a,.more-menu summary{gap:5px}.menu-ic{width:15px;height:15px;flex-basis:15px}}
+.top nav.menu>a,.more-menu summary{display:inline-flex;align-items:center;gap:6px}.top nav.menu .more-panel a{display:flex;align-items:center;gap:8px;width:100%;box-sizing:border-box}.menu-ic{width:16px;height:16px;flex:0 0 16px;fill:none;stroke:currentColor;stroke-width:1.55;stroke-linecap:round;stroke-linejoin:round}.more-panel .menu-ic{width:15px;height:15px;flex-basis:15px}@media(max-width:700px){.top nav.menu>a,.more-menu summary{gap:5px}.menu-ic{width:15px;height:15px;flex-basis:15px}}
 
 /* Header scroll behavior and added home content */
 .top{position:static!important}
