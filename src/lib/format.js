@@ -64,7 +64,9 @@ export function formatContestScope(scope) {
 }
 
 export function excerptText(value, maxLength = 180) {
-  const normalized = typeof value === 'string' ? value.trim() : '';
+  const normalized = typeof value === 'string'
+    ? value.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+    : '';
   if (!normalized) return 'Текст пока не добавлен.';
   if (normalized.length <= maxLength) return normalized;
   return `${normalized.slice(0, maxLength).trimEnd()}…`;
