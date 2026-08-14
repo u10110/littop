@@ -2,9 +2,9 @@
 import { computed, ref, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { useQuery } from '@vue/apollo-composable';
-import { WORKS_QUERY } from '../lib/graphql.js';
+import { WORK_GENRES_QUERY, WORKS_QUERY } from '../lib/graphql.js';
 import { excerptText, formatDate, formatWorkSection, ratingLabel } from '../lib/format.js';
-import { buildAuthorPageLocation, buildWorkPageLocation } from '../lib/routes.js';
+import { buildAuthorPageLocation, buildWorkPageLocation, buildWorksQuery, normalizeWorksPage } from '../lib/routes.js';
 import { useSession } from '../lib/session.js';
 import coverFog from '../assets/new-reference/book-fog.jpg';
 import coverShadows from '../assets/new-reference/book-shadows.jpg';
@@ -14,31 +14,42 @@ import coverWind from '../assets/new-reference/book-wind.jpg';
 const route = useRoute();
 const router = useRouter();
 const sectionFilter = ref('');
+const genreFilter = ref('');
 const search = ref('');
 const mineOnly = ref(false);
-const { currentUser, isAuthenticated } = useSession();
+const todayOnly = ref(false);
+const page = ref(1);
+const pageSize = 24;
+const { currentUser } = useSession();
 const allowedSectionCodes = new Set(['poetry', 'prose', 'project']);
 const sectionOptions = [
   { value: '', label: 'Все жанры' }, { value: 'poetry', label: 'Поэзия' },
   { value: 'prose', label: 'Проза' }, { value: 'project', label: 'Творческие проекты' },
 ];
-const genreOptions = ['Фэнтези', 'Детектив', 'Драма', 'Проза', 'Поэзия', 'Рассказ', 'Любовный роман', 'Юмор', 'Приключения', 'Другое'];
 const covers = [coverFog, coverShadows, coverRiver, coverWind];
 function takeQueryValue(value) { return Array.isArray(value) ? (typeof value[0] === 'string' ? value[0] : '') : (typeof value === 'string' ? value : ''); }
 function normalizeSectionQuery(value) { const normalized = takeQueryValue(value).trim(); return allowedSectionCodes.has(normalized) ? normalized : ''; }
+function normalizeGenreQuery(value) { return takeQueryValue(value).trim(); }
 function normalizeSearchQuery(value) { return takeQueryValue(value).trim(); }
-function normalizeMineQuery(value) { return ['1', 'true', 'yes', 'mine', 'my'].includes(takeQueryValue(value).trim().toLowerCase()); }
-function applyFiltersFromQuery(query) { sectionFilter.value = normalizeSectionQuery(query.section); search.value = normalizeSearchQuery(query.search); mineOnly.value = normalizeMineQuery(query.mine); }
-function buildNextQuery(baseQuery) { const next = { ...baseQuery }; if (sectionFilter.value) next.section = sectionFilter.value; else delete next.section; if (search.value.trim()) next.search = search.value.trim(); else delete next.search; if (mineOnly.value) next.mine = '1'; else delete next.mine; return next; }
-function snapshot(query) { return JSON.stringify({ section: normalizeSectionQuery(query.section), search: normalizeSearchQuery(query.search), mine: normalizeMineQuery(query.mine) }); }
-watch(() => route.query, (query) => { if (snapshot(query) !== JSON.stringify({ section: sectionFilter.value, search: search.value.trim(), mine: mineOnly.value })) applyFiltersFromQuery(query); }, { immediate: true });
-watch([sectionFilter, search, mineOnly], () => { if (snapshot(route.query) !== JSON.stringify({ section: sectionFilter.value, search: search.value.trim(), mine: mineOnly.value })) router.replace({ query: buildNextQuery(route.query) }); });
+function normalizeBooleanQuery(value) { return ['1', 'true', 'yes'].includes(takeQueryValue(value).trim().toLowerCase()); }
+function normalizePageQuery(value) { return normalizeWorksPage(takeQueryValue(value)); }
+function applyFiltersFromQuery(query) { sectionFilter.value = normalizeSectionQuery(query.section); genreFilter.value = normalizeGenreQuery(query.genre); search.value = normalizeSearchQuery(query.search); mineOnly.value = normalizeBooleanQuery(query.mine); todayOnly.value = normalizeBooleanQuery(query.today); page.value = normalizePageQuery(query.page); }
+function buildNextQuery() { return buildWorksQuery({ section: sectionFilter.value, genre: genreFilter.value, search: search.value, mine: mineOnly.value, today: todayOnly.value, page: page.value }); }
+function snapshot(query) { return JSON.stringify({ section: normalizeSectionQuery(query.section), genre: normalizeGenreQuery(query.genre), search: normalizeSearchQuery(query.search), mine: normalizeBooleanQuery(query.mine), today: normalizeBooleanQuery(query.today), page: normalizePageQuery(query.page) }); }
+watch(() => route.query, (query) => { if (snapshot(query) !== JSON.stringify({ section: sectionFilter.value, genre: genreFilter.value, search: search.value.trim(), mine: mineOnly.value, today: todayOnly.value, page: page.value })) applyFiltersFromQuery(query); }, { immediate: true });
+watch([sectionFilter, genreFilter, search, mineOnly, todayOnly, page], () => { if (snapshot(route.query) !== JSON.stringify({ section: sectionFilter.value, genre: genreFilter.value, search: search.value.trim(), mine: mineOnly.value, today: todayOnly.value, page: page.value })) router.replace({ query: buildNextQuery() }); });
+watch([sectionFilter, genreFilter, search, mineOnly, todayOnly], () => { if (page.value !== 1) page.value = 1; });
+watch(sectionFilter, () => { if (genreFilter.value) genreFilter.value = ''; });
 const authorFilterActive = computed(() => mineOnly.value && Boolean(currentUser.value?.id));
 const mineFilterNeedsAuth = computed(() => mineOnly.value && !authorFilterActive.value);
-const queryVariables = computed(() => ({ limit: 24, offset: 0, sectionCode: sectionFilter.value || null, search: search.value.trim() || null, authorId: authorFilterActive.value ? currentUser.value.id : null }));
+const queryVariables = computed(() => ({ limit: pageSize, offset: (page.value - 1) * pageSize, sectionCode: sectionFilter.value || null, genreSlug: genreFilter.value || null, search: search.value.trim() || null, authorId: authorFilterActive.value ? currentUser.value.id : null, createdToday: todayOnly.value || null }));
+const genreQueryVariables = computed(() => ({ sectionCode: sectionFilter.value || null }));
 const { result, loading, error } = useQuery(WORKS_QUERY, queryVariables, { fetchPolicy: 'cache-and-network' });
+const { result: genresResult } = useQuery(WORK_GENRES_QUERY, genreQueryVariables, { fetchPolicy: 'cache-and-network' });
+const genreOptions = computed(() => genresResult.value?.workGenres ?? []);
 const works = computed(() => result.value?.works ?? []);
-function clearFilters() { sectionFilter.value = ''; search.value = ''; mineOnly.value = false; }
+function clearFilters() { sectionFilter.value = ''; genreFilter.value = ''; search.value = ''; mineOnly.value = false; todayOnly.value = false; page.value = 1; }
+function goToPage(nextPage) { page.value = Math.max(1, nextPage); }
 function coverFor(index) { return covers[index % covers.length]; }
 </script>
 
@@ -48,17 +59,19 @@ function coverFor(index) { return covers[index % covers.length]; }
       <aside class="catalog-filters">
         <h1>Фильтры</h1>
         <label>Жанр<select v-model="sectionFilter"><option v-for="option in sectionOptions" :key="option.value || 'all'" :value="option.value">{{ option.label }}</option></select></label>
-        <div class="check-list"><label v-for="genre in genreOptions" :key="genre"><input type="checkbox">{{ genre }}</label></div>
+        <div v-if="genreOptions.length" class="check-list"><label><input v-model="genreFilter" type="radio" name="work-genre" value="">Все жанры</label><label v-for="genre in genreOptions" :key="genre.slug"><input v-model="genreFilter" type="radio" name="work-genre" :value="genre.slug">{{ genre.name }}</label></div>
+        <p v-else class="ref-empty">Для выбранного раздела пока нет жанров.</p>
         <hr>
         <label>Рейтинг<select><option>Любой</option></select></label><p class="stars">★★★★★ <span>и выше</span></p>
         <label>Длина произведения<select><option>Любая</option></select></label>
         <label>Язык<select><option>Любой</option></select></label>
         <label>Режим произведения<select><option>Любой</option></select></label>
-        <button type="button" class="btn btn-primary" @click="mineOnly = !mineOnly">{{ mineOnly ? 'Только мои' : 'Применить' }}</button>
+        <button type="button" class="btn btn-primary" @click="page = 1">Применить</button>
         <button type="button" class="reset" @click="clearFilters">Сбросить</button>
       </aside>
       <section class="catalog-list">
         <div class="catalog-top"><span>Найдено {{ works.length }} произведений</span><label>Сортировка:<select><option>По популярности</option></select></label></div>
+        <div class="catalog-extra-filters"><label><input v-model="mineOnly" type="checkbox"> Только мои произведения</label><label><input v-model="todayOnly" type="checkbox"> Произведения за сегодня</label></div>
         <p v-if="mineFilterNeedsAuth" class="ref-error">Для фильтра «Мои произведения» войдите в аккаунт.</p>
         <p v-if="error" class="ref-error">Не удалось загрузить каталог: {{ error.message }}</p>
         <p v-else-if="loading && !result" class="ref-loading">Загружаем произведения…</p>
@@ -69,7 +82,7 @@ function coverFor(index) { return covers[index % covers.length]; }
           </article>
         </section>
         <section v-else class="catalog-empty"><h2>По этому запросу ничего не найдено</h2><p>Попробуйте изменить раздел или очистить условия поиска.</p><button type="button" @click="clearFilters">Очистить фильтры</button></section>
-        <nav v-if="works.length" class="pagination" aria-label="Страницы каталога"><b>1</b><a>2</a><a>3</a><a>4</a><a>5</a><i>…</i><a>125</a><a>›</a></nav>
+        <nav v-if="works.length" class="pagination" aria-label="Страницы каталога"><button v-for="number in 5" :key="number" type="button" :class="{ active: page === number }" @click="goToPage(number)">{{ number }}</button><i>…</i><button type="button" @click="goToPage(page + 1)" aria-label="Следующая страница">›</button></nav>
       </section>
     </div>
   </main>

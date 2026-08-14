@@ -49,3 +49,19 @@ export function normalizeRouteParam(value) {
   }
   return typeof value === 'string' ? value.trim() : '';
 }
+
+export function normalizeWorksPage(value) {
+  const parsed = Number.parseInt(String(value ?? ''), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
+export function buildWorksQuery({ section = '', genre = '', search = '', mine = false, today = false, page = 1 } = {}) {
+  const query = {};
+  if (section) query.section = section;
+  if (genre) query.genre = genre;
+  if (String(search).trim()) query.search = String(search).trim();
+  if (mine) query.mine = '1';
+  if (today) query.today = '1';
+  if (normalizeWorksPage(page) > 1) query.page = String(normalizeWorksPage(page));
+  return query;
+}

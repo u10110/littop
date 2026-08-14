@@ -272,9 +272,19 @@ export const AUTHOR_DETAILS_QUERY = gql`
 
 export const WORKS_QUERY = gql`
   ${WORK_PREVIEW_FIELDS}
-  query WorksPage($limit: Int!, $offset: Int!, $sectionCode: String, $search: String, $authorId: ID) {
-    works(limit: $limit, offset: $offset, sectionCode: $sectionCode, search: $search, authorId: $authorId) {
+  query WorksPage($limit: Int!, $offset: Int!, $sectionCode: String, $genreSlug: String, $search: String, $authorId: ID, $createdToday: Boolean) {
+    works(limit: $limit, offset: $offset, sectionCode: $sectionCode, genreSlug: $genreSlug, search: $search, authorId: $authorId, createdToday: $createdToday) {
       ...WorkPreviewFields
+    }
+  }
+`;
+
+export const WORK_GENRES_QUERY = gql`
+  query WorkGenres($sectionCode: String) {
+    workGenres(sectionCode: $sectionCode) {
+      slug
+      name
+      sectionCode
     }
   }
 `;
