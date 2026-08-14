@@ -5,6 +5,7 @@ import { useQuery } from '@vue/apollo-composable';
 import { WORK_GENRES_QUERY, WORKS_QUERY } from '../lib/graphql.js';
 import { excerptText, formatDate, formatWorkSection, ratingLabel } from '../lib/format.js';
 import { buildAuthorPageLocation, buildWorkPageLocation, buildWorksQuery, normalizeWorksPage } from '../lib/routes.js';
+import { buildWorksPagination } from '../lib/worksPagination.js';
 import { useSession } from '../lib/session.js';
 import coverFog from '../assets/new-reference/book-fog.jpg';
 import coverShadows from '../assets/new-reference/book-shadows.jpg';
@@ -20,6 +21,7 @@ const mineOnly = ref(false);
 const todayOnly = ref(false);
 const page = ref(1);
 const pageSize = 24;
+const requestLimit = pageSize + 1;
 const { currentUser } = useSession();
 const allowedSectionCodes = new Set(['poetry', 'prose', 'project']);
 const sectionOptions = [
@@ -42,12 +44,14 @@ watch([sectionFilter, genreFilter, search, mineOnly, todayOnly], () => { if (pag
 watch(sectionFilter, () => { if (genreFilter.value) genreFilter.value = ''; });
 const authorFilterActive = computed(() => mineOnly.value && Boolean(currentUser.value?.id));
 const mineFilterNeedsAuth = computed(() => mineOnly.value && !authorFilterActive.value);
-const queryVariables = computed(() => ({ limit: pageSize, offset: (page.value - 1) * pageSize, sectionCode: sectionFilter.value || null, genreSlug: genreFilter.value || null, search: search.value.trim() || null, authorId: authorFilterActive.value ? currentUser.value.id : null, createdToday: todayOnly.value || null }));
+const queryVariables = computed(() => ({ limit: requestLimit, offset: (page.value - 1) * pageSize, sectionCode: sectionFilter.value || null, genreSlug: genreFilter.value || null, search: search.value.trim() || null, authorId: authorFilterActive.value ? currentUser.value.id : null, createdToday: todayOnly.value || null }));
 const genreQueryVariables = computed(() => ({ sectionCode: sectionFilter.value || null }));
 const { result, loading, error } = useQuery(WORKS_QUERY, queryVariables, { fetchPolicy: 'cache-and-network' });
 const { result: genresResult } = useQuery(WORK_GENRES_QUERY, genreQueryVariables, { fetchPolicy: 'cache-and-network' });
 const genreOptions = computed(() => genresResult.value?.workGenres ?? []);
-const works = computed(() => result.value?.works ?? []);
+const pagination = computed(() => buildWorksPagination({ page: page.value, pageSize, items: result.value?.works ?? [] }));
+const works = computed(() => pagination.value.items);
+watch(() => Boolean(result.value) && pagination.value.isInvalidPage, (isInvalidPage) => { if (isInvalidPage) page.value = 1; });
 function clearFilters() { sectionFilter.value = ''; genreFilter.value = ''; search.value = ''; mineOnly.value = false; todayOnly.value = false; page.value = 1; }
 function goToPage(nextPage) { page.value = Math.max(1, nextPage); }
 function coverFor(index) { return covers[index % covers.length]; }
@@ -82,7 +86,11 @@ function coverFor(index) { return covers[index % covers.length]; }
           </article>
         </section>
         <section v-else class="catalog-empty"><h2>По этому запросу ничего не найдено</h2><p>Попробуйте изменить раздел или очистить условия поиска.</p><button type="button" @click="clearFilters">Очистить фильтры</button></section>
-        <nav v-if="works.length" class="pagination" aria-label="Страницы каталога"><button v-for="number in 5" :key="number" type="button" :class="{ active: page === number }" @click="goToPage(number)">{{ number }}</button><i>…</i><button type="button" @click="goToPage(page + 1)" aria-label="Следующая страница">›</button></nav>
+        <nav v-if="works.length && (pagination.hasPrevious || pagination.hasNext)" class="pagination" aria-label="Страницы каталога">
+          <button v-if="pagination.hasPrevious" type="button" aria-label="Предыдущая страница" @click="goToPage(page - 1)">‹</button>
+          <b aria-current="page">{{ page }}</b>
+          <button v-if="pagination.hasNext" type="button" aria-label="Следующая страница" @click="goToPage(page + 1)">›</button>
+        </nav>
       </section>
     </div>
   </main>
