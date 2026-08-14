@@ -141,6 +141,23 @@ export const RADIO_TRACK_FIELDS = gql`
   }
 `;
 
+export const HOME_COMMENT_FIELDS = gql`
+  fragment HomeCommentFields on HomeComment {
+    id
+    body
+    createdAt
+    work {
+      id
+      title
+      slug
+    }
+    author {
+      ...AuthorCardFields
+    }
+  }
+  ${AUTHOR_CARD_FIELDS}
+`;
+
 export const USER_SESSION_FIELDS = gql`
   fragment UserSessionFields on User {
     id
@@ -173,6 +190,7 @@ export const HOME_QUERY = gql`
   ${FORUM_TOPIC_PREVIEW_FIELDS}
   ${CONTEST_FIELDS}
   ${RADIO_TRACK_FIELDS}
+  ${HOME_COMMENT_FIELDS}
   query HomePageData {
     health {
       status
@@ -185,11 +203,23 @@ export const HOME_QUERY = gql`
     classicAuthors: authors(limit: 6, classicsOnly: true) {
       ...AuthorCardFields
     }
+    todayVisitors(limit: 6) {
+      ...AuthorCardFields
+    }
     recentWorks: works(limit: 6) {
       ...WorkPreviewFields
     }
-    recentTopics: forumTopics(limit: 6) {
+    announcements: announcedWorks(limit: 3) {
+      ...WorkPreviewFields
+    }
+    recentTopics: forumTopics(limit: 8) {
       ...ForumTopicPreviewFields
+    }
+    editorColumnTopics: forumTopics(sectionSlug: "editor-column", limit: 2) {
+      ...ForumTopicPreviewFields
+    }
+    recentComments: recentWorkComments(limit: 3) {
+      ...HomeCommentFields
     }
     contests(limit: 6) {
       ...ContestFields
