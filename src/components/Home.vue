@@ -71,7 +71,7 @@ function openAuth(mode) { window.dispatchEvent(new CustomEvent('littop:open-auth
           </section>
           <section class="live-card announcements"><div class="live-card-head"><div><span class="live-kicker">Выбор авторов</span><h2>Анонсы</h2></div><RouterLink to="/works">Все произведения ›</RouterLink></div>
             <RouterLink v-for="work in announcementWorks" :key="work.id" :to="buildWorkPageLocation(work)" class="announce-item"><span class="announce-genre">{{ formatWorkSection(work.sectionCode).toUpperCase() }}</span><h3>{{ work.title }}</h3><p>{{ authorName(work.author) }} · опубликовано {{ shortDate(work.publishedAt || work.createdAt) }}</p><div><span>★ {{ ratingLabel(work.averageRating, work.ratingsCount) }}</span><span>◉ {{ work.commentsCount || 0 }}</span></div></RouterLink>
-            <p v-if="!announcementWorks.length" class="ref-empty">Авторы пока не разместили анонсы.</p>
+            <p v-if="!announcementWorks.length" class="ref-empty">Здесь пока нет анонсов.</p>
           </section>
           <section class="live-card fresh-works"><div class="live-card-head"><div><span class="live-kicker">Последние публикации</span><h2>Свежие произведения</h2></div><RouterLink to="/works">Открыть каталог ›</RouterLink></div>
             <RouterLink v-for="(work,index) in recentWorks.slice(0,3)" :key="work.id" :to="buildWorkPageLocation(work)" class="fresh-work"><img :src="freshImages[index % freshImages.length]" :alt="work.title"><span><b>{{ work.title }}</b><small>{{ authorName(work.author) }} · {{ shortDate(work.publishedAt || work.createdAt) }}</small><em>{{ formatWorkSection(work.sectionCode) }}</em></span></RouterLink>
