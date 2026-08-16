@@ -42,6 +42,7 @@ const routes = [
   { path: '/author-page', redirect: '/authors' },
   { path: '/forum-topic', redirect: '/forum' },
   { path: '/auth/callback', name: 'social-auth-callback', component: SocialAuthCallback },
+  { path: '/login', name: 'login', component: Login, meta: { title: 'Вход' } },
 ];
 
 const router = createRouter({
