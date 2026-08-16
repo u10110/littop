@@ -46,8 +46,8 @@ header {
 
 .navwrap,
 main {
-  width: min(1180px, calc(100% - 32px));
-  margin: 0 auto;
+  width: 100%;
+  margin: 0;
 }
 
 .navwrap {
@@ -117,7 +117,7 @@ main {
   display: flex;
   flex-direction: column;
   gap: 24px;
-  padding: 26px 0 56px;
+  padding: 0;
 }
 
 .footer {
@@ -1006,7 +1006,7 @@ hr.divider {
 @media (max-width: 640px) {
   .navwrap,
   main {
-    width: min(100%, calc(100% - 24px));
+    width: 100%;
   }
 
   .modal-backdrop {
