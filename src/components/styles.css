@@ -120,6 +120,10 @@ main {
   padding: 0;
 }
 
+.container.authors-page {
+  padding: 26px 26px 56px;
+}
+
 .footer {
   margin-top: 10px;
   padding: 16px 18px;

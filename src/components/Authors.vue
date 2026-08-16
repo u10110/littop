@@ -17,7 +17,7 @@ function clearFilters() { search.value = ''; onlyClassics.value = false; onlyFea
 </script>
 
 <template>
-  <main class="container authors-page">
+  <div class="container authors-page">
     <section class="page-head"><h1>Авторы</h1><p class="muted">Знакомьтесь с авторами Littop, читайте их произведения и открывайте новые литературные голоса.</p></section>
     <section class="stats-line"><label class="authors-search">Поиск <input v-model="search" placeholder="Имя или логин автора"></label><label class="check"><input v-model="onlyFeatured" type="checkbox"> Витрина</label><label class="check"><input v-model="onlyClassics" type="checkbox"> Классики</label><button class="authors-reset" type="button" @click="clearFilters">Сбросить</button></section>
     <p v-if="error" class="ref-error">Не удалось загрузить авторов: {{ error.message }}</p>
