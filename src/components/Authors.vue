@@ -33,5 +33,5 @@ function clearFilters() { search.value = ''; onlyClassics.value = false; onlyFea
       </article>
     </section>
     <section v-else class="catalog-empty"><h2>Авторов не найдено</h2><p>Измените условия поиска или очистите фильтры.</p><button type="button" @click="clearFilters">Очистить фильтры</button></section>
-  </main>
+  </div>
 </template>
