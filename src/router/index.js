@@ -12,6 +12,7 @@ import Personal from '../components/Personal.vue';
 import SocialAuthCallback from '../components/SocialAuthCallback.vue';
 import ReferenceInfoPage from '../components/ReferenceInfoPage.vue';
 import ReferenceEditorialPage from '../components/ReferenceEditorialPage.vue';
+import Login from '../components/Login.vue';
 
 const routes = [
   { path: '/', name: 'home', component: Home },

@@ -1,5 +1,9 @@
 export const TOKEN_STORAGE_KEY = 'littop.auth.token';
+export const OWNER_TOKEN_STORAGE_KEY = 'littop.owner.auth.token';
 export const SOCIAL_AUTH_CALLBACK_PATH = '/auth/callback';
+export const AUTH_MODAL_QUERY_KEY = 'auth';
+export const AUTH_MODAL_RESET_MODE = 'reset';
+export const MIN_PASSWORD_LENGTH = 8;
 export const SOCIAL_AUTH_PROVIDERS = {
   vk: {
     code: 'vk',
@@ -40,6 +44,24 @@ export function resolveBackendBaseUrl(graphqlEndpoint = getGraphqlEndpoint()) {
   }
 }
 
+export function normalizeEmail(value) {
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
+
+export function isValidEmail(value) {
+  const email = normalizeEmail(value);
+  if (!email) return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(email);
+}
+
+export function validatePassword(value) {
+  const password = String(value ?? '');
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return `Пароль должен содержать минимум ${MIN_PASSWORD_LENGTH} символов.`;
+  }
+  return '';
+}
+
 export function buildSocialAuthCallbackUrl({
   currentOrigin = globalThis.location?.origin || 'http://localhost:5173',
   redirectTo = '/personal',
@@ -60,6 +82,18 @@ export function buildSocialAuthCallbackUrl({
     url.searchParams.set('redirect', redirectTo);
   }
 
+  return url.toString();
+}
+
+export function buildPasswordResetUrl({
+  currentOrigin = globalThis.location?.origin || 'http://localhost:5173',
+  token = '',
+} = {}) {
+  const url = new URL('/', currentOrigin);
+  url.searchParams.set(AUTH_MODAL_QUERY_KEY, AUTH_MODAL_RESET_MODE);
+  if (token) {
+    url.searchParams.set('token', token);
+  }
   return url.toString();
 }
 
@@ -106,6 +140,18 @@ export function parseSocialAuthCallbackParams(searchParamsLike) {
   };
 }
 
+export function parseAuthModalParams(searchParamsLike) {
+  const params = searchParamsLike instanceof URLSearchParams
+    ? searchParamsLike
+    : new URLSearchParams(searchParamsLike || '');
+
+  const mode = params.get(AUTH_MODAL_QUERY_KEY);
+  return {
+    mode: typeof mode === 'string' ? mode.trim() : '',
+    token: typeof params.get('token') === 'string' ? params.get('token').trim() : '',
+  };
+}
+
 export function getStoredToken(storage = globalThis.localStorage) {
   try {
     return storage?.getItem?.(TOKEN_STORAGE_KEY) ?? '';
@@ -126,6 +172,36 @@ export function setStoredToken(token, storage = globalThis.localStorage) {
     // Ignore storage failures and keep the app usable in restricted environments.
   }
   return normalized;
+}
+
+export function getStoredOwnerToken(storage = globalThis.localStorage) {
+  try {
+    return storage?.getItem?.(OWNER_TOKEN_STORAGE_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+export function setStoredOwnerToken(token, storage = globalThis.localStorage) {
+  const normalized = typeof token === 'string' ? token.trim() : '';
+  try {
+    if (normalized) {
+      storage?.setItem?.(OWNER_TOKEN_STORAGE_KEY, normalized);
+    } else {
+      storage?.removeItem?.(OWNER_TOKEN_STORAGE_KEY);
+    }
+  } catch {
+    // Ignore storage failures and keep the app usable in restricted environments.
+  }
+  return normalized;
+}
+
+export function clearStoredOwnerToken(storage = globalThis.localStorage) {
+  try {
+    storage?.removeItem?.(OWNER_TOKEN_STORAGE_KEY);
+  } catch {
+    // Ignore storage failures and keep the app usable in restricted environments.
+  }
 }
 
 export function clearStoredToken(storage = globalThis.localStorage) {
@@ -152,4 +228,15 @@ export function extractGraphqlErrorMessage(error, fallback = 'Не удалос�
   }
 
   return fallback;
+}
+
+
+export function extractGraphqlErrorInfo(error) {
+  const graphQLError = error?.graphQLErrors?.[0] || error?.networkError?.result?.errors?.[0] || null;
+  return {
+    code: graphQLError?.extensions?.code || '',
+    reopenUntil: graphQLError?.extensions?.reopenUntil || '',
+    login: graphQLError?.extensions?.login || '',
+    message: graphQLError?.message || '',
+  };
 }
