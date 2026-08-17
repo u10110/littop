@@ -8223,6 +8223,60 @@ nav.menu {
     }
 }
 
+.notification-bell {
+    position: relative;
+    text-decoration: none
+}
+
+.notification-bell i {
+    position: absolute;
+    top: -3px;
+    right: -7px;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 3px;
+    display: grid;
+    place-items: center;
+    border-radius: 99px;
+    background: #c7602a;
+    color: #fff;
+    font: 700 9px/1 Inter, Arial, sans-serif
+}
+
+.message-avatar {
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: #e7d4bf;
+    color: #674923;
+    font: 600 14px Georgia, serif
+}
+
+.thread-avatar {
+    flex: 0 0 38px
+}
+
+.messages-empty {
+    margin: 22px 16px;
+    color: #837b73;
+    font-size: 13px;
+    text-align: center
+}
+
+.thread-empty {
+    justify-content: center
+}
+
+.thread-placeholder {
+    margin: auto
+}
+
+.compose-error {
+    margin: 0 13px 13px
+}
+
 /* Final shared public content rail — keep all public pages aligned. */
 :root {
     --content-max: 1180px;

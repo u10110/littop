@@ -1,0 +1,106 @@
+<script setup>
+import { computed, nextTick, ref, watch } from 'vue';
+import { RouterLink } from 'vue-router';
+import { useMutation, useQuery } from '@vue/apollo-composable';
+import { DIRECT_MESSAGES_QUERY, MY_CONVERSATIONS_QUERY, SEND_DIRECT_MESSAGE_MUTATION } from '../lib/graphql.js';
+import { useSession } from '../lib/session.js';
+import { formatDate } from '../lib/format.js';
+
+const { isAuthenticated, currentUser } = useSession();
+const search = ref('');
+const selectedPeerId = ref(null);
+const draft = ref('');
+const sendError = ref('');
+const threadBody = ref(null);
+
+const { result: conversationsResult, loading: conversationsLoading, error: conversationsError, refetch: refetchConversations } = useQuery(
+  MY_CONVERSATIONS_QUERY,
+  () => ({ limit: 30 }),
+  () => ({ enabled: isAuthenticated.value, fetchPolicy: 'cache-and-network' }),
+);
+const conversations = computed(() => conversationsResult.value?.myConversations ?? []);
+const filteredConversations = computed(() => {
+  const needle = search.value.trim().toLowerCase();
+  if (!needle) return conversations.value;
+  return conversations.value.filter(({ peer, lastMessageBody }) => [peer.displayName, peer.login, lastMessageBody].some((value) => String(value ?? '').toLowerCase().includes(needle)));
+});
+
+watch(conversations, (items) => {
+  if (!selectedPeerId.value && items[0]) selectedPeerId.value = String(items[0].peerUserId);
+}, { immediate: true });
+
+const selectedConversation = computed(() => conversations.value.find((item) => String(item.peerUserId) === String(selectedPeerId.value)) ?? null);
+const selectedPeer = computed(() => selectedConversation.value?.peer ?? null);
+const { result: messagesResult, loading: messagesLoading, error: messagesError, refetch: refetchMessages } = useQuery(
+  DIRECT_MESSAGES_QUERY,
+  () => ({ peerUserId: selectedPeerId.value }),
+  () => ({ enabled: isAuthenticated.value && Boolean(selectedPeerId.value), fetchPolicy: 'network-only' }),
+);
+const messages = computed(() => messagesResult.value?.directMessages ?? []);
+const { mutate: sendDirectMessage, loading: sending } = useMutation(SEND_DIRECT_MESSAGE_MUTATION);
+
+watch(messages, async () => {
+  await nextTick();
+  if (threadBody.value) threadBody.value.scrollTop = threadBody.value.scrollHeight;
+});
+
+function authorName(author) { return author?.displayName || author?.login || 'Автор'; }
+function authorInitial(author) { return authorName(author).trim().slice(0, 1).toUpperCase(); }
+function formatMessageTime(value) { return new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit' }).format(new Date(value)); }
+function formatConversationTime(value) {
+  const date = new Date(value);
+  const today = new Date();
+  if (date.toDateString() === today.toDateString()) return formatMessageTime(value);
+  return new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: '2-digit' }).format(date);
+}
+function selectConversation(peerUserId) { selectedPeerId.value = String(peerUserId); }
+
+async function submitMessage() {
+  const body = draft.value.trim();
+  if (!body || !selectedPeerId.value || sending.value) return;
+  sendError.value = '';
+  try {
+    await sendDirectMessage({ peerUserId: selectedPeerId.value, body });
+    draft.value = '';
+    await Promise.all([refetchMessages(), refetchConversations()]);
+  } catch (error) {
+    sendError.value = error?.message || 'Не удалось отправить сообщение.';
+  }
+}
+</script>
+
+<template>
+  <main class="messages-page">
+    <template v-if="!isAuthenticated">
+      <section class="catalog-empty"><h1>Личные сообщения</h1><p>Чтобы открыть переписки, войдите в свой аккаунт.</p><RouterLink class="btn btn-primary" to="/personal">Войти в кабинет</RouterLink></section>
+    </template>
+    <template v-else>
+      <section class="messages-head"><div><h1>Личные сообщения</h1><p>Диалоги между авторами и читателями внутри сайта</p></div></section>
+      <p v-if="conversationsError" class="message error">Не удалось загрузить диалоги: {{ conversationsError.message }}</p>
+      <section class="messages-layout">
+        <aside class="dialogs-card">
+          <div class="card-heading"><h2>Диалоги</h2><span>{{ conversations.length }} {{ conversations.length === 1 ? 'диалог' : 'диалогов' }}</span></div>
+          <label class="dialog-search">⌕ <input v-model="search" placeholder="Поиск по диалогам"></label>
+          <p v-if="conversationsLoading && !conversationsResult" class="ref-loading">Загружаем диалоги…</p>
+          <div v-else-if="filteredConversations.length" class="dialog-list">
+            <button v-for="conversation in filteredConversations" :key="conversation.peerUserId" class="dialog-row" :class="{ selected: String(conversation.peerUserId) === String(selectedPeerId) }" type="button" @click="selectConversation(conversation.peerUserId)">
+              <img v-if="conversation.peer.avatarUrl" :src="conversation.peer.avatarUrl" :alt="authorName(conversation.peer)"><span v-else class="message-avatar">{{ authorInitial(conversation.peer) }}</span>
+              <span><b>{{ authorName(conversation.peer) }}</b><small>@{{ conversation.peer.login }}</small><em>{{ conversation.lastMessageBody }}</em></span>
+              <time>{{ formatConversationTime(conversation.lastMessageAt) }}<i v-if="conversation.unreadCount">{{ conversation.unreadCount > 99 ? '99+' : conversation.unreadCount }}</i></time>
+            </button>
+          </div>
+          <p v-else class="messages-empty">{{ search ? 'Диалоги не найдены.' : 'Сообщений пока нет. Откройте страницу автора, чтобы начать диалог.' }}</p>
+        </aside>
+
+        <section class="message-thread" :class="{ 'thread-empty': !selectedPeer }">
+          <template v-if="selectedPeer">
+            <header class="thread-head"><img v-if="selectedPeer.avatarUrl" :src="selectedPeer.avatarUrl" :alt="authorName(selectedPeer)"><span v-else class="message-avatar thread-avatar">{{ authorInitial(selectedPeer) }}</span><div><h2>{{ authorName(selectedPeer) }}</h2><small>{{ selectedPeer.isOnline ? 'Сейчас в сети' : `Был(а) на сайте: ${formatDate(selectedPeer.lastSeenAt || selectedPeer.updatedAt)}` }}</small></div><RouterLink :to="`/authors/${selectedPeer.login}`">Страница автора</RouterLink></header>
+            <div ref="threadBody" class="thread-body"><p v-if="messagesLoading && !messagesResult" class="ref-loading">Открываем переписку…</p><p v-else-if="messagesError" class="message error">{{ messagesError.message }}</p><p v-else-if="!messages.length" class="messages-empty">Это начало диалога. Напишите первое сообщение.</p><article v-for="message in messages" :key="message.id" class="bubble" :class="String(message.senderUserId) === String(currentUser?.id) ? 'outgoing' : 'incoming'">{{ message.body }}<time>{{ formatMessageTime(message.createdAt) }}<span v-if="String(message.senderUserId) === String(currentUser?.id) && message.readAt"> ✓✓</span></time></article></div>
+            <form class="message-compose" @submit.prevent="submitMessage"><input v-model="draft" :disabled="sending" maxlength="5000" placeholder="Напишите сообщение…"><button class="btn btn-primary" type="submit" :disabled="sending || !draft.trim()">{{ sending ? 'Отправляем…' : '➤ Отправить' }}</button></form><p v-if="sendError" class="message error compose-error">{{ sendError }}</p>
+          </template>
+          <div v-else class="messages-empty thread-placeholder"><h2>Выберите диалог</h2><p>Все личные переписки будут отображаться здесь.</p></div>
+        </section>
+      </section>
+    </template>
+  </main>
+</template>

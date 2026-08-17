@@ -158,6 +158,17 @@ export const HOME_COMMENT_FIELDS = gql`
   ${AUTHOR_CARD_FIELDS}
 `;
 
+export const DIRECT_MESSAGE_FIELDS = gql`
+  fragment DirectMessageFields on DirectMessage {
+    id
+    senderUserId
+    recipientUserId
+    body
+    readAt
+    createdAt
+  }
+`;
+
 export const USER_SESSION_FIELDS = gql`
   fragment UserSessionFields on User {
     id
@@ -428,6 +439,25 @@ export const FORUM_TOPIC_QUERY = gql`
   }
 `;
 
+export const MY_CONVERSATIONS_QUERY = gql`
+  query MyConversations($limit: Int!) {
+    myConversations(limit: $limit) {
+      peerUserId lastMessageBody lastMessageAt unreadCount
+      peer { ...AuthorCardFields }
+    }
+  }
+  ${AUTHOR_CARD_FIELDS}
+`;
+
+export const DIRECT_MESSAGES_QUERY = gql`
+  query DirectMessages($peerUserId: ID!) { directMessages(peerUserId: $peerUserId) { ...DirectMessageFields } }
+  ${DIRECT_MESSAGE_FIELDS}
+`;
+
+export const UNREAD_DIRECT_MESSAGES_COUNT_QUERY = gql`
+  query UnreadDirectMessagesCount { unreadDirectMessagesCount }
+`;
+
 export const LOGIN_MUTATION = gql`
   ${USER_SESSION_FIELDS}
   mutation Login($input: LoginInput!) {
@@ -450,6 +480,11 @@ export const REGISTER_MUTATION = gql`
       }
     }
   }
+`;
+
+export const SEND_DIRECT_MESSAGE_MUTATION = gql`
+  mutation SendDirectMessage($peerUserId: ID!, $body: String!) { sendDirectMessage(peerUserId: $peerUserId, body: $body) { ...DirectMessageFields } }
+  ${DIRECT_MESSAGE_FIELDS}
 `;
 
 export const UPDATE_MY_PROFILE_MUTATION = gql`

@@ -9,6 +9,7 @@ import Radio from '../components/Radio.vue';
 import Forum from '../components/Forum.vue';
 import ForumTopicPage from '../components/ForumTopicPage.vue';
 import Personal from '../components/Personal.vue';
+import Messages from '../components/Messages.vue';
 import SocialAuthCallback from '../components/SocialAuthCallback.vue';
 import ReferenceInfoPage from '../components/ReferenceInfoPage.vue';
 import ReferenceEditorialPage from '../components/ReferenceEditorialPage.vue';
@@ -26,6 +27,7 @@ const routes = [
   { path: '/forum', name: 'forum', component: Forum },
   { path: '/forum/:slugOrId', name: 'forum-topic-public', component: ForumTopicPage },
   { path: '/personal', name: 'personal', component: Personal },
+  { path: '/messages', name: 'messages', component: Messages, meta: { title: 'Мои сообщения' } },
   { path: '/activity', name: 'activity', component: ReferenceInfoPage, meta: { referencePage: 'activity' } },
   { path: '/reviews', name: 'reviews', component: ReferenceInfoPage, meta: { referencePage: 'reviews' } },
   { path: '/albums', name: 'albums', component: ReferenceInfoPage, meta: { referencePage: 'albums' } },
