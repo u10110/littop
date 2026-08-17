@@ -28,6 +28,7 @@ const registerForm = ref({
   login: '',
   password: '',
   displayName: '',
+  acceptTerms: false,
 });
 const socialProviders = Object.values(SOCIAL_AUTH_PROVIDERS);
 
@@ -208,14 +209,19 @@ async function submitLogin() {
 }
 
 async function submitRegister() {
+  if (!registerForm.value.acceptTerms) {
+    return;
+  }
+
   try {
     await register({
       email: registerForm.value.email.trim(),
       login: registerForm.value.login.trim(),
       password: registerForm.value.password,
       displayName: registerForm.value.displayName.trim(),
+      acceptTerms: true,
     });
-    registerForm.value = { email: '', login: '', password: '', displayName: '' };
+    registerForm.value = { email: '', login: '', password: '', displayName: '', acceptTerms: false };
     setSuccessMessage('Профиль создан. Модальное окно закрыто.');
     closeAuthModal();
   } catch {
@@ -309,6 +315,13 @@ async function submitLogout() {
             <label for="register-password">Пароль</label>
             <input id="register-password" v-model="registerForm.password" class="input" type="password" required />
           </div>
+          <label class="terms-check">
+            <input v-model="registerForm.acceptTerms" type="checkbox" required />
+            <span>
+              Я принимаю
+              <RouterLink class="terms-link" to="/terms" target="_blank">Пользовательское соглашение</RouterLink>
+            </span>
+          </label>
           <button class="btn btn-primary" type="submit" :disabled="authBusy">
             {{ authBusy ? 'Создаём профиль…' : 'Создать профиль' }}
           </button>

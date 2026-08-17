@@ -2,14 +2,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-test('registration requires acceptance of the user agreement and links to its page', async () => {
+test('all registration entry points require acceptance of the user agreement', async () => {
   const form = await readFile(new URL('./AuthForm.vue', import.meta.url), 'utf8');
+  const app = await readFile(new URL('../App.vue', import.meta.url), 'utf8');
   const router = await readFile(new URL('../router/index.js', import.meta.url), 'utf8');
 
-  assert.match(form, /v-model="registerForm\.acceptTerms"/);
-  assert.match(form, /Я принимаю/);
-  assert.match(form, /Пользовательское соглашение/);
-  assert.match(form, /to="\/terms"/);
+  for (const registrationTemplate of [form, app]) {
+    assert.match(registrationTemplate, /v-model="registerForm\.acceptTerms"/);
+    assert.match(registrationTemplate, /Я принимаю/);
+    assert.match(registrationTemplate, /Пользовательское соглашение/);
+    assert.match(registrationTemplate, /to="\/terms"/);
+  }
+  assert.match(app, /acceptTerms:\s*true/);
   assert.match(router, /path:\s*'\/terms'/);
 });
 
