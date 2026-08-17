@@ -13,6 +13,7 @@ import SocialAuthCallback from '../components/SocialAuthCallback.vue';
 import ReferenceInfoPage from '../components/ReferenceInfoPage.vue';
 import ReferenceEditorialPage from '../components/ReferenceEditorialPage.vue';
 import Login from '../components/Login.vue';
+import Terms from '../components/Terms.vue';
 
 const routes = [
   { path: '/', name: 'home', component: Home },
@@ -31,6 +32,7 @@ const routes = [
   { path: '/blogs', name: 'blogs', component: ReferenceInfoPage, meta: { referencePage: 'blogs' } },
   { path: '/about', name: 'about', component: ReferenceInfoPage, meta: { referencePage: 'about' } },
   { path: '/contacts', name: 'contacts', component: ReferenceInfoPage, meta: { referencePage: 'contacts' } },
+  { path: '/terms', name: 'terms', component: Terms, meta: { title: 'Пользовательское соглашение' } },
   { path: '/rubrics', name: 'rubrics', component: ReferenceEditorialPage, meta: { referencePage: 'rubrics' } },
   { path: '/showcase', name: 'showcase', component: ReferenceEditorialPage, meta: { referencePage: 'showcase' } },
   { path: '/forum-sections', name: 'forum-sections', component: ReferenceEditorialPage, meta: { referencePage: 'forum-sections' } },
