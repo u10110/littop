@@ -1284,6 +1284,27 @@ nav.menu a:hover {
     align-items: center
 }
 
+.author-cover {
+    margin: 0 0 20px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: #fff
+}
+
+.author-cover img {
+    display: block;
+    width: 100%;
+    max-height: 420px;
+    object-fit: cover
+}
+
+.author-cover figcaption {
+    padding: 10px 14px;
+    color: var(--gray);
+    font-size: 13px
+}
+
 .profile-hero .portrait {
     width: 104px;
     height: 104px;

@@ -140,6 +140,10 @@ async function loadAuthorWorks(authorId) {
     <section v-else-if="pageLoading" class="detail-loading">Загружаем страницу автора…</section>
     <section v-else-if="notFound" class="detail-loading">Автор с таким логином не найден.</section>
     <section v-else-if="hasAuthor">
+      <figure v-if="author.coverImageUrl" class="author-cover">
+        <img :src="author.coverImageUrl" :alt="`Большое фото автора ${author.displayName || author.login}`" />
+        <figcaption>Большое фото автора</figcaption>
+      </figure>
       <header class="profile-hero"><div class="portrait"><img v-if="author.avatarUrl" :src="author.avatarUrl" :alt="author.displayName"><span v-else>{{ authorInitial }}</span></div><div><p class="author-profile-kicker">Публичная страница автора</p><h1>{{ author.displayName || author.login }}</h1><p class="profile-meta">@{{ author.login }} · {{ author.city || 'Littop' }} · на сайте с {{ formatDate(author.registeredAt) }}</p><p>{{ excerptText(author.bio, 240) || 'Автор пока не добавил биографию.' }}</p></div><a v-if="author.websiteUrl" class="btn btn-primary" :href="author.websiteUrl" target="_blank" rel="noreferrer">{{ profileLinkLabel }}</a></header>
       <section class="statgrid"><div class="s"><b>{{ author.ratingTotal }}</b><small>рейтинг автора</small></div><div class="s"><b>{{ authorWorks.length || author.worksCountCached }}</b><small>произведений</small></div><div class="s"><b>{{ author.isFeatured ? '★' : '—' }}</b><small>{{ author.isFeatured ? 'автор витрины' : 'статус автора' }}</small></div><div class="s"><b>{{ author.isClassic ? '✓' : '—' }}</b><small>{{ author.isClassic ? 'классик' : 'публичный профиль' }}</small></div></section>
       <nav class="profile-tabs"><a class="active">Произведения</a><a>Об авторе</a></nav>
