@@ -2987,6 +2987,29 @@ nav.menu {
     white-space: pre-line
 }
 
+.work-edit-form {
+    margin: 26px 0;
+    padding: 22px;
+    border: 1px solid #e1d7c9;
+    border-radius: 8px;
+    background: #fdfaf5;
+    box-shadow: 0 8px 24px rgba(82, 56, 30, .06)
+}
+
+.work-edit-form header { margin-bottom: 18px }
+.work-edit-form header span { color: var(--terra); font-size: 11px; text-transform: uppercase; letter-spacing: .08em }
+.work-edit-form header h2 { margin: 5px 0 0; font: 600 19px Inter, Arial, sans-serif }
+.work-edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px }
+.work-edit-form label { display: grid; gap: 6px; color: #645b52; font: 600 12px Inter, Arial, sans-serif }
+.work-edit-form input, .work-edit-form select, .work-edit-form textarea { width: 100%; box-sizing: border-box; border: 1px solid #d9d0c5; border-radius: 5px; padding: 10px 11px; color: #332f2a; background: #fff; font: 13px Inter, Arial, sans-serif }
+.work-edit-form textarea { resize: vertical; line-height: 1.5 }
+.work-edit-form input:focus, .work-edit-form select:focus, .work-edit-form textarea:focus { outline: 2px solid rgba(188, 100, 50, .22); border-color: #bc6432 }
+.work-edit-wide { grid-column: 1 / -1 }
+.work-edit-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 18px }
+.work-edit-actions .btn { border-radius: 5px; padding: 9px 14px }
+.work-archive { margin-left: auto; border: 0; background: transparent; color: #aa5441; font: 12px Inter, Arial, sans-serif; cursor: pointer }
+.work-archive:disabled { opacity: .55; cursor: wait }
+
 .comments-ref {
     border-top: 1px solid #ebe6de;
     padding-top: 21px

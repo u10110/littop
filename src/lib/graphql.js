@@ -309,6 +309,21 @@ export const WORK_QUERY = gql`
   }
 `;
 
+export const WORK_PAGE_SIDEBAR_QUERY = gql`
+  ${WORK_PREVIEW_FIELDS}
+  query WorkPageSidebar($authorId: ID!, $sectionCode: String!, $genreSlug: String) {
+    otherAuthorWorks: works(authorId: $authorId, limit: 4) {
+      ...WorkPreviewFields
+    }
+    similarGenreWorks: works(sectionCode: $sectionCode, genreSlug: $genreSlug, limit: 8) {
+      ...WorkPreviewFields
+    }
+    similarSectionWorks: works(sectionCode: $sectionCode, limit: 8) {
+      ...WorkPreviewFields
+    }
+  }
+`;
+
 export const WORK_COMMENTS_QUERY = gql`
   ${WORK_COMMENT_FIELDS}
   query WorkComments($workId: ID!, $limit: Int!, $offset: Int!) {

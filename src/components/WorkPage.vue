@@ -8,10 +8,15 @@ import {
   DELETE_WORK_MUTATION,
   UPDATE_WORK_MUTATION,
   WORK_QUERY,
+  WORK_PAGE_SIDEBAR_QUERY,
 } from '../lib/graphql.js';
 import { formatDate, formatWorkSection, ratingLabel } from '../lib/format.js';
 import { getAuthorDisplayName } from '../lib/forum.js';
-import { buildAuthorPageLocation, normalizeRouteParam } from '../lib/routes.js';
+import { buildAuthorPageLocation, buildWorkPageLocation, normalizeRouteParam } from '../lib/routes.js';
+import coverFog from '../assets/new-reference/book-fog.jpg';
+import coverShadows from '../assets/new-reference/book-shadows.jpg';
+import coverRiver from '../assets/new-reference/book-river.jpg';
+import coverWind from '../assets/new-reference/book-wind.jpg';
 import { useSession } from '../lib/session.js';
 
 const route = useRoute();
@@ -35,7 +40,11 @@ const editForm = ref({
   body: '',
   projectFormat: '',
 });
+const otherAuthorWorks = ref([]);
+const similarWorks = ref([]);
 let workRequestVersion = 0;
+let sidebarRequestVersion = 0;
+const sidebarCovers = [coverFog, coverShadows, coverRiver, coverWind];
 
 const projectFormats = [
   { value: '', label: 'Без уточнения' },
@@ -151,6 +160,7 @@ async function fetchWork(value, requestVersion = workRequestVersion) {
     }
 
     work.value = data?.work ?? null;
+    if (work.value) void loadSidebar(work.value, requestVersion);
     return work.value;
   } catch (queryError) {
     if (requestVersion === workRequestVersion) {
@@ -163,6 +173,44 @@ async function fetchWork(value, requestVersion = workRequestVersion) {
       workLoading.value = false;
     }
   }
+}
+
+async function loadSidebar(currentWork, requestVersion) {
+  const sidebarVersion = sidebarRequestVersion + 1;
+  sidebarRequestVersion = sidebarVersion;
+  otherAuthorWorks.value = [];
+  similarWorks.value = [];
+  try {
+    const { data } = await apolloClient.query({
+      query: WORK_PAGE_SIDEBAR_QUERY,
+      variables: {
+        authorId: currentWork.author?.id,
+        sectionCode: currentWork.sectionCode,
+        genreSlug: currentWork.genreSlug || null,
+      },
+      fetchPolicy: 'network-only',
+    });
+    if (requestVersion !== workRequestVersion || sidebarVersion !== sidebarRequestVersion) return;
+    const notCurrent = (candidate) => String(candidate.id) !== String(work.value.id);
+    otherAuthorWorks.value = (data?.otherAuthorWorks ?? []).filter(notCurrent).slice(0, 3);
+    const seen = new Set();
+    similarWorks.value = [...(data?.similarGenreWorks ?? []), ...(data?.similarSectionWorks ?? [])]
+      .filter((candidate) => String(candidate.id) !== String(work.value.id))
+      .filter((candidate) => String(candidate.author?.id) !== String(work.value.author?.id))
+      .filter((candidate) => {
+        if (seen.has(String(candidate.id))) return false;
+        seen.add(String(candidate.id));
+        return true;
+      })
+      .slice(0, 3);
+  } catch {
+    // A sidebar failure must not hide the work itself.
+  }
+}
+
+function coverFor(workItem) {
+  const numericId = Number(workItem?.id);
+  return sidebarCovers[Number.isFinite(numericId) ? Math.abs(numericId) % sidebarCovers.length : 0];
 }
 
 async function refreshCurrentWork() {
@@ -285,13 +333,23 @@ async function shareWork() {
               <button class="btn btn-primary read-full" type="button" @click="openReader">Читать полностью</button>
             </div>
           </div>
-          <form v-if="editMode && isOwner" class="work-edit-form" @submit.prevent="submitWorkUpdate"><label>Раздел<select v-model="editForm.sectionCode"><option value="poetry">Поэзия</option><option value="prose">Проза</option><option value="project">Творческий проект</option></select></label><label>Заголовок<input v-model="editForm.title" required></label><label>Краткое описание<textarea v-model="editForm.summary" /></label><label>Текст<textarea v-model="editForm.body" /></label><button type="submit" :disabled="editBusy">{{ editBusy ? 'Сохраняем…' : 'Сохранить' }}</button><button type="button" :disabled="deleteBusy" @click="softDeleteCurrentWork">{{ deleteBusy ? 'Архивируем…' : 'Удалить' }}</button></form>
+          <form v-if="editMode && isOwner" class="work-edit-form" @submit.prevent="submitWorkUpdate">
+            <header><span>Редактирование</span><h2>Настройте публикацию</h2></header>
+            <div class="work-edit-grid">
+              <label>Раздел<select v-model="editForm.sectionCode"><option value="poetry">Поэзия</option><option value="prose">Проза</option><option value="project">Творческий проект</option></select></label>
+              <label>Заголовок<input v-model="editForm.title" required maxlength="240"></label>
+              <label class="work-edit-wide">Краткое описание<textarea v-model="editForm.summary" rows="4" placeholder="Коротко расскажите о произведении" /></label>
+              <label v-if="editForm.sectionCode === 'project'">Формат<select v-model="editForm.projectFormat"><option v-for="format in projectFormats" :key="format.value" :value="format.value">{{ format.label }}</option></select></label>
+              <label class="work-edit-wide">Текст<textarea v-model="editForm.body" rows="14" placeholder="Текст произведения" /></label>
+            </div>
+            <div class="work-edit-actions"><button class="btn btn-primary" type="submit" :disabled="editBusy">{{ editBusy ? 'Сохраняем…' : 'Сохранить изменения' }}</button><button class="btn btn-outline" type="button" :disabled="editBusy" @click="cancelEditing">Отменить</button><button class="work-archive" type="button" :disabled="deleteBusy" @click="softDeleteCurrentWork">{{ deleteBusy ? 'Архивируем…' : 'Убрать в архив' }}</button></div>
+          </form>
           <p v-if="editStatus || deleteStatus" class="ref-error">{{ editStatus || deleteStatus }}</p>
           <WorkDiscussionPanel :work="work" @refresh="refreshCurrentWork" />
           <dialog ref="readerDialog" class="book-reader" :aria-label="`Читалка: ${work.title}`" @click.self="closeReader"><div class="reader-bar"><div><span>{{ work.title }}</span><small>{{ authorLabel(work.author) }}</small></div><button type="button" class="reader-close" aria-label="Закрыть чтение" @click="closeReader">×</button></div><article class="reader-page"><p class="reader-kicker">{{ formatWorkSection(work.sectionCode) }}</p><h1>{{ work.title }}</h1><p v-for="(paragraph, index) in readingParagraphs" :key="index" class="reader-paragraph">{{ paragraph }}</p></article></dialog>
         </template>
       </section>
-      <aside v-if="work" class="detail-side"><section class="author-card"><h2>Об авторе</h2><div class="author-top"><div class="author-avatar">{{ authorLabel(work.author).slice(0, 1) }}</div><p><b>{{ authorLabel(work.author) }}</b><span>Автор произведения</span></p></div><div class="author-stats"><b>{{ work.author?.worksCountCached ?? work.author?.worksCount ?? '—' }}<small>произведения</small></b><b>{{ work.author?.followersCount || '—' }}<small>подписчики</small></b><b>{{ ratingLabel(work.averageRating, work.ratingsCount) }}<small>рейтинг</small></b></div><RouterLink v-if="work.author?.login" class="btn btn-primary" :to="buildAuthorPageLocation(work.author)">Страница автора</RouterLink></section><section class="mini-works"><h2>О произведении</h2><p>{{ work.summary || work.excerpt || 'Аннотация пока не добавлена.' }}</p><p class="detail-meta">Комментарии: {{ work.commentsCount || 0 }}</p></section></aside>
+      <aside v-if="work" class="detail-side"><section class="author-card"><h2>Об авторе</h2><div class="author-top"><div class="author-avatar">{{ authorLabel(work.author).slice(0, 1) }}</div><p><b>{{ authorLabel(work.author) }}</b><span>Автор произведения</span></p></div><div class="author-stats"><b>{{ work.author?.worksCountCached ?? work.author?.worksCount ?? '—' }}<small>произведения</small></b><b>{{ work.author?.followersCount || '—' }}<small>подписчики</small></b><b>{{ ratingLabel(work.averageRating, work.ratingsCount) }}<small>рейтинг</small></b></div><RouterLink v-if="work.author?.login" class="btn btn-primary" :to="buildAuthorPageLocation(work.author)">Страница автора</RouterLink></section><section v-if="otherAuthorWorks.length" class="mini-works"><h2>Другие произведения автора</h2><RouterLink v-for="item in otherAuthorWorks" :key="item.id" :to="buildWorkPageLocation(item)"><img :src="coverFor(item)" :alt="item.title"><span><b>{{ item.title }}</b><small>{{ formatWorkSection(item.sectionCode) }}<br>◉ {{ item.viewsCount || 0 }}</small></span></RouterLink><RouterLink v-if="work.author?.login" class="all-link" :to="buildAuthorPageLocation(work.author)">Смотреть все произведения ›</RouterLink></section><section v-if="similarWorks.length" class="mini-works"><h2>Похожие произведения</h2><RouterLink v-for="item in similarWorks" :key="item.id" :to="buildWorkPageLocation(item)"><img :src="coverFor(item)" :alt="item.title"><span><b>{{ item.title }}</b><small>{{ authorLabel(item.author) }}<br>◉ {{ item.viewsCount || 0 }}</small></span></RouterLink><RouterLink class="all-link" :to="{ path: '/works', query: { section: work.sectionCode, ...(work.genreSlug ? { genre: work.genreSlug } : {}) } }">Смотреть все ›</RouterLink></section><section class="mini-works"><h2>О произведении</h2><p>{{ work.summary || work.excerpt || 'Аннотация пока не добавлена.' }}</p><p class="detail-meta">Комментарии: {{ work.commentsCount || 0 }}</p></section></aside>
     </div>
   </main>
 </template>
