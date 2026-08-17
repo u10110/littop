@@ -21,6 +21,8 @@ test('work page loads and renders other author and similar works blocks', () => 
   assert.match(graphql, /similarGenreWorks:\s*works/);
   assert.match(graphql, /similarSectionWorks:\s*works/);
   assert.match(workPage, /Другие произведения автора/);
+  assert.doesNotMatch(workPage, /<section v-if="otherAuthorWorks\.length" class="mini-works"><h2>Другие произведения автора<\/h2>/);
+  assert.match(workPage, /У автора пока нет других опубликованных произведений\./);
   assert.match(workPage, /Похожие произведения/);
   assert.match(workPage, /otherAuthorWorks/);
   assert.match(workPage, /similarWorks/);

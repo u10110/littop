@@ -3165,6 +3165,13 @@ nav.menu {
     margin-top: 8px
 }
 
+.mini-works-empty {
+    margin: 4px 0 10px;
+    color: #827b72;
+    font-size: 11px;
+    line-height: 1.5
+}
+
 @media (max-width: 850px) {
     .catalog-shell, .detail-shell {
         margin: 0 14px;
