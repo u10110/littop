@@ -8377,3 +8377,38 @@ nav.menu {
     color: var(--terra);
     text-decoration: underline
 }
+
+
+/* Home news is a text-only list: headlines with their dates. */
+.news-home-list {
+    list-style: none;
+    margin: 15px 0 0;
+    padding: 0
+}
+
+.news-home-list li + li {
+    border-top: 1px solid #eee9e1
+}
+
+.news-home-list a {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 11px 0;
+    color: #4a443d;
+    font-size: 12px;
+    line-height: 1.45
+}
+
+.news-home-list a:hover span {
+    color: var(--terra);
+    text-decoration: underline
+}
+
+.news-home-list time {
+    flex: 0 0 auto;
+    float: none;
+    color: #938d84;
+    font-size: 10px;
+    white-space: nowrap
+}
