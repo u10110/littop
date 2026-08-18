@@ -73,7 +73,7 @@ function openAuth(mode) { window.dispatchEvent(new CustomEvent('littop:open-auth
 
         <section class="live-home-strip">
           <section class="live-card editor-column"><div class="live-card-head"><div><span class="live-kicker">Мнение команды</span><h2>Колонка редактора</h2></div><RouterLink to="/forum">Все статьи ›</RouterLink></div>
-            <article v-for="topic in editorTopics" :key="topic.id" class="editor-item"><span class="editor-tag">КОЛОНКА РЕДАКТОРА</span><h3><RouterLink :to="{ name: 'forum-topic-public', params: { slugOrId: topic.slug || topic.id } }">{{ topic.title }}</RouterLink></h3><p>{{ topic.body }}</p><footer><span>{{ authorName(topic.author) }} · {{ shortDate(topic.createdAt) }}</span><span>💬 {{ topic.repliesCount || 0 }}</span></footer></article>
+            <article v-for="topic in editorTopics" :key="topic.id" class="editor-item"><h3><RouterLink :to="{ name: 'forum-topic-public', params: { slugOrId: topic.slug || topic.id } }">{{ topic.title }}</RouterLink></h3><p>{{ topic.body }}</p><footer><span>{{ authorName(topic.author) }} · {{ shortDate(topic.createdAt) }}</span><span>💬 {{ topic.repliesCount || 0 }}</span></footer></article>
             <p v-if="!editorTopics.length" class="ref-empty">Редакционные темы появятся после публикации в разделе «Колонка редактора».</p>
           </section>
           <section class="live-card announcements"><div class="live-card-head"><div><span class="live-kicker">Выбор авторов</span><h2>Анонсы</h2></div><RouterLink to="/works">Все произведения ›</RouterLink></div>
