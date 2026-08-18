@@ -329,7 +329,7 @@ async function submitResetPassword() {
     <form v-if="authMode === 'login'" class="auth-grid" @submit.prevent="submitLogin">
       <div class="field">
         <label for="login-identifier">Email или логин</label>
-        <input id="login-identifier" v-model="loginForm.identifier" class="input" autocomplete="username email" required />
+        <input id="login-identifier" v-model="loginForm.identifier" class="input" name="username" autocomplete="username" required />
       </div>
       <div class="field">
         <label for="login-password">Пароль</label>
@@ -338,6 +338,7 @@ async function submitResetPassword() {
               id="login-password"
               v-model="loginForm.password"
               class="input"
+              name="password"
               :type="loginPasswordVisible ? 'text' : 'password'"
               autocomplete="current-password"
               required
@@ -386,15 +387,15 @@ async function submitResetPassword() {
     <form v-else-if="authMode === 'register'" class="auth-grid" @submit.prevent="submitRegister">
       <div class="field">
         <label for="register-display-name">Отображаемое имя</label>
-        <input id="register-display-name" v-model="registerForm.displayName" class="input" autocomplete="name" required />
+        <input id="register-display-name" v-model="registerForm.displayName" class="input" name="name" autocomplete="name" required />
       </div>
       <div class="field">
         <label for="register-login">Логин</label>
-        <input id="register-login" v-model="registerForm.login" class="input" autocomplete="username" required />
+        <input id="register-login" v-model="registerForm.login" class="input" name="username" autocomplete="username" required />
       </div>
       <div class="field">
         <label for="register-email">Email</label>
-        <input id="register-email" v-model="registerForm.email" class="input" type="email" inputmode="email" autocomplete="email" required />
+        <input id="register-email" v-model="registerForm.email" class="input" type="email" name="email" inputmode="email" autocomplete="email" required />
       </div>
       <div class="field">
         <label for="register-password">Пароль</label>
@@ -403,6 +404,7 @@ async function submitResetPassword() {
               id="register-password"
               v-model="registerForm.password"
               class="input"
+              name="new-password"
               :type="registerPasswordVisible ? 'text' : 'password'"
               autocomplete="new-password"
               required
@@ -447,7 +449,7 @@ async function submitResetPassword() {
     <form v-else-if="authMode === 'forgot'" class="auth-grid" @submit.prevent="submitForgotPassword">
       <div class="field">
         <label for="forgot-email">Почта для восстановления</label>
-        <input id="forgot-email" v-model="forgotForm.email" class="input" type="email" inputmode="email" autocomplete="email" required />
+        <input id="forgot-email" v-model="forgotForm.email" class="input" type="email" name="email" inputmode="email" autocomplete="email" required />
       </div>
       <button class="btn btn-primary" type="submit" :disabled="authBusy">
         <Icon name="mail" />{{ authBusy ? 'Отправляем…' : 'Отправить письмо' }}
@@ -462,6 +464,7 @@ async function submitResetPassword() {
               id="reset-password"
               v-model="resetForm.password"
               class="input"
+              name="new-password"
               :type="resetPasswordVisible ? 'text' : 'password'"
               autocomplete="new-password"
               required
@@ -484,6 +487,7 @@ async function submitResetPassword() {
               id="reset-password-confirm"
               v-model="resetForm.confirmPassword"
               class="input"
+              name="new-password-confirm"
               :type="resetConfirmPasswordVisible ? 'text' : 'password'"
               autocomplete="new-password"
               required
