@@ -1321,8 +1321,19 @@ nav.menu a:hover {
 }
 
 .profile-hero.profile-hero-with-cover {
-    grid-template-columns: 210px 112px 1fr auto;
-    align-items: stretch
+    grid-template-columns: 112px 1fr 210px;
+    grid-template-rows: auto 1fr;
+    align-items: start
+}
+
+.profile-hero.profile-hero-with-cover .author-side-cover {
+    grid-column: 3;
+    grid-row: 1 / span 2
+}
+
+.profile-hero.profile-hero-with-cover .profile-hero-actions {
+    grid-column: 2;
+    grid-row: 2
 }
 
 .author-side-cover {
@@ -1343,12 +1354,12 @@ nav.menu a:hover {
 
 @media (max-width: 900px) {
     .profile-hero.profile-hero-with-cover {
-        grid-template-columns: 150px 92px 1fr;
+        grid-template-columns: 92px 1fr 150px;
         gap: 15px
     }
 
     .profile-hero.profile-hero-with-cover .profile-hero-actions {
-        grid-column: 2 / -1
+        grid-column: 2
     }
 
     .author-side-cover,
