@@ -11,6 +11,7 @@ const { isAuthenticated } = useSession();
 
 const initialMode = computed(() => {
   if (route.query?.mode === 'register') return 'register';
+  if (route.query?.auth === 'forgot') return 'forgot';
   if (route.query?.auth === 'reset') return 'reset';
   return 'login';
 });
