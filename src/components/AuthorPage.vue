@@ -163,10 +163,9 @@ async function loadAuthorWorks(authorId) {
         <img :src="author.coverImageUrl" :alt="`Большое фото автора ${author.displayName || author.login}`"/>
         <figcaption>Большое фото автора</figcaption>
       </figure>
-      <div class="profile-hero" :class="{ 'profile-hero-with-cover': coverIsPortrait }">
-        <figure v-if="author.coverImageUrl && coverIsPortrait" class="author-side-cover">
-          <img :src="author.coverImageUrl" :alt="`Фото автора ${author.displayName || author.login}`">
-        </figure>
+      <div class="author-page-layout" :class="{ 'author-page-layout-with-portrait': coverIsPortrait }">
+        <div class="author-page-main">
+          <div class="profile-hero">
         <div class="portrait"><img :src="authorAvatarUrl(author)" :alt="author.displayName || author.login"></div>
         <div><p class="author-profile-kicker">Публичная страница автора</p>
           <h1>{{ author.displayName || author.login }}</h1>
@@ -209,6 +208,14 @@ async function loadAuthorWorks(authorId) {
         <div v-else-if="!worksLoading" class="catalog-empty"><h2>Публикаций пока нет</h2>
           <p>Автор ещё не добавил произведения.</p></div>
       </section>
+        </div>
+        <aside v-if="author.coverImageUrl && coverIsPortrait" class="author-page-portrait-sidebar">
+          <figure class="author-side-cover">
+            <img :src="author.coverImageUrl" :alt="`Фото автора ${author.displayName || author.login}`">
+            <figcaption>Фото автора</figcaption>
+          </figure>
+        </aside>
+      </div>
     </section>
   </main>
 </template>
