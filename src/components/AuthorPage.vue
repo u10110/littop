@@ -8,6 +8,7 @@ import {AUTHOR_QUERY, WORKS_QUERY} from '../lib/graphql.js';
 import {excerptText, formatDate, formatDateTime, formatWorkSection} from '../lib/format.js';
 import {buildWorkPageLocation, normalizeRouteParam} from '../lib/routes.js';
 import {setDocumentTitle} from '../lib/pageTitle.js';
+import {authorAvatarUrl} from '../lib/authorAvatar.js';
 
 const route = useRoute();
 const {isAuthenticated, currentUser} = useSession();
@@ -151,8 +152,7 @@ async function loadAuthorWorks(authorId) {
         <figcaption>Большое фото автора</figcaption>
       </figure>
       <div class="profile-hero">
-        <div class="portrait"><img v-if="author.avatarUrl" :src="author.avatarUrl" :alt="author.displayName"><span
-            v-else>{{ authorInitial }}</span></div>
+        <div class="portrait"><img :src="authorAvatarUrl(author)" :alt="author.displayName || author.login"></div>
         <div><p class="author-profile-kicker">Публичная страница автора</p>
           <h1>{{ author.displayName || author.login }}</h1>
           <p class="profile-meta">@{{ author.login }} · {{ author.city || 'Littop' }} · на сайте с

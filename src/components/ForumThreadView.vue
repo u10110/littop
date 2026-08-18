@@ -13,6 +13,7 @@ import {
 import { formatDate } from '../lib/format.js';
 import { flattenForumPostTree, getAuthorDisplayName, getAuthorInitial } from '../lib/forum.js';
 import { useSession } from '../lib/session.js';
+import { authorAvatarUrl } from '../lib/authorAvatar.js';
 
 const props = defineProps({
   topic: {
@@ -352,8 +353,7 @@ async function deletePost(post) {
 
     <article class="forum-topic-opening">
       <div class="forum-post-avatar-wrap">
-        <img v-if="topic.author?.avatarUrl" :src="topic.author.avatarUrl" class="forum-post-avatar" alt="avatar автора темы" />
-        <div v-else class="forum-post-avatar forum-post-avatar-fallback">{{ authorInitial(topic.author) }}</div>
+        <img :src="authorAvatarUrl(topic.author)" class="forum-post-avatar" alt="Аватар автора темы" />
       </div>
       <div class="forum-topic-opening-body">
         <div class="forum-post-author-line">
@@ -384,8 +384,7 @@ async function deletePost(post) {
         :style="depthStyle(post.depth)"
       >
         <div class="forum-post-avatar-wrap">
-          <img v-if="post.author?.avatarUrl" :src="post.author.avatarUrl" class="forum-post-avatar" alt="avatar автора сообщения" />
-          <div v-else class="forum-post-avatar forum-post-avatar-fallback">{{ authorInitial(post.author) }}</div>
+          <img :src="authorAvatarUrl(post.author)" class="forum-post-avatar" alt="Аватар автора сообщения" />
         </div>
 
         <div class="forum-thread-post-body">

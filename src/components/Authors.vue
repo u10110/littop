@@ -5,6 +5,7 @@ import { useQuery } from '@vue/apollo-composable';
 import { AUTHORS_QUERY } from '../lib/graphql.js';
 import { excerptText, formatDate } from '../lib/format.js';
 import { buildAuthorPageLocation } from '../lib/routes.js';
+import { authorAvatarUrl } from '../lib/authorAvatar.js';
 
 const search = ref('');
 const onlyClassics = ref(false);
@@ -24,7 +25,7 @@ function clearFilters() { search.value = ''; onlyClassics.value = false; onlyFea
     <p v-else-if="loading && !result" class="ref-loading">Загружаем авторов…</p>
     <section v-else-if="authors.length" class="authors">
       <article v-for="author in authors" :key="author.id" class="author">
-        <RouterLink class="av" :to="buildAuthorPageLocation(author)"><img v-if="author.avatarUrl" :src="author.avatarUrl" :alt="author.displayName"><span v-else>{{ authorInitial(author) }}</span></RouterLink>
+        <RouterLink class="av" :to="buildAuthorPageLocation(author)"><img :src="authorAvatarUrl(author)" :alt="author.displayName || author.login"></RouterLink>
         <h2><RouterLink :to="buildAuthorPageLocation(author)">{{ author.displayName || author.login }}</RouterLink></h2>
         <p class="authors-login">@{{ author.login }}</p><p>{{ excerptText(author.bio, 130) || 'Автор пока не добавил биографию.' }}</p>
         <div class="authors-tags"><span v-if="author.isFeatured">Витрина</span><span v-if="author.isClassic">Классик</span></div>

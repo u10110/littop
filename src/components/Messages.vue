@@ -6,6 +6,7 @@ import { apolloClient } from '../lib/apollo.js';
 import { AUTHOR_QUERY, AUTHORS_QUERY, DIRECT_MESSAGES_QUERY, MESSAGES_SIDEBAR_QUERY, MY_CONVERSATIONS_QUERY, SEND_DIRECT_MESSAGE_MUTATION } from '../lib/graphql.js';
 import { useSession } from '../lib/session.js';
 import { formatDate } from '../lib/format.js';
+import { authorAvatarUrl } from '../lib/authorAvatar.js';
 
 const route = useRoute();
 const { isAuthenticated, currentUser } = useSession();
@@ -144,7 +145,7 @@ async function submitMessage() {
           <p v-if="authorsLoading" class="messages-empty">Ищем авторов…</p>
           <div v-else-if="foundAuthors.length" class="author-start-list">
             <button v-for="author in foundAuthors" :key="author.id" class="author-start-row" type="button" @click="startConversation(author)">
-              <img v-if="author.avatarUrl" :src="author.avatarUrl" :alt="authorName(author)"><span v-else class="message-avatar">{{ authorInitial(author) }}</span>
+              <img :src="authorAvatarUrl(author)" :alt="authorName(author)">
               <span><b>{{ authorName(author) }}</b><small>@{{ author.login }}</small></span><em>Написать</em>
             </button>
           </div>
@@ -152,7 +153,7 @@ async function submitMessage() {
           <p v-if="conversationsLoading && !conversationsResult" class="ref-loading">Загружаем диалоги…</p>
           <div v-else-if="filteredConversations.length" class="dialog-list">
             <button v-for="conversation in filteredConversations" :key="conversation.peerUserId" class="dialog-row" :class="{ selected: String(conversation.peerUserId) === String(selectedPeerId) }" type="button" @click="selectConversation(conversation.peerUserId)">
-              <img v-if="conversation.peer.avatarUrl" :src="conversation.peer.avatarUrl" :alt="authorName(conversation.peer)"><span v-else class="message-avatar">{{ authorInitial(conversation.peer) }}</span>
+              <img :src="authorAvatarUrl(conversation.peer)" :alt="authorName(conversation.peer)">
               <span><b>{{ authorName(conversation.peer) }}</b><small>@{{ conversation.peer.login }}</small><em>{{ conversation.lastMessageBody }}</em></span>
               <time>{{ formatConversationTime(conversation.lastMessageAt) }}<i v-if="conversation.unreadCount">{{ conversation.unreadCount > 99 ? '99+' : conversation.unreadCount }}</i></time>
             </button>
@@ -162,7 +163,7 @@ async function submitMessage() {
 
         <section class="message-thread" :class="{ 'thread-empty': !selectedPeer }">
           <template v-if="selectedPeer">
-            <header class="thread-head"><img v-if="selectedPeer.avatarUrl" :src="selectedPeer.avatarUrl" :alt="authorName(selectedPeer)"><span v-else class="message-avatar thread-avatar">{{ authorInitial(selectedPeer) }}</span><div><h2>{{ authorName(selectedPeer) }}</h2><small>{{ selectedPeer.isOnline ? 'Сейчас в сети' : `Был(а) на сайте: ${formatDate(selectedPeer.lastSeenAt || selectedPeer.updatedAt)}` }}</small></div><RouterLink :to="`/authors/${selectedPeer.login}`">Страница автора</RouterLink></header>
+            <header class="thread-head"><img :src="authorAvatarUrl(selectedPeer)" :alt="authorName(selectedPeer)"><div><h2>{{ authorName(selectedPeer) }}</h2><small>{{ selectedPeer.isOnline ? 'Сейчас в сети' : `Был(а) на сайте: ${formatDate(selectedPeer.lastSeenAt || selectedPeer.updatedAt)}` }}</small></div><RouterLink :to="`/authors/${selectedPeer.login}`">Страница автора</RouterLink></header>
             <div ref="threadBody" class="thread-body"><p v-if="messagesLoading && !messagesResult" class="ref-loading">Открываем переписку…</p><p v-else-if="messagesError" class="message error">{{ messagesError.message }}</p><p v-else-if="!messages.length" class="messages-empty">Это начало диалога. Напишите первое сообщение.</p><article v-for="message in messages" :key="message.id" class="bubble" :class="String(message.senderUserId) === String(currentUser?.id) ? 'outgoing' : 'incoming'">{{ message.body }}<time>{{ formatMessageTime(message.createdAt) }}<span v-if="String(message.senderUserId) === String(currentUser?.id) && message.readAt"> ✓✓</span></time></article></div>
             <form class="message-compose" @submit.prevent="submitMessage"><input v-model="draft" :disabled="sending" maxlength="5000" placeholder="Напишите сообщение…"><button class="btn btn-primary" type="submit" :disabled="sending || !draft.trim()">{{ sending ? 'Отправляем…' : '➤ Отправить' }}</button></form><p v-if="sendError" class="message error compose-error">{{ sendError }}</p>
           </template>
@@ -174,7 +175,7 @@ async function submitMessage() {
             <p v-if="sidebarLoading && !sidebarResult" class="people-side-empty">Загружаем…</p>
             <div v-for="author in onlineAuthors" :key="author.id" class="people-side-row">
               <RouterLink class="people-profile-link" :to="`/authors/${author.login}`">
-                <img v-if="author.avatarUrl" :src="author.avatarUrl" :alt="authorName(author)"><span v-else class="message-avatar people-avatar">{{ authorInitial(author) }}</span>
+                <img :src="authorAvatarUrl(author)" :alt="authorName(author)">
                 <span><b>{{ authorName(author) }}</b><small>@{{ author.login }}</small></span><i aria-label="В сети"></i>
               </RouterLink>
               <button class="message-author-icon" type="button" :aria-label="`Написать ${authorName(author)}`" title="Написать сообщение" @click="startConversation(author)">✉</button>
@@ -185,7 +186,7 @@ async function submitMessage() {
             <h2>Последние на сайте</h2>
             <div v-for="author in recentAuthors" :key="author.id" class="people-side-row">
               <RouterLink class="people-profile-link" :to="`/authors/${author.login}`">
-                <img v-if="author.avatarUrl" :src="author.avatarUrl" :alt="authorName(author)"><span v-else class="message-avatar people-avatar">{{ authorInitial(author) }}</span>
+                <img :src="authorAvatarUrl(author)" :alt="authorName(author)">
                 <span><b>{{ authorName(author) }}</b><small>{{ formatDate(author.lastSeenAt || author.updatedAt) }}</small></span>
               </RouterLink>
               <button class="message-author-icon" type="button" :aria-label="`Написать ${authorName(author)}`" title="Написать сообщение" @click="startConversation(author)">✉</button>

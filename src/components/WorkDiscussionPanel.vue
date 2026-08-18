@@ -18,6 +18,7 @@ import {
 } from '../lib/graphql.js';
 import { flattenThreadTree } from '../lib/discussion.js';
 import { formatDate } from '../lib/format.js';
+import { authorAvatarUrl } from '../lib/authorAvatar.js';
 import { getAuthorDisplayName, getAuthorInitial } from '../lib/forum.js';
 import { buildAuthorPageLocation } from '../lib/routes.js';
 import { useSession } from '../lib/session.js';
@@ -628,8 +629,7 @@ function ledgerSummary(ledger, noun) {
         :style="depthStyle(comment.depth)"
       >
         <div class="forum-post-avatar-wrap">
-          <img v-if="comment.author?.avatarUrl" :src="comment.author.avatarUrl" class="forum-post-avatar" alt="avatar автора отзыва" />
-          <div v-else class="forum-post-avatar forum-post-avatar-fallback">{{ authorInitial(comment.author) }}</div>
+          <img :src="authorAvatarUrl(comment.author)" class="forum-post-avatar" alt="Аватар автора отзыва" />
         </div>
 
         <div class="comment-item-body">
