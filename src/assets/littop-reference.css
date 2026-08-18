@@ -8412,3 +8412,24 @@ nav.menu {
     font-size: 10px;
     white-space: nowrap
 }
+
+
+/* Compact action icon in every home-block header. */
+.home-action-link {
+    width: 26px;
+    height: 26px;
+    display: inline-grid;
+    place-items: center;
+    border: 1px solid #ddd6cb;
+    border-radius: 5px;
+    color: #716b63 !important;
+    font: 16px/1 Inter, Arial, sans-serif !important;
+    transition: color .15s, border-color .15s, background .15s
+}
+
+.home-action-link:hover, .home-action-link:focus-visible {
+    border-color: var(--terra);
+    color: var(--terra) !important;
+    background: #fdf7f0;
+    text-decoration: none !important
+}
