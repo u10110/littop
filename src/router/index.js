@@ -40,7 +40,6 @@ const routes = [
   { path: '/forum-sections', name: 'forum-sections', component: ReferenceEditorialPage, meta: { referencePage: 'forum-sections' } },
   { path: '/promotion', name: 'promotion', component: ReferenceEditorialPage, meta: { referencePage: 'promotion' } },
   { path: '/editorial-queue', name: 'editorial-queue', component: ReferenceEditorialPage, meta: { referencePage: 'editorial-queue' } },
-  { path: '/login', redirect: '/personal' },
   { path: '/account', redirect: '/personal' },
   { path: '/books', redirect: '/works' },
   { path: '/book', redirect: '/works' },
