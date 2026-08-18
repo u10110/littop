@@ -191,6 +191,8 @@ export const USER_SESSION_FIELDS = gql`
       worksCountCached
       isClassic
       isFeatured
+      peachBalance
+      audioUploadSlots
     }
   }
 `;
@@ -483,6 +485,18 @@ export const UNREAD_DIRECT_MESSAGES_COUNT_QUERY = gql`
 `;
 
 
+export const MY_RATING_EVENTS_QUERY = gql`
+  query MyRatingEvents($limit: Int!) {
+    myRatingEvents(limit: $limit) {
+      id
+      eventType
+      points
+      createdAt
+      label
+    }
+  }
+`;
+
 export const MY_PEACH_TRANSACTIONS_QUERY = gql`
   query MyPeachTransactions($limit: Int!) {
     myPeachTransactions(limit: $limit) {
@@ -548,6 +562,19 @@ export const UPDATE_MY_PROFILE_MUTATION = gql`
     updateMyProfile(input: $input) {
       ...UserSessionFields
     }
+  }
+`;
+
+export const PURCHASE_AUDIO_UPLOAD_PACK_MUTATION = gql`
+  ${USER_SESSION_FIELDS}
+  mutation PurchaseAudioUploadPack {
+    purchaseAudioUploadPack { ...UserSessionFields }
+  }
+`;
+
+export const REQUEST_ADMIN_REVIEW_MUTATION = gql`
+  mutation RequestAdminReview($title: String!, $message: String) {
+    requestAdminReview(title: $title, message: $message) { id }
   }
 `;
 

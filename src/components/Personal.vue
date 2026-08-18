@@ -10,7 +10,7 @@ import { filenameToTrackTitle, probeAudioDuration, uploadRadioTrack } from '../l
 import { uploadProfileImage } from '../lib/profileImages.js';
 import { buildAuthorPageLocation, buildWorkPageLocation } from '../lib/routes.js';
 import { apolloClient } from '../lib/apollo.js';
-import { MY_PEACH_TRANSACTIONS_QUERY, WORKS_QUERY } from '../lib/graphql.js';
+import { MY_PEACH_TRANSACTIONS_QUERY, MY_RATING_EVENTS_QUERY, PURCHASE_AUDIO_UPLOAD_PACK_MUTATION, REQUEST_ADMIN_REVIEW_MUTATION, WORKS_QUERY } from '../lib/graphql.js';
 
 const {
   currentUser,
@@ -40,7 +40,20 @@ const myRecentWorks = computed(() => myWorksResult.value?.works ?? []);
 const peachTransactions = ref([]);
 const peachTransactionsBusy = ref(false);
 const peachTransactionsError = ref('');
-const peachBalance = computed(() => peachTransactions.value.reduce((total, transaction) => total + Number(transaction.amount || 0), 0));
+const ratingEvents = ref([]);
+const ratingEventsBusy = ref(false);
+const ratingEventsError = ref('');
+const ratingHistoryOpen = ref(false);
+const peachHistoryOpen = ref(false);
+const peachBusy = ref(false);
+const peachStatus = ref('');
+const reviewBusy = ref(false);
+const reviewStatus = ref('');
+const reviewForm = ref({ title: '', message: '' });
+const peachBalance = computed(() => Number(profile.value?.peachBalance ?? 0));
+const audioUploadSlots = computed(() => Number(profile.value?.audioUploadSlots ?? 0));
+const ratingTotal = computed(() => Number(profile.value?.ratingTotal ?? 0));
+const ratingMonthPoints = computed(() => ratingEvents.value.filter((event) => new Date(event.createdAt).getMonth() === new Date().getMonth() && new Date(event.createdAt).getFullYear() === new Date().getFullYear()).reduce((total, event) => total + Number(event.points || 0), 0));
 
 const profile = computed(() => currentUser.value?.profile ?? null);
 const displayName = computed(() => profile.value?.displayName || currentUser.value?.login || 'Автор');
@@ -79,26 +92,58 @@ onMounted(() => {
   bootstrapSession();
 });
 
-async function loadPeachTransactions() {
+async function loadCabinetStatistics() {
   if (!isAuthenticated.value) {
     peachTransactions.value = [];
+    ratingEvents.value = [];
     return;
   }
 
   peachTransactionsBusy.value = true;
+  ratingEventsBusy.value = true;
   peachTransactionsError.value = '';
+  ratingEventsError.value = '';
   try {
-    const { data } = await apolloClient.query({
-      query: MY_PEACH_TRANSACTIONS_QUERY,
-      variables: { limit: 50 },
-      fetchPolicy: 'network-only',
-    });
-    peachTransactions.value = data?.myPeachTransactions ?? [];
+    const [peaches, ratings] = await Promise.all([
+      apolloClient.query({ query: MY_PEACH_TRANSACTIONS_QUERY, variables: { limit: 50 }, fetchPolicy: 'network-only' }),
+      apolloClient.query({ query: MY_RATING_EVENTS_QUERY, variables: { limit: 50 }, fetchPolicy: 'network-only' }),
+    ]);
+    peachTransactions.value = peaches.data?.myPeachTransactions ?? [];
+    ratingEvents.value = ratings.data?.myRatingEvents ?? [];
   } catch {
     peachTransactionsError.value = 'Не удалось загрузить историю персиков.';
+    ratingEventsError.value = 'Не удалось загрузить историю рейтинга.';
   } finally {
     peachTransactionsBusy.value = false;
+    ratingEventsBusy.value = false;
   }
+}
+
+async function purchaseAudioPack() {
+  peachBusy.value = true;
+  peachStatus.value = '';
+  try {
+    await apolloClient.mutate({ mutation: PURCHASE_AUDIO_UPLOAD_PACK_MUTATION });
+    await bootstrapSession();
+    await loadCabinetStatistics();
+    peachStatus.value = 'Пакет из 20 аудио-слотов куплен.';
+  } catch (error) {
+    peachStatus.value = error instanceof Error ? error.message : 'Не удалось купить аудио-слоты.';
+  } finally { peachBusy.value = false; }
+}
+
+async function submitReviewRequest() {
+  reviewBusy.value = true;
+  reviewStatus.value = '';
+  try {
+    await apolloClient.mutate({ mutation: REQUEST_ADMIN_REVIEW_MUTATION, variables: { title: reviewForm.value.title, message: reviewForm.value.message || null } });
+    reviewForm.value = { title: '', message: '' };
+    await bootstrapSession();
+    await loadCabinetStatistics();
+    reviewStatus.value = 'Заявка на рецензию отправлена.';
+  } catch (error) {
+    reviewStatus.value = error instanceof Error ? error.message : 'Не удалось отправить заявку.';
+  } finally { reviewBusy.value = false; }
 }
 
 function syncProfileForm({ clearSuccess = false } = {}) {
@@ -120,7 +165,7 @@ watch(
   currentUser,
   () => {
     syncProfileForm();
-    loadPeachTransactions();
+    loadCabinetStatistics();
   },
   { immediate: true },
 );
@@ -360,17 +405,13 @@ async function submitProfileImage(kind) {
           </div>
         </article>
         <article class="dash-card stats-card"><div class="card-heading"><h2>Статистика писателя</h2><RouterLink :to="myWorksLink">Подробнее</RouterLink></div><div><span><small>Произведений</small><b>{{ profile?.worksCountCached ?? 0 }}</b></span><span><small>Рейтинг</small><b>{{ profile?.ratingTotal ?? 0 }}</b></span><span><small>В витрине</small><b>{{ profile?.isFeatured ? 'Да' : 'Нет' }}</b></span><span><small>Статус</small><b>{{ profile?.isClassic ? 'Классик' : 'Автор' }}</b></span></div></article>
-        <article class="dash-card peach-history-card">
-          <div class="card-heading"><h2>История персиков</h2><b>{{ peachBalance > 0 ? '+' : '' }}{{ peachBalance }}</b></div>
-          <p v-if="peachTransactionsBusy">Загружаем операции…</p>
-          <p v-else-if="peachTransactionsError" class="message error">{{ peachTransactionsError }}</p>
-          <p v-else-if="!peachTransactions.length">Операций с персиками пока нет.</p>
-          <div v-else class="peach-transactions">
-            <div v-for="transaction in peachTransactions.slice(0, 5)" :key="transaction.id" class="peach-transaction">
-              <span><b>{{ transaction.note || transaction.kind }}</b><small>{{ formatDateTime(transaction.createdAt) }}</small></span>
-              <strong :class="{ 'is-negative': Number(transaction.amount) < 0 }">{{ Number(transaction.amount) > 0 ? '+' : '' }}{{ transaction.amount }}</strong>
-            </div>
-          </div>
+        <article class="dash-card cabinet-ledger-card">
+          <div class="card-heading"><h2>Рейтинг и персики</h2><b>{{ ratingTotal }} ★</b></div>
+          <div class="cabinet-metrics"><span><small>Рейтинг</small><b>{{ ratingTotal }}</b></span><span><small>За этот месяц</small><b>+{{ ratingMonthPoints }}</b></span><span><small>Персиков</small><b>{{ peachBalance }}</b></span><span><small>Аудио-слотов</small><b>{{ audioUploadSlots }}</b></span></div>
+          <div class="cabinet-ledger-actions"><button class="btn btn-outline" type="button" @click="ratingHistoryOpen = !ratingHistoryOpen">{{ ratingHistoryOpen ? 'Скрыть рейтинг' : 'История рейтинга' }}</button><button class="btn btn-outline" type="button" @click="peachHistoryOpen = !peachHistoryOpen">{{ peachHistoryOpen ? 'Скрыть операции' : 'История персиков' }}</button></div>
+          <div v-if="ratingHistoryOpen" class="cabinet-ledger-list"><p v-if="ratingEventsBusy">Загружаем начисления…</p><p v-else-if="ratingEventsError" class="message error">{{ ratingEventsError }}</p><p v-else-if="!ratingEvents.length">Рейтинговых начислений пока нет.</p><div v-else v-for="event in ratingEvents" :key="event.id" class="cabinet-ledger-row"><span><b>{{ event.label }}</b><small>{{ formatDateTime(event.createdAt) }}</small></span><strong>+{{ event.points }}</strong></div></div>
+          <div v-if="peachHistoryOpen" class="cabinet-ledger-list"><p v-if="peachTransactionsBusy">Загружаем операции…</p><p v-else-if="peachTransactionsError" class="message error">{{ peachTransactionsError }}</p><p v-else-if="!peachTransactions.length">Операций с персиками пока нет.</p><div v-else v-for="transaction in peachTransactions" :key="transaction.id" class="cabinet-ledger-row"><span><b>{{ transaction.note || transaction.kind }}</b><small>{{ formatDateTime(transaction.createdAt) }}</small></span><strong :class="{ 'is-negative': Number(transaction.amount) < 0 }">{{ Number(transaction.amount) > 0 ? '+' : '' }}{{ transaction.amount }}</strong></div></div>
+          <div class="cabinet-peach-tools"><button class="btn btn-primary" type="button" :disabled="peachBusy" @click="purchaseAudioPack">{{ peachBusy ? 'Покупаем…' : '20 аудио-слотов за 100 персиков' }}</button><div v-if="peachStatus" class="message" :class="peachStatus.includes('куплен') ? 'success' : 'error'">{{ peachStatus }}</div><form class="cabinet-review-form" @submit.prevent="submitReviewRequest"><label>Заявка на рецензию<input v-model="reviewForm.title" required placeholder="Что нужно посмотреть"></label><label>Комментарий<textarea v-model="reviewForm.message" placeholder="Ссылка или пожелания"></textarea></label><button class="btn btn-outline" type="submit" :disabled="reviewBusy">{{ reviewBusy ? 'Отправляем…' : 'Заказать рецензию за 100 персиков' }}</button></form><div v-if="reviewStatus" class="message" :class="reviewStatus.includes('отправлена') ? 'success' : 'error'">{{ reviewStatus }}</div></div>
         </article>
         <article class="dash-card public-info"><div class="card-heading"><h2>Публичная информация</h2><RouterLink v-if="currentUser?.login" :to="myAuthorPageLink">Просмотреть</RouterLink></div><p><small>Псевдоним</small><b>{{ displayName }}</b></p><p><small>Город</small><b>{{ profile?.city || 'Не указан' }}</b></p><p><small>О себе</small><b>{{ profile?.bio || 'Пока без описания' }}</b></p></article>
         <article class="dash-card author-profile"><div class="card-heading"><h2>Профиль автора</h2><RouterLink v-if="currentUser?.login" :to="myAuthorPageLink">Открыть</RouterLink></div><p>Логин <b>@{{ currentUser?.login }}</b></p><p>Роль <b>{{ currentUser?.role || 'author' }}</b></p><p>Сайт <b>{{ profile?.websiteUrl || '—' }}</b></p></article>
