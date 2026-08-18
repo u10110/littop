@@ -5212,6 +5212,88 @@ nav.menu {
     bottom: 7px
 }
 
+.people-side-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0
+}
+
+.people-side .people-profile-link {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px 0;
+    color: inherit;
+    text-decoration: none
+}
+
+.people-side .people-profile-link:hover,
+.people-side .people-profile-link:focus-visible {
+    color: #8f5c2a;
+    text-decoration: none
+}
+
+.people-side .people-profile-link:hover b,
+.people-side .people-profile-link:focus-visible b {
+    color: #8f5c2a;
+    text-decoration: none
+}
+
+.people-side .people-profile-link span {
+    overflow: hidden
+}
+
+.people-side .people-profile-link b,
+.people-side .people-profile-link small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-decoration: none
+}
+
+.people-side .people-avatar {
+    flex: 0 0 31px;
+    width: 31px;
+    height: 31px;
+    font-size: 12px
+}
+
+.message-author-icon {
+    flex: 0 0 27px;
+    width: 27px;
+    height: 27px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 1px solid #e2d4c5;
+    border-radius: 5px;
+    background: #fff;
+    color: #9f6936;
+    font: 14px/1 Inter, Arial, sans-serif;
+    cursor: pointer;
+    transition: border-color .15s, background .15s, color .15s
+}
+
+.message-author-icon:hover,
+.message-author-icon:focus-visible {
+    border-color: #c9823d;
+    background: #fcf2e6;
+    color: #85501e;
+    outline: none
+}
+
+.people-side-empty {
+    margin: 8px 0 3px;
+    color: #93897f;
+    font-size: 10px;
+    line-height: 1.4
+}
+
 .cabinet-intro {
     margin-bottom: 18px
 }
@@ -8307,6 +8389,106 @@ nav.menu {
     margin: 0 13px 13px
 }
 
+/* New-message author search: compact, aligned suggestions inside the dialogs rail. */
+.new-dialog-search {
+    margin-bottom: 6px;
+    background: #fcf8f3;
+    border-color: #e5d8ca;
+    color: #ad7540
+}
+
+.new-dialog-search:focus-within {
+    border-color: #c9823d;
+    box-shadow: 0 0 0 3px rgba(201, 130, 61, .1)
+}
+
+.author-start-list {
+    margin: 0 15px 11px;
+    overflow: hidden;
+    border: 1px solid #ebe1d7;
+    border-radius: 6px;
+    background: #fffefd
+}
+
+.author-start-row {
+    width: 100%;
+    min-height: 54px;
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 10px;
+    border: 0;
+    border-bottom: 1px solid #f0e9e1;
+    background: transparent;
+    color: #3f3832;
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+    transition: background .15s ease
+}
+
+.author-start-row:last-child {
+    border-bottom: 0
+}
+
+.author-start-row:hover,
+.author-start-row:focus-visible {
+    background: #fcf5ec;
+    outline: none
+}
+
+.author-start-row img,
+.author-start-row .message-avatar {
+    width: 34px;
+    height: 34px
+}
+
+.author-start-row > span:not(.message-avatar) {
+    display: grid;
+    min-width: 0;
+    gap: 2px
+}
+
+.author-start-row b {
+    overflow: hidden;
+    font-size: 11px;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap
+}
+
+.author-start-row small {
+    overflow: hidden;
+    color: #9b938b;
+    font-size: 10px;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap
+}
+
+.author-start-row em {
+    padding: 5px 7px;
+    border: 1px solid #dfc7ae;
+    border-radius: 4px;
+    color: #9e6735;
+    font-size: 10px;
+    font-style: normal;
+    white-space: nowrap
+}
+
+.author-start-row:hover em,
+.author-start-row:focus-visible em {
+    border-color: #c9823d;
+    background: #fff;
+    color: #885420
+}
+
+.dialogs-card > .messages-empty {
+    margin: 9px 16px 12px;
+    font-size: 11px
+}
+
 /* Final shared public content rail — keep all public pages aligned. */
 :root {
     --content-max: 1180px;
@@ -8361,6 +8543,10 @@ nav.menu {
 .weekly-work h3 a, .announce-item h3 a, .fresh-work b a {
     color: inherit
 }
+
+/* Live cabinet: migrated from the approved /new/account.html layout. */
+.password-input-row{position:relative;display:flex;align-items:center}.password-input-row .input{width:100%;padding-right:45px}.password-toggle{position:absolute;right:5px;display:grid;place-items:center;width:34px;height:34px;padding:0;border:0;border-radius:5px;background:transparent;color:#756c63;cursor:pointer}.password-toggle:hover{background:#f4ede4;color:#9e6735}.password-toggle:focus-visible{outline:2px solid #c9823d;outline-offset:1px}.password-toggle svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.personal-cabinet{max-width:1454px;margin:0 auto;padding:42px 20px 58px;color:#2b2926}.personal-cabinet .cabinet-intro{margin-bottom:18px}.personal-cabinet .cabinet-intro h1{font:600 30px Georgia,serif;margin:0 0 7px}.personal-cabinet .cabinet-intro p{margin:0;color:#837b73;font-size:13px}.personal-cabinet .cabinet-top,.personal-cabinet .cabinet-mid,.personal-cabinet .cabinet-info,.personal-cabinet .cabinet-bottom{display:grid;gap:14px;margin-bottom:14px}.personal-cabinet .cabinet-top{grid-template-columns:4fr 3fr 5fr}.personal-cabinet .cabinet-mid,.personal-cabinet .cabinet-bottom{grid-template-columns:5fr 7fr}.personal-cabinet .cabinet-info{grid-template-columns:3fr 4fr 2.5fr 2.5fr}.personal-cabinet .dash-card{background:#fffefd;border:1px solid #e8ddd3;border-radius:9px;box-shadow:0 2px 8px rgba(117,88,46,.05);padding:15px;min-width:0}.personal-cabinet .card-heading{display:flex;justify-content:space-between;align-items:center;gap:10px}.personal-cabinet .card-heading h2,.personal-cabinet .dash-card h2{margin:0;font:600 15px Inter,Arial,sans-serif}.personal-cabinet .card-heading>a{font-size:11px;color:#8c8278}.personal-cabinet .dash-card>p{font-size:11px;color:#796f66;line-height:1.45}.personal-cabinet .photos{display:grid;grid-template-columns:1fr 1.25fr;gap:14px}.personal-cabinet .photos>div{display:grid;gap:6px;align-content:start;font-size:11px;min-width:0}.personal-cabinet .photos small{font-size:9px;color:#9b9289}.personal-cabinet .photos .btn{width:max-content;max-width:100%;font-size:10px;padding:7px}.personal-cabinet .author-photo{width:74px;height:74px;border-radius:50%;object-fit:cover}.personal-cabinet .author-photo-placeholder{display:grid;place-items:center;background:#e7d4bf;color:#674923;font:600 28px Georgia,serif}.personal-cabinet .cover-photo,.personal-cabinet .cover-photo-image{width:100%;height:73px;border-radius:5px;object-fit:cover}.personal-cabinet .cover-photo{background:linear-gradient(135deg,#7b9ea2,#e0be88 55%,#546f58)}.personal-cabinet .activity-card>div,.personal-cabinet .stats-card>div{display:grid;gap:7px}.personal-cabinet .activity-card span,.personal-cabinet .stats-card span{display:grid;padding:8px;background:#faf6f0;border-radius:4px}.personal-cabinet .activity-card small,.personal-cabinet .stats-card small,.personal-cabinet .public-info small{font-size:9px;color:#9a9086}.personal-cabinet .activity-card b,.personal-cabinet .stats-card b{font-size:12px}.personal-cabinet .verified{color:#4f8a62!important}.personal-cabinet .actions-card>div{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.personal-cabinet .actions-card a{display:flex;gap:7px;align-items:center;min-height:39px;padding:6px;border:1px solid #eadfd4;border-radius:5px;color:#775833;font-size:16px}.personal-cabinet .actions-card a:hover{background:#fcf5ec;text-decoration:none}.personal-cabinet .actions-card a span{font-size:10px;color:#51493f;line-height:1.25}.personal-cabinet .cab-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}.personal-cabinet .cab-tabs a{padding:6px 8px;border:1px solid #e7ddd3;border-radius:4px;font-size:10px;color:#766b60}.personal-cabinet .cab-tabs a:first-child{background:#c9823d;color:#fff;border-color:#c9823d}.personal-cabinet .cabinet-profile-form{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.personal-cabinet .cabinet-profile-form label{display:grid;gap:4px;font-size:10px;color:#766c62}.personal-cabinet .cabinet-profile-form input,.personal-cabinet .cabinet-profile-form textarea,.personal-cabinet .profile-image-card input{box-sizing:border-box;width:100%;border:1px solid #dfd6cb;border-radius:5px;padding:8px;font:11px Inter,Arial,sans-serif}.personal-cabinet .cabinet-profile-form textarea{height:67px;resize:vertical}.personal-cabinet .profile-bio-field,.personal-cabinet .cabinet-profile-form .inline-actions{grid-column:1/-1}.personal-cabinet .inline-actions{display:flex;gap:8px;flex-wrap:wrap}.personal-cabinet .inline-actions .btn{font-size:10px;padding:7px 11px}.personal-cabinet .profile-image-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.personal-cabinet .profile-image-card{display:grid;gap:7px;padding:8px;border:1px solid #eee7df;border-radius:5px;font-size:10px}.personal-cabinet .profile-image-card .btn{justify-self:start;font-size:10px;padding:7px 9px}.personal-cabinet .stats-card>div{grid-template-columns:1fr 1fr}.personal-cabinet .stats-card span{min-height:37px}.personal-cabinet .public-info p{display:grid;gap:3px;margin:9px 0}.personal-cabinet .public-info b{font-size:10px;overflow-wrap:anywhere}.personal-cabinet .notifications p,.personal-cabinet .author-profile p{display:flex;justify-content:space-between;gap:8px;padding:7px 0;margin:0;border-bottom:1px solid #eee7df;font-size:10px}.personal-cabinet .notifications p:last-child,.personal-cabinet .author-profile p:last-child{border-bottom:0}.personal-cabinet .publications>div{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}.personal-cabinet .publications a{display:grid;gap:6px;min-width:0}.personal-cabinet .publication-cover{width:100%;height:86px;display:grid;place-items:center;border-radius:4px;background:linear-gradient(135deg,#647d83,#d7b27c 60%,#4f6b53);color:rgba(255,255,255,.92);font:600 28px Georgia,serif}.personal-cabinet .publications b{display:block;font-size:10px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.personal-cabinet .publications small{display:block;margin-top:3px;font-size:8px;color:#93897f}.personal-cabinet .cabinet-live-section{margin-top:18px}.personal-cabinet .cabinet-live-section .panel{background:#fffefd;border:1px solid #e8ddd3;border-radius:9px;box-shadow:0 2px 8px rgba(117,88,46,.05)}.personal-cabinet .personal-guest-panel{max-width:620px;margin:42px auto}@media(max-width:1100px){.personal-cabinet .cabinet-top{grid-template-columns:1fr 1fr}.personal-cabinet .actions-card{grid-column:span 2}.personal-cabinet .cabinet-info{grid-template-columns:1fr 1fr}}@media(max-width:700px){.personal-cabinet{padding:26px 14px 40px}.personal-cabinet .cabinet-top,.personal-cabinet .cabinet-mid,.personal-cabinet .cabinet-info,.personal-cabinet .cabinet-bottom,.personal-cabinet .cabinet-profile-form{grid-template-columns:1fr}.personal-cabinet .actions-card{grid-column:auto}.personal-cabinet .photos,.personal-cabinet .profile-image-grid{grid-template-columns:1fr}.personal-cabinet .publications>div{grid-template-columns:1fr 1fr}.personal-cabinet .profile-bio-field,.personal-cabinet .cabinet-profile-form .inline-actions{grid-column:auto}}
 
 .weekly-work h3 a:hover, .announce-item h3 a:hover, .fresh-work b a:hover {
     color: var(--terra);

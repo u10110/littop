@@ -464,6 +464,18 @@ export const MY_CONVERSATIONS_QUERY = gql`
   ${AUTHOR_CARD_FIELDS}
 `;
 
+export const MESSAGES_SIDEBAR_QUERY = gql`
+  ${AUTHOR_CARD_FIELDS}
+  query MessagesSidebar {
+    onlineAuthors(limit: 3) {
+      ...AuthorCardFields
+    }
+    todayVisitors(limit: 3) {
+      ...AuthorCardFields
+    }
+  }
+`;
+
 export const DIRECT_MESSAGES_QUERY = gql`
   query DirectMessages($peerUserId: ID!) { directMessages(peerUserId: $peerUserId) { ...DirectMessageFields } }
   ${DIRECT_MESSAGE_FIELDS}
@@ -489,6 +501,24 @@ export const REGISTER_MUTATION = gql`
   ${USER_SESSION_FIELDS}
   mutation Register($input: RegisterInput!) {
     register(input: $input) {
+      token
+      user {
+        ...UserSessionFields
+      }
+    }
+  }
+`;
+
+export const REQUEST_PASSWORD_RESET_MUTATION = gql`
+  mutation RequestPasswordReset($email: String!) {
+    requestPasswordReset(email: $email)
+  }
+`;
+
+export const RESET_PASSWORD_MUTATION = gql`
+  ${USER_SESSION_FIELDS}
+  mutation ResetPassword($token: String!, $password: String!) {
+    resetPassword(token: $token, password: $password) {
       token
       user {
         ...UserSessionFields

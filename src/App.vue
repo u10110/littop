@@ -21,6 +21,9 @@ const authMode = ref('login');
 const authSuccess = ref('');
 const socialAuthFeedback = ref('');
 const isAuthModalOpen = ref(false);
+const loginPasswordVisible = ref(false);
+const registerPasswordVisible = ref(false);
+const authBackdropPointerStartedOutside = ref(false);
 const loginForm = ref({
   identifier: '',
   password: '',
@@ -80,11 +83,29 @@ function setSuccessMessage(message) {
 
 function openAuthModal(mode = 'login') {
   authMode.value = mode;
+  loginPasswordVisible.value = false;
+  registerPasswordVisible.value = false;
   isAuthModalOpen.value = true;
 }
 
 function closeAuthModal() {
+  loginPasswordVisible.value = false;
+  registerPasswordVisible.value = false;
+  authBackdropPointerStartedOutside.value = false;
   isAuthModalOpen.value = false;
+}
+
+function rememberAuthBackdropPointerStart(event) {
+  authBackdropPointerStartedOutside.value = event.target === event.currentTarget;
+}
+
+function closeAuthModalOnOutsidePointerEnd(event) {
+  const endedOutside = event.target === event.currentTarget;
+  if (authBackdropPointerStartedOutside.value && endedOutside) {
+    closeAuthModal();
+    return;
+  }
+  authBackdropPointerStartedOutside.value = false;
 }
 
 function handleOpenAuthEvent(event) {
@@ -164,6 +185,17 @@ async function handleSocialAuthCallback() {
   }
 }
 
+async function handlePasswordResetLink() {
+  if (route.path !== '/' || route.query?.auth !== 'reset') {
+    return;
+  }
+
+  await router.replace({
+    path: '/login',
+    query: { ...route.query },
+  });
+}
+
 onMounted(() => {
   bootstrapSession();
   window.addEventListener('littop:open-auth', handleOpenAuthEvent);
@@ -198,6 +230,7 @@ watch(isAuthenticated, (value) => {
 watch(
   () => route.fullPath,
   () => {
+    void handlePasswordResetLink();
     void handleSocialAuthCallback();
   },
   { immediate: true },
@@ -248,7 +281,7 @@ async function submitLogout() {
   <header class="top"><div class="wrap"><RouterLink to="/" class="logo" aria-label="Littop — на главную"><img :src="referenceLogo" alt="Littop — Литература без границ"></RouterLink><div class="search" role="search"><input aria-label="Поиск по сайту" placeholder="Поиск по сайту"><span class="search-icon" aria-hidden="true">🔎</span></div><div class="header-actions"><template v-if="isAuthenticated"><RouterLink class="header-login" to="/personal">{{ displayName }}</RouterLink><RouterLink class="notification-bell" to="/messages" aria-label="Мои сообщения"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><i v-if="unreadMessagesCount">{{ unreadMessagesCount > 99 ? '99+' : unreadMessagesCount }}</i></RouterLink><button class="header-register" type="button" @click="submitLogout">Выйти</button></template><template v-else><button class="header-login" type="button" @click="openAuthModal('login')">Войти</button><button class="header-register" type="button" @click="openAuthModal('register')">Регистрация</button></template></div><nav class="menu" aria-label="Основная навигация"><RouterLink to="/works"><svg class="menu-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h5v18H6a2 2 0 0 0-2 2z"/><path d="M20 5a2 2 0 0 0-2-2h-5v18h5a2 2 0 0 1 2 2z"/></svg>Произведения</RouterLink><RouterLink to="/authors"><svg class="menu-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Авторы</RouterLink><RouterLink to="/forum"><svg class="menu-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 21c0-4 3-6 6-6s6 2 6 6M14 16c3 0 5 1.7 5 5"/></svg>Сообщество</RouterLink><RouterLink to="/activity"><svg class="menu-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14v18H5z"/><path d="M8 7h8M8 11h8M8 15h5"/></svg>Журнал</RouterLink><RouterLink to="/contests"><svg class="menu-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.5 5 5.5.8-4 3.9 1 5.5L12 21l-5 2.2 1-5.5-4-3.9 5.5-.8z"/></svg>Конкурсы</RouterLink><RouterLink to="/radio"><svg class="menu-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M5 12a7 7 0 0 1 14 0M2 12a10 10 0 0 1 20 0"/></svg>Радио</RouterLink><details class="more-menu"><summary><svg class="menu-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Ещё <span>⌄</span></summary><div class="more-panel"><template v-if="isAdmin"><RouterLink to="/promotion"><svg class="menu-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18 10 12l4 3 6-8"/><path d="M16 7h4v4"/></svg>Продвижение</RouterLink><RouterLink to="/editorial-queue"><svg class="menu-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 19 1.5-5L16 4.5a2.1 2.1 0 0 1 3 3L9.5 17z"/><path d="m13.5 7.5 3 3"/></svg>Редакция</RouterLink><RouterLink to="/activity"><svg class="menu-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14v18H5z"/><path d="M8 7h8M8 11h8M8 15h5"/></svg>Новости и активность</RouterLink><RouterLink to="/reviews"><svg class="menu-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v11H9l-4 4z"/><path d="M8 9h8M8 12h5"/></svg>Отзывы и рецензии</RouterLink><RouterLink to="/albums"><svg class="menu-ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="m5 17 5-5 3 3 2-2 4 4"/></svg>Фотоальбомы</RouterLink><RouterLink to="/blogs"><svg class="menu-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 19 1.5-5L16 4.5a2.1 2.1 0 0 1 3 3L9.5 17z"/><path d="m13.5 7.5 3 3"/></svg>Блоги пользователей</RouterLink></template><RouterLink to="/about"><svg class="menu-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></svg>О проекте</RouterLink><RouterLink to="/contacts"><svg class="menu-ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg>Контакты</RouterLink></div></details><RouterLink to="/personal">▣ Кабинет</RouterLink></nav></div></header>
 
   <Transition name="fade-modal">
-    <div v-if="isAuthModalOpen" class="modal-backdrop" @click.self="closeAuthModal">
+    <div v-if="isAuthModalOpen" class="modal-backdrop" @pointerdown="rememberAuthBackdropPointerStart" @pointerup="closeAuthModalOnOutsidePointerEnd" @pointercancel="authBackdropPointerStartedOutside = false">
       <div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
         <div class="section-head">
           <div class="stack compact-stack">
@@ -288,7 +321,10 @@ async function submitLogout() {
           </div>
           <div class="field">
             <label for="login-password">Пароль</label>
-            <input id="login-password" v-model="loginForm.password" class="input" type="password" required />
+            <div class="password-input-row">
+              <input id="login-password" v-model="loginForm.password" class="input" :type="loginPasswordVisible ? 'text' : 'password'" autocomplete="current-password" required />
+              <button class="password-toggle" type="button" :aria-pressed="loginPasswordVisible" :aria-label="loginPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'" @click="loginPasswordVisible = !loginPasswordVisible"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.8"/><path v-if="loginPasswordVisible" d="M4 4l16 16"/></svg></button>
+            </div>
           </div>
           <button class="btn btn-primary" type="submit" :disabled="authBusy">{{ authBusy ? 'Входим…' : 'Войти' }}</button><RouterLink class="btn btn-ghost" to="/login?auth=forgot" @click="closeAuthModal">Забыли пароль?</RouterLink><div class="social-auth-block">
             <div class="meta">Или войди через соцсеть</div>
@@ -321,7 +357,10 @@ async function submitLogout() {
           </div>
           <div class="field">
             <label for="register-password">Пароль</label>
-            <input id="register-password" v-model="registerForm.password" class="input" type="password" required />
+            <div class="password-input-row">
+              <input id="register-password" v-model="registerForm.password" class="input" :type="registerPasswordVisible ? 'text' : 'password'" autocomplete="new-password" required />
+              <button class="password-toggle" type="button" :aria-pressed="registerPasswordVisible" :aria-label="registerPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'" @click="registerPasswordVisible = !registerPasswordVisible"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.8"/><path v-if="registerPasswordVisible" d="M4 4l16 16"/></svg></button>
+            </div>
           </div>
           <label class="terms-check">
             <input v-model="registerForm.acceptTerms" type="checkbox" required />

@@ -16,19 +16,14 @@ import newLight from '../assets/new-reference/new-light.jpg';
 import contestSpring from '../assets/new-reference/contest-spring.jpg';
 
 const { result, loading, error } = useQuery(HOME_QUERY, null, { fetchPolicy: 'cache-and-network' });
-function isPublicHomeItem(item) {
-  const text = [item?.title, item?.body, item?.summary, item?.author?.displayName, item?.author?.login]
-    .filter(Boolean).join(' ').toLowerCase();
-  return !/(poor user|announcer test|linkstest|test hermes|тест|фывфыв|test rider|тест ридер)/i.test(text);
-}
-const featuredAuthors = computed(() => (result.value?.featuredAuthors ?? []).filter(isPublicHomeItem));
-const classicAuthors = computed(() => (result.value?.classicAuthors ?? []).filter(isPublicHomeItem));
-const todayVisitors = computed(() => (result.value?.todayVisitors ?? []).filter(isPublicHomeItem));
-const recentWorks = computed(() => (result.value?.recentWorks ?? []).filter(isPublicHomeItem));
-const recentTopics = computed(() => (result.value?.recentTopics ?? []).filter(isPublicHomeItem));
-const editorColumnTopics = computed(() => (result.value?.editorColumnTopics ?? []).filter(isPublicHomeItem));
-const announcements = computed(() => (result.value?.announcements ?? []).filter(isPublicHomeItem));
-const recentComments = computed(() => (result.value?.recentComments ?? []).filter(isPublicHomeItem));
+const featuredAuthors = computed(() => result.value?.featuredAuthors ?? []);
+const classicAuthors = computed(() => result.value?.classicAuthors ?? []);
+const todayVisitors = computed(() => result.value?.todayVisitors ?? []);
+const recentWorks = computed(() => result.value?.recentWorks ?? []);
+const recentTopics = computed(() => result.value?.recentTopics ?? []);
+const editorColumnTopics = computed(() => result.value?.editorColumnTopics ?? []);
+const announcements = computed(() => result.value?.announcements ?? []);
+const recentComments = computed(() => result.value?.recentComments ?? []);
 const contests = computed(() => result.value?.contests ?? []);
 const radioTracks = computed(() => result.value?.radioTracks ?? []);
 const workImages = [bookFog, bookShadows, bookRiver, bookWind];

@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
+import { useQuery } from '@vue/apollo-composable';
 import { RouterLink } from 'vue-router';
 
 import WorkPublishForm from './WorkPublishForm.vue';
@@ -7,7 +8,8 @@ import { useSession } from '../lib/session.js';
 import { formatDate, formatDateTime } from '../lib/format.js';
 import { filenameToTrackTitle, probeAudioDuration, uploadRadioTrack } from '../lib/radio.js';
 import { uploadProfileImage } from '../lib/profileImages.js';
-import { buildAuthorPageLocation } from '../lib/routes.js';
+import { buildAuthorPageLocation, buildWorkPageLocation } from '../lib/routes.js';
+import { WORKS_QUERY } from '../lib/graphql.js';
 
 const {
   currentUser,
@@ -18,6 +20,22 @@ const {
   bootstrapSession,
   saveProfile,
 } = useSession();
+
+const myWorksQueryVariables = computed(() => ({
+  limit: 4,
+  offset: 0,
+  sectionCode: null,
+  genreSlug: null,
+  search: null,
+  authorId: currentUser.value?.id ?? null,
+  createdToday: null,
+}));
+const { result: myWorksResult, loading: myWorksLoading } = useQuery(
+  WORKS_QUERY,
+  myWorksQueryVariables,
+  () => ({ enabled: Boolean(currentUser.value?.id), fetchPolicy: 'cache-and-network' }),
+);
+const myRecentWorks = computed(() => myWorksResult.value?.works ?? []);
 
 const profile = computed(() => currentUser.value?.profile ?? null);
 const displayName = computed(() => profile.value?.displayName || currentUser.value?.login || 'Автор');
@@ -214,301 +232,118 @@ async function submitProfileImage(kind) {
 </script>
 
 <template>
-  <section class="section-block personal-ref">
-    <div class="page-head">
-      <div class="chips">
-        <span class="pill">Личный раздел</span>
-        <span class="pill" :class="isAuthenticated ? 'good' : 'warn'">
-          {{ isAuthenticated ? 'Сессия активна' : 'Нужен вход' }}
-        </span>
-      </div>
-      <h1>Мой кабинет</h1>
-      <p>
-        Здесь можно редактировать профиль автора, загрузить большое фото и аватарку, быстро перейти к своим произведениям и сразу опубликовать новый текст.
-      </p>
-    </div>
-
+  <main class="cabinet-page personal-cabinet">
     <div v-if="!bootstrapped && !isAuthenticated" class="message">Проверяем сохранённую сессию…</div>
 
-    <div v-else-if="!isAuthenticated" class="panel personal-guest-panel">
-      <h2>Сначала авторизуйся</h2>
-      <p class="muted">
-        Для доступа к кабинету нужен вход в аккаунт. Открой модальное окно авторизации и после входа страница
-        сразу станет доступна.
-      </p>
+    <section v-else-if="!isAuthenticated" class="dash-card personal-guest-panel">
+      <h1>Личный кабинет</h1>
+      <p>Для доступа к кабинету нужен вход в аккаунт.</p>
       <div class="inline-actions">
-        <button class="btn btn-primary" type="button" @click="openAuthModal('login')">Открыть вход</button>
+        <button class="btn btn-primary" type="button" @click="openAuthModal('login')">Войти</button>
         <button class="btn btn-outline" type="button" @click="openAuthModal('register')">Регистрация</button>
         <RouterLink class="btn btn-outline" to="/">На главную</RouterLink>
       </div>
-    </div>
+    </section>
 
     <template v-else>
-      <section class="stats-grid">
-        <article class="card stat">
-          <span class="meta">Автор</span>
-          <span class="value">{{ displayName }}</span>
-          <span class="note">@{{ currentUser?.login }}</span>
+      <section class="cabinet-intro">
+        <h1>Личный кабинет</h1>
+        <p><b>Добро пожаловать, {{ displayName }}!</b> Управляйте профилем, произведениями и активностью на сайте.</p>
+      </section>
+
+      <section class="cabinet-top">
+        <article class="dash-card photo-card">
+          <div class="card-heading"><h2>Фото автора</h2><a href="#profile-images">Изменить фото</a></div>
+          <p>Фотография отображается на странице автора и в публикациях.</p>
+          <div class="photos">
+            <div>
+              <img v-if="profileForm.avatarUrl" class="author-photo" :src="profileForm.avatarUrl" alt="Аватар автора">
+              <div v-else class="author-photo author-photo-placeholder">{{ displayName.slice(0, 1).toUpperCase() }}</div>
+              <b>Аватар</b><small>Изображение для публикаций и сообщений</small>
+              <a class="btn btn-primary" href="#profile-images">Загрузить аватар</a>
+            </div>
+            <div>
+              <img v-if="profileForm.coverImageUrl" class="cover-photo-image" :src="profileForm.coverImageUrl" alt="Обложка профиля">
+              <div v-else class="cover-photo"></div>
+              <b>Обложка профиля</b><small>Большое фото на странице автора</small>
+              <a class="btn btn-secondary" href="#profile-images">Загрузить обложку</a>
+            </div>
+          </div>
         </article>
-        <article class="card stat">
-          <span class="meta">Роль</span>
-          <span class="value">{{ currentUser?.role || 'reader' }}</span>
-          <span class="note">Статус: {{ currentUser?.status || 'active' }}</span>
+
+        <article class="dash-card activity-card">
+          <div class="card-heading"><h2>Активность</h2><RouterLink :to="myWorksLink">Подробнее</RouterLink></div>
+          <div>
+            <span><small>Регистрация</small><b>{{ formatDate(currentUser?.registeredAt || currentUser?.createdAt) }}</b></span>
+            <span><small>Последний вход</small><b>{{ formatDateTime(currentUser?.lastLoginAt) }}</b></span>
+            <span><small>Публикаций</small><b>{{ profile?.worksCountCached ?? 0 }}</b></span>
+          </div>
+          <p class="verified">✓ Подтверждён email<br>✓ Активный автор</p>
         </article>
-        <article class="card stat">
-          <span class="meta">Произведения</span>
-          <span class="value">{{ profile?.worksCountCached ?? 0 }}</span>
-          <span class="note">Сохранено в профиле</span>
-        </article>
-        <article class="card stat">
-          <span class="meta">Рейтинг</span>
-          <span class="value">{{ profile?.ratingTotal ?? 0 }}</span>
-          <span class="note">Суммарная оценка автора</span>
+
+        <article class="dash-card actions-card">
+          <h2>Быстрые действия</h2>
+          <div>
+            <a href="#publish-work">▤ <span>Добавить<br>произведение</span></a>
+            <RouterLink :to="myWorksLink">▧ <span>Мои<br>публикации</span></RouterLink>
+            <RouterLink to="/contests">♜ <span>Участвовать<br>в конкурсе</span></RouterLink>
+            <RouterLink to="/messages">✉ <span>Мои<br>сообщения</span></RouterLink>
+            <RouterLink v-if="currentUser?.login" :to="myAuthorPageLink">▥ <span>Страница<br>автора</span></RouterLink>
+            <a href="#profile-edit">⚙ <span>Настройки<br>профиля</span></a>
+          </div>
         </article>
       </section>
 
-      <section class="layout-columns personal-layout">
-        <article class="panel">
-          <div class="section-head">
-            <h2>Профиль</h2>
-            <span class="pill good">online</span>
+      <section class="cabinet-mid">
+        <article class="dash-card quick-nav">
+          <h2>Быстрая навигация</h2>
+          <div class="cab-tabs">
+            <RouterLink :to="myWorksLink">Мои произведения</RouterLink>
+            <RouterLink to="/messages">Сообщения</RouterLink>
+            <RouterLink to="/contests">Конкурсы</RouterLink>
+            <RouterLink to="/forum">Сообщество</RouterLink>
+            <RouterLink v-if="currentUser?.login" :to="myAuthorPageLink">Мой профиль</RouterLink>
           </div>
-
-          <div class="list personal-details">
-            <div class="inline-card">
-              <div class="meta">Email</div>
-              <strong>{{ currentUser?.email || '—' }}</strong>
-            </div>
-            <div class="inline-card">
-              <div class="meta">Логин</div>
-              <strong>@{{ currentUser?.login || '—' }}</strong>
-            </div>
-            <div class="inline-card">
-              <div class="meta">Отображаемое имя</div>
-              <strong>{{ displayName }}</strong>
-            </div>
-            <div class="inline-card">
-              <div class="meta">Город</div>
-              <strong>{{ profile?.city || 'Не указан' }}</strong>
-            </div>
-            <div class="inline-card">
-              <div class="meta">Сайт</div>
-              <strong>{{ profile?.websiteUrl || 'Не указан' }}</strong>
-            </div>
-            <div class="inline-card">
-              <div class="meta">О себе</div>
-              <div>{{ profile?.bio || 'Пока без описания.' }}</div>
-            </div>
-          </div>
+          <p>Быстрый переход к самым важным разделам кабинета.</p>
         </article>
 
-        <article class="panel">
-          <div class="section-head">
-            <h2>Редактирование данных</h2>
-            <span class="pill">Сохранение в backend</span>
-          </div>
-
-          <div class="note">Email и логин пока отображаются как справочные поля. Редактируются данные профиля автора.</div>
-
+        <article id="profile-edit" class="dash-card profile-edit-card">
+          <div class="card-heading"><h2>Публичная информация</h2><a href="#profile-edit">Редактировать</a></div>
           <div v-if="profileError" class="message error">{{ profileError }}</div>
           <div v-if="profileSuccess" class="message success">{{ profileSuccess }}</div>
-
-          <form class="auth-grid" @submit.prevent="submitProfile">
-            <div class="field">
-              <label for="profile-display-name">Отображаемое имя</label>
-              <input id="profile-display-name" v-model="profileForm.displayName" class="input" required />
-            </div>
-
-            <div class="field">
-              <label for="profile-city">Город</label>
-              <input id="profile-city" v-model="profileForm.city" class="input" placeholder="Например, Москва" />
-            </div>
-
-            <div class="field">
-              <label for="profile-website">Сайт</label>
-              <input id="profile-website" v-model="profileForm.websiteUrl" class="input" placeholder="https://example.com" />
-            </div>
-
-            <div class="field">
-              <label for="profile-bio">О себе</label>
-              <textarea id="profile-bio" v-model="profileForm.bio" class="textarea" placeholder="Короткое описание автора"></textarea>
-            </div>
-
-            <div class="inline-actions">
-              <button class="btn btn-primary" type="submit" :disabled="profileBusy || profileImageBusy">
-                {{ profileBusy ? 'Сохраняем…' : 'Сохранить изменения' }}
-              </button>
-              <button class="btn btn-outline" type="button" :disabled="profileBusy || profileImageBusy" @click="resetProfileForm">
-                Сбросить
-              </button>
-              <RouterLink v-if="currentUser?.login" class="btn btn-outline" :to="myAuthorPageLink">Открыть страницу автора</RouterLink>
-            </div>
+          <form class="cabinet-profile-form" @submit.prevent="submitProfile">
+            <label>Отображаемое имя<input v-model="profileForm.displayName" required></label>
+            <label>Город<input v-model="profileForm.city" placeholder="Например, Москва"></label>
+            <label>Сайт<input v-model="profileForm.websiteUrl" placeholder="https://example.com"></label>
+            <label class="profile-bio-field">О себе<textarea v-model="profileForm.bio" placeholder="Короткое описание автора"></textarea></label>
+            <div class="inline-actions"><button class="btn btn-primary" type="submit" :disabled="profileBusy || profileImageBusy">{{ profileBusy ? 'Сохраняем…' : 'Сохранить' }}</button><button class="btn btn-outline" type="button" @click="resetProfileForm">Сбросить</button></div>
           </form>
         </article>
       </section>
 
-      <section class="layout-columns personal-layout">
-        <article class="panel">
-          <div class="section-head">
-            <h2>Фото автора</h2>
-            <span class="pill">Аватар + большое фото</span>
-          </div>
-
-          <div class="note">
-            Аватарка идёт в форум и рецензии, а большое фото показывается на публичной странице автора отдельным крупным блоком.
-          </div>
-
+      <section id="profile-images" class="cabinet-info">
+        <article class="dash-card image-settings-card">
+          <div class="card-heading"><h2>Настройки фото</h2><a href="#profile-images">Загрузить</a></div>
           <div v-if="profileImageError" class="message error">{{ profileImageError }}</div>
           <div v-if="profileImageSuccess" class="message success">{{ profileImageSuccess }}</div>
-
           <div class="profile-image-grid">
-            <div class="profile-image-card">
-              <div class="meta">Аватарка для сообщений и рецензий</div>
-              <div class="profile-image-preview profile-image-preview-avatar">
-                <img v-if="profileForm.avatarUrl" :src="profileForm.avatarUrl" class="profile-image-preview-img" alt="Аватар автора" />
-                <div v-else class="profile-image-placeholder">Нет аватарки</div>
-              </div>
-              <input
-                ref="avatarFileInput"
-                class="input"
-                type="file"
-                accept="image/*"
-                @change="handleProfileImageChange('avatar', $event)"
-              />
-              <div class="inline-actions">
-                <button class="btn btn-primary" type="button" :disabled="profileImageBusy" @click="submitProfileImage('avatar')">
-                  {{ profileImageBusy ? 'Загружаем…' : 'Загрузить аватарку' }}
-                </button>
-                <button class="btn btn-outline" type="button" :disabled="profileImageBusy" @click="resetProfileImageSelection('avatar')">Сбросить</button>
-              </div>
-            </div>
-
-            <div class="profile-image-card">
-              <div class="meta">Большое фото автора</div>
-              <div class="profile-image-preview profile-image-preview-cover">
-                <img v-if="profileForm.coverImageUrl" :src="profileForm.coverImageUrl" class="profile-image-preview-img profile-image-preview-img-cover" alt="Большое фото автора" />
-                <div v-else class="profile-image-placeholder">Нет большого фото</div>
-              </div>
-              <input
-                ref="coverFileInput"
-                class="input"
-                type="file"
-                accept="image/*"
-                @change="handleProfileImageChange('cover', $event)"
-              />
-              <div class="inline-actions">
-                <button class="btn btn-primary" type="button" :disabled="profileImageBusy" @click="submitProfileImage('cover')">
-                  {{ profileImageBusy ? 'Загружаем…' : 'Загрузить большое фото' }}
-                </button>
-                <button class="btn btn-outline" type="button" :disabled="profileImageBusy" @click="resetProfileImageSelection('cover')">Сбросить</button>
-              </div>
-            </div>
+            <div class="profile-image-card"><b>Аватар</b><input ref="avatarFileInput" type="file" accept="image/*" @change="handleProfileImageChange('avatar', $event)"><button class="btn btn-primary" type="button" :disabled="profileImageBusy" @click="submitProfileImage('avatar')">Загрузить</button></div>
+            <div class="profile-image-card"><b>Обложка</b><input ref="coverFileInput" type="file" accept="image/*" @change="handleProfileImageChange('cover', $event)"><button class="btn btn-secondary" type="button" :disabled="profileImageBusy" @click="submitProfileImage('cover')">Загрузить</button></div>
           </div>
         </article>
-
-        <article class="panel">
-          <div class="section-head">
-            <h2>Активность</h2>
-            <span class="pill">Данные из session/me</span>
-          </div>
-
-          <div class="list personal-details">
-            <div class="inline-card">
-              <div class="meta">Регистрация</div>
-              <strong>{{ formatDate(currentUser?.registeredAt || currentUser?.createdAt) }}</strong>
-            </div>
-            <div class="inline-card">
-              <div class="meta">Последний вход</div>
-              <strong>{{ formatDateTime(currentUser?.lastLoginAt) }}</strong>
-            </div>
-            <div class="inline-card">
-              <div class="meta">Подборки</div>
-              <div class="chips">
-                <span class="pill" :class="profile?.isFeatured ? 'good' : 'warn'">
-                  {{ profile?.isFeatured ? 'В витрине' : 'Не в витрине' }}
-                </span>
-                <span class="pill" :class="profile?.isClassic ? 'good' : 'warn'">
-                  {{ profile?.isClassic ? 'Классик' : 'Обычный автор' }}
-                </span>
-              </div>
-            </div>
-          </div>
-        </article>
+        <article class="dash-card stats-card"><div class="card-heading"><h2>Статистика писателя</h2><RouterLink :to="myWorksLink">Подробнее</RouterLink></div><div><span><small>Произведений</small><b>{{ profile?.worksCountCached ?? 0 }}</b></span><span><small>Рейтинг</small><b>{{ profile?.ratingTotal ?? 0 }}</b></span><span><small>В витрине</small><b>{{ profile?.isFeatured ? 'Да' : 'Нет' }}</b></span><span><small>Статус</small><b>{{ profile?.isClassic ? 'Классик' : 'Автор' }}</b></span></div></article>
+        <article class="dash-card public-info"><div class="card-heading"><h2>Публичная информация</h2><RouterLink v-if="currentUser?.login" :to="myAuthorPageLink">Просмотреть</RouterLink></div><p><small>Псевдоним</small><b>{{ displayName }}</b></p><p><small>Город</small><b>{{ profile?.city || 'Не указан' }}</b></p><p><small>О себе</small><b>{{ profile?.bio || 'Пока без описания' }}</b></p></article>
+        <article class="dash-card author-profile"><div class="card-heading"><h2>Профиль автора</h2><RouterLink v-if="currentUser?.login" :to="myAuthorPageLink">Открыть</RouterLink></div><p>Логин <b>@{{ currentUser?.login }}</b></p><p>Роль <b>{{ currentUser?.role || 'author' }}</b></p><p>Сайт <b>{{ profile?.websiteUrl || '—' }}</b></p></article>
       </section>
 
-      <section class="layout-columns personal-layout">
-        <article class="panel">
-          <div class="section-head">
-            <h2>Быстрые переходы</h2>
-            <span class="meta">Из кабинета</span>
-          </div>
-          <div class="inline-actions">
-            <RouterLink class="btn btn-primary" :to="myWorksLink">Мои произведения</RouterLink>
-            <a class="btn btn-outline" href="#publish-work">Добавить публикацию</a>
-            <a class="btn btn-outline" href="#upload-audio">Добавить аудио</a>
-            <RouterLink v-if="currentUser?.login" class="btn btn-outline" :to="myAuthorPageLink">Моя страница автора</RouterLink>
-            <RouterLink class="btn btn-outline" to="/radio">Радио</RouterLink>
-            <RouterLink class="btn btn-outline" to="/works">Все произведения</RouterLink>
-            <RouterLink class="btn btn-outline" to="/authors">Авторы</RouterLink>
-            <RouterLink class="btn btn-outline" to="/forum">Форум</RouterLink>
-          </div>
-          <div class="note">
-            Кнопка «Мои произведения» открывает каталог сразу с фильтром <code>?mine=1</code> из адресной строки.
-          </div>
-        </article>
+      <section class="cabinet-bottom">
+        <article class="dash-card notifications"><div class="card-heading"><h2>Разделы автора</h2><RouterLink to="/messages">Сообщения</RouterLink></div><p><RouterLink to="/forum">▣ Сообщество и обсуждения</RouterLink></p><p><RouterLink to="/contests">♜ Литературные конкурсы</RouterLink></p><p><RouterLink to="/radio">◉ Радио Littop</RouterLink></p></article>
+        <article class="dash-card publications"><div class="card-heading"><h2>Ваши публикации</h2><RouterLink :to="myWorksLink">Все публикации</RouterLink></div><p v-if="myWorksLoading">Загружаем публикации…</p><p v-else-if="!myRecentWorks.length">Публикаций пока нет. Добавьте первую работу.</p><div v-else><RouterLink v-for="work in myRecentWorks" :key="work.id" :to="buildWorkPageLocation(work)"><div class="publication-cover">{{ work.title.slice(0, 1).toUpperCase() }}</div><span><b>{{ work.title }}</b><small>{{ formatDate(work.publishedAt || work.createdAt) }} · ♡ {{ work.likesCount || 0 }}</small></span></RouterLink></div></article>
       </section>
 
-      <section id="publish-work" class="section-block">
-        <div v-if="publishStatus" class="message success">{{ publishStatus }}</div>
-        <WorkPublishForm @created="handleWorkCreated" />
-      </section>
+      <section id="publish-work" class="cabinet-live-section"><div v-if="publishStatus" class="message success">{{ publishStatus }}</div><WorkPublishForm @created="handleWorkCreated" /></section>
 
-      <section id="upload-audio" class="section-block">
-        <article class="panel">
-          <div class="section-head">
-            <h2>Добавить аудио</h2>
-            <span class="pill">Файл → папка + БД</span>
-          </div>
-
-          <p class="note">
-            Загруженный аудиофайл сохраняется на сервере, запись попадает в <code>radio_tracks</code>, а трек сразу
-            появляется на странице «Радио».
-          </p>
-
-          <div v-if="audioError" class="message error">{{ audioError }}</div>
-          <div v-if="audioSuccess" class="message success">{{ audioSuccess }}</div>
-
-          <form class="auth-grid" @submit.prevent="submitAudio">
-            <div class="field">
-              <label for="audio-title">Название аудио</label>
-              <input id="audio-title" v-model="audioForm.title" class="input" required placeholder="Например, Вечерний эфир" />
-            </div>
-
-            <div class="field">
-              <label for="audio-file">Аудиофайл</label>
-              <input
-                id="audio-file"
-                ref="audioFileInput"
-                class="input"
-                type="file"
-                accept="audio/*"
-                required
-                @change="handleAudioFileChange"
-              />
-            </div>
-
-            <div class="inline-actions">
-              <button class="btn btn-primary" type="submit" :disabled="audioBusy">
-                {{ audioBusy ? 'Загружаем…' : 'Загрузить аудио' }}
-              </button>
-              <button class="btn btn-outline" type="button" :disabled="audioBusy" @click="resetAudioForm">
-                Сбросить
-              </button>
-              <RouterLink class="btn btn-outline" to="/radio">Открыть радио</RouterLink>
-            </div>
-          </form>
-        </article>
-      </section>
+      <section id="upload-audio" class="cabinet-live-section"><article class="dash-card"><div class="card-heading"><h2>Добавить аудио</h2><RouterLink to="/radio">Открыть радио</RouterLink></div><div v-if="audioError" class="message error">{{ audioError }}</div><div v-if="audioSuccess" class="message success">{{ audioSuccess }}</div><form class="cabinet-profile-form" @submit.prevent="submitAudio"><label>Название аудио<input v-model="audioForm.title" required placeholder="Например, Вечерний эфир"></label><label>Аудиофайл<input ref="audioFileInput" type="file" accept="audio/*" required @change="handleAudioFileChange"></label><div class="inline-actions"><button class="btn btn-primary" type="submit" :disabled="audioBusy">{{ audioBusy ? 'Загружаем…' : 'Загрузить аудио' }}</button><button class="btn btn-outline" type="button" @click="resetAudioForm">Сбросить</button></div></form></article></section>
     </template>
-  </section>
+  </main>
 </template>

@@ -7,7 +7,14 @@ import {
   getStoredToken,
   setStoredToken,
 } from './auth.js';
-import { LOGIN_MUTATION, ME_QUERY, REGISTER_MUTATION, UPDATE_MY_PROFILE_MUTATION } from './graphql.js';
+import {
+  LOGIN_MUTATION,
+  ME_QUERY,
+  REGISTER_MUTATION,
+  REQUEST_PASSWORD_RESET_MUTATION,
+  RESET_PASSWORD_MUTATION,
+  UPDATE_MY_PROFILE_MUTATION,
+} from './graphql.js';
 
 const state = reactive({
   token: getStoredToken(),
@@ -105,6 +112,41 @@ export function useSession() {
     }
   }
 
+  async function requestPasswordReset(email) {
+    state.authBusy = true;
+    state.authError = '';
+    try {
+      const { data } = await apolloClient.mutate({
+        mutation: REQUEST_PASSWORD_RESET_MUTATION,
+        variables: { email },
+      });
+      return Boolean(data?.requestPasswordReset);
+    } catch (error) {
+      state.authError = extractGraphqlErrorMessage(error, 'Не удалось отправить письмо для восстановления пароля.');
+      throw error;
+    } finally {
+      state.authBusy = false;
+    }
+  }
+
+  async function resetPassword({ token, password }) {
+    state.authBusy = true;
+    state.authError = '';
+    try {
+      const { data } = await apolloClient.mutate({
+        mutation: RESET_PASSWORD_MUTATION,
+        variables: { token, password },
+      });
+      await finishAuth(data?.resetPassword?.token ?? '');
+      return data?.resetPassword?.user ?? null;
+    } catch (error) {
+      state.authError = extractGraphqlErrorMessage(error, 'Не удалось сохранить новый пароль.');
+      throw error;
+    } finally {
+      state.authBusy = false;
+    }
+  }
+
   async function saveProfile(input) {
     state.profileBusy = true;
     state.profileError = '';
@@ -161,6 +203,8 @@ export function useSession() {
     bootstrapped: computed(() => state.bootstrapped),
     login,
     register,
+    requestPasswordReset,
+    resetPassword,
     saveProfile,
     completeExternalAuthToken,
     logout,

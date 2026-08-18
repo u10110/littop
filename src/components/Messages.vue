@@ -1,14 +1,20 @@
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue';
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRoute } from 'vue-router';
 import { useMutation, useQuery } from '@vue/apollo-composable';
-import { DIRECT_MESSAGES_QUERY, MY_CONVERSATIONS_QUERY, SEND_DIRECT_MESSAGE_MUTATION } from '../lib/graphql.js';
+import { apolloClient } from '../lib/apollo.js';
+import { AUTHOR_QUERY, AUTHORS_QUERY, DIRECT_MESSAGES_QUERY, MESSAGES_SIDEBAR_QUERY, MY_CONVERSATIONS_QUERY, SEND_DIRECT_MESSAGE_MUTATION } from '../lib/graphql.js';
 import { useSession } from '../lib/session.js';
 import { formatDate } from '../lib/format.js';
 
+const route = useRoute();
 const { isAuthenticated, currentUser } = useSession();
 const search = ref('');
+const authorSearch = ref('');
 const selectedPeerId = ref(null);
+const requestedPeer = ref(null);
+const requestedPeerLoading = ref(false);
+const requestedPeerError = ref('');
 const draft = ref('');
 const sendError = ref('');
 const threadBody = ref(null);
@@ -24,13 +30,55 @@ const filteredConversations = computed(() => {
   if (!needle) return conversations.value;
   return conversations.value.filter(({ peer, lastMessageBody }) => [peer.displayName, peer.login, lastMessageBody].some((value) => String(value ?? '').toLowerCase().includes(needle)));
 });
+const { result: authorsResult, loading: authorsLoading } = useQuery(
+  AUTHORS_QUERY,
+  () => ({ limit: 8, offset: 0, search: authorSearch.value.trim() || null, classicsOnly: false, featuredOnly: false }),
+  () => ({ enabled: isAuthenticated.value && authorSearch.value.trim().length >= 2, fetchPolicy: 'network-only' }),
+);
+const foundAuthors = computed(() => authorSearch.value.trim().length >= 2
+  ? (authorsResult.value?.authors ?? []).filter((author) => String(author.id) !== String(currentUser.value?.id))
+  : []);
+const { result: sidebarResult, loading: sidebarLoading } = useQuery(
+  MESSAGES_SIDEBAR_QUERY,
+  null,
+  () => ({ enabled: isAuthenticated.value, fetchPolicy: 'cache-and-network' }),
+);
+const onlineAuthors = computed(() => (sidebarResult.value?.onlineAuthors ?? []).filter((author) => String(author.id) !== String(currentUser.value?.id)));
+const recentAuthors = computed(() => (sidebarResult.value?.todayVisitors ?? []).filter((author) => String(author.id) !== String(currentUser.value?.id)));
 
 watch(conversations, (items) => {
+  const existing = items.find((item) => String(item.peerUserId) === String(selectedPeerId.value));
+  if (existing) requestedPeer.value = null;
   if (!selectedPeerId.value && items[0]) selectedPeerId.value = String(items[0].peerUserId);
 }, { immediate: true });
 
+watch(
+  () => [route.query.to, isAuthenticated.value, currentUser.value?.id],
+  async ([login, authenticated, currentUserId]) => {
+    const normalizedLogin = String(login ?? '').trim();
+    requestedPeer.value = null;
+    requestedPeerError.value = '';
+    if (!authenticated || !normalizedLogin) return;
+    requestedPeerLoading.value = true;
+    try {
+      const { data } = await apolloClient.query({ query: AUTHOR_QUERY, variables: { login: normalizedLogin }, fetchPolicy: 'network-only' });
+      const peer = data?.author ?? null;
+      if (!peer?.id) throw new Error('Автор не найден.');
+      if (String(peer.id) === String(currentUserId)) throw new Error('Нельзя написать сообщение самому себе.');
+      selectedPeerId.value = String(peer.id);
+      requestedPeer.value = peer;
+    } catch (error) {
+      requestedPeerError.value = error?.message || 'Не удалось открыть диалог с автором.';
+      selectedPeerId.value = null;
+    } finally {
+      requestedPeerLoading.value = false;
+    }
+  },
+  { immediate: true },
+);
+
 const selectedConversation = computed(() => conversations.value.find((item) => String(item.peerUserId) === String(selectedPeerId.value)) ?? null);
-const selectedPeer = computed(() => selectedConversation.value?.peer ?? null);
+const selectedPeer = computed(() => selectedConversation.value?.peer ?? requestedPeer.value ?? null);
 const { result: messagesResult, loading: messagesLoading, error: messagesError, refetch: refetchMessages } = useQuery(
   DIRECT_MESSAGES_QUERY,
   () => ({ peerUserId: selectedPeerId.value }),
@@ -53,7 +101,17 @@ function formatConversationTime(value) {
   if (date.toDateString() === today.toDateString()) return formatMessageTime(value);
   return new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: '2-digit' }).format(date);
 }
-function selectConversation(peerUserId) { selectedPeerId.value = String(peerUserId); }
+function selectConversation(peerUserId) {
+  requestedPeer.value = null;
+  selectedPeerId.value = String(peerUserId);
+}
+function startConversation(author) {
+  if (!author?.id || String(author.id) === String(currentUser.value?.id)) return;
+  authorSearch.value = '';
+  requestedPeerError.value = '';
+  requestedPeer.value = author;
+  selectedPeerId.value = String(author.id);
+}
 
 async function submitMessage() {
   const body = draft.value.trim();
@@ -77,10 +135,20 @@ async function submitMessage() {
     <template v-else>
       <section class="messages-head"><div><h1>Личные сообщения</h1><p>Диалоги между авторами и читателями внутри сайта</p></div></section>
       <p v-if="conversationsError" class="message error">Не удалось загрузить диалоги: {{ conversationsError.message }}</p>
+      <p v-else-if="requestedPeerError" class="message error">{{ requestedPeerError }}</p>
       <section class="messages-layout">
         <aside class="dialogs-card">
           <div class="card-heading"><h2>Диалоги</h2><span>{{ conversations.length }} {{ conversations.length === 1 ? 'диалог' : 'диалогов' }}</span></div>
           <label class="dialog-search">⌕ <input v-model="search" placeholder="Поиск по диалогам"></label>
+          <label class="dialog-search new-dialog-search">＋ <input v-model="authorSearch" placeholder="Новый диалог: имя или логин"></label>
+          <p v-if="authorsLoading" class="messages-empty">Ищем авторов…</p>
+          <div v-else-if="foundAuthors.length" class="author-start-list">
+            <button v-for="author in foundAuthors" :key="author.id" class="author-start-row" type="button" @click="startConversation(author)">
+              <img v-if="author.avatarUrl" :src="author.avatarUrl" :alt="authorName(author)"><span v-else class="message-avatar">{{ authorInitial(author) }}</span>
+              <span><b>{{ authorName(author) }}</b><small>@{{ author.login }}</small></span><em>Написать</em>
+            </button>
+          </div>
+          <p v-else-if="authorSearch.trim().length >= 2" class="messages-empty">Автор не найден.</p>
           <p v-if="conversationsLoading && !conversationsResult" class="ref-loading">Загружаем диалоги…</p>
           <div v-else-if="filteredConversations.length" class="dialog-list">
             <button v-for="conversation in filteredConversations" :key="conversation.peerUserId" class="dialog-row" :class="{ selected: String(conversation.peerUserId) === String(selectedPeerId) }" type="button" @click="selectConversation(conversation.peerUserId)">
@@ -100,6 +168,31 @@ async function submitMessage() {
           </template>
           <div v-else class="messages-empty thread-placeholder"><h2>Выберите диалог</h2><p>Все личные переписки будут отображаться здесь.</p></div>
         </section>
+        <aside class="people-side" aria-label="Авторы на сайте">
+          <section>
+            <h2>Кто сейчас в сети</h2>
+            <p v-if="sidebarLoading && !sidebarResult" class="people-side-empty">Загружаем…</p>
+            <div v-for="author in onlineAuthors" :key="author.id" class="people-side-row">
+              <RouterLink class="people-profile-link" :to="`/authors/${author.login}`">
+                <img v-if="author.avatarUrl" :src="author.avatarUrl" :alt="authorName(author)"><span v-else class="message-avatar people-avatar">{{ authorInitial(author) }}</span>
+                <span><b>{{ authorName(author) }}</b><small>@{{ author.login }}</small></span><i aria-label="В сети"></i>
+              </RouterLink>
+              <button class="message-author-icon" type="button" :aria-label="`Написать ${authorName(author)}`" title="Написать сообщение" @click="startConversation(author)">✉</button>
+            </div>
+            <p v-if="!sidebarLoading && !onlineAuthors.length" class="people-side-empty">Сейчас никто не в сети.</p>
+          </section>
+          <section>
+            <h2>Последние на сайте</h2>
+            <div v-for="author in recentAuthors" :key="author.id" class="people-side-row">
+              <RouterLink class="people-profile-link" :to="`/authors/${author.login}`">
+                <img v-if="author.avatarUrl" :src="author.avatarUrl" :alt="authorName(author)"><span v-else class="message-avatar people-avatar">{{ authorInitial(author) }}</span>
+                <span><b>{{ authorName(author) }}</b><small>{{ formatDate(author.lastSeenAt || author.updatedAt) }}</small></span>
+              </RouterLink>
+              <button class="message-author-icon" type="button" :aria-label="`Написать ${authorName(author)}`" title="Написать сообщение" @click="startConversation(author)">✉</button>
+            </div>
+            <p v-if="!sidebarLoading && !recentAuthors.length" class="people-side-empty">Сегодня ещё никто не заходил.</p>
+          </section>
+        </aside>
       </section>
     </template>
   </main>

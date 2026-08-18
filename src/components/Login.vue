@@ -1,5 +1,5 @@
 <script setup>
-import { computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import AuthForm from './AuthForm.vue';
@@ -8,6 +8,7 @@ import { useSession } from '../lib/session.js';
 const route = useRoute();
 const router = useRouter();
 const { isAuthenticated } = useSession();
+const successMessage = ref('');
 
 const initialMode = computed(() => {
   if (route.query?.mode === 'register') return 'register';
@@ -18,8 +19,11 @@ const initialMode = computed(() => {
 
 const resetToken = computed(() => route.query?.token || '');
 
-function onSuccess() {
-  router.push('/');
+function onSuccess(message) {
+  successMessage.value = message;
+  if (initialMode.value !== 'forgot') {
+    router.push('/');
+  }
 }
 
 // Если пользователь уже авторизован — сразу на главную.
@@ -35,6 +39,7 @@ watch(
 <template>
   <div class="login-page">
     <div class="login-page-card">
+      <div v-if="successMessage" class="message success">{{ successMessage }}</div>
       <AuthForm :initial-mode="initialMode" :reset-token="resetToken" @success="onSuccess" />
     </div>
   </div>

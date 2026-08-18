@@ -73,7 +73,6 @@ async function submitCreateWork() {
   <article class="panel stack">
     <div class="section-head">
       <h2>Новая публикация</h2>
-      <span class="pill good">mutation createWork</span>
     </div>
 
     <div class="note">

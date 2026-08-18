@@ -3,11 +3,13 @@ import {computed, ref, watch} from 'vue';
 import {RouterLink, useRoute} from 'vue-router';
 
 import {apolloClient} from '../lib/apollo.js';
+import {useSession} from '../lib/session.js';
 import {AUTHOR_QUERY, WORKS_QUERY} from '../lib/graphql.js';
 import {excerptText, formatDate, formatDateTime, formatWorkSection} from '../lib/format.js';
 import {buildWorkPageLocation, normalizeRouteParam} from '../lib/routes.js';
 
 const route = useRoute();
+const {isAuthenticated, currentUser} = useSession();
 
 const author = ref(null);
 const authorWorks = ref([]);
@@ -17,6 +19,8 @@ const pageError = ref('');
 
 const authorLogin = computed(() => normalizeRouteParam(route.params.login));
 const hasAuthor = computed(() => Boolean(author.value));
+const canMessageAuthor = computed(() => isAuthenticated.value && Boolean(author.value?.id) && String(author.value.id) !== String(currentUser.value?.id));
+const messageAuthorLocation = computed(() => ({ path: '/messages', query: { to: author.value?.login } }));
 const notFound = computed(() => !pageLoading.value && !pageError.value && Boolean(authorLogin.value) && !author.value);
 
 const authorInitial = computed(() => {
@@ -152,9 +156,11 @@ async function loadAuthorWorks(authorId) {
           <p class="profile-meta">@{{ author.login }} · {{ author.city || 'Littop' }} · на сайте с
             {{ formatDate(author.registeredAt) }}</p>
           <p>{{ excerptText(author.bio, 240) || 'Автор пока не добавил биографию.' }}</p></div>
-        <a v-if="author.websiteUrl" class="btn btn-primary" :href="author.websiteUrl" target="_blank" rel="noreferrer">{{
-            profileLinkLabel
-          }}</a>
+        <div class="profile-hero-actions">
+          <a v-if="author.websiteUrl" class="btn btn-primary" :href="author.websiteUrl" target="_blank" rel="noreferrer">{{ profileLinkLabel }}</a>
+          <RouterLink v-if="canMessageAuthor" class="btn btn-outline" :to="messageAuthorLocation">✉ Написать сообщение</RouterLink>
+          <RouterLink v-else-if="!isAuthenticated" class="btn btn-outline" to="/messages">✉ Войти, чтобы написать</RouterLink>
+        </div>
       </div>
       <section class="statgrid">
         <div class="s"><b>{{ author.ratingTotal }}</b><small>рейтинг автора</small></div>
