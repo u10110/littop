@@ -8433,3 +8433,9 @@ nav.menu {
     background: #fdf7f0;
     text-decoration: none !important
 }
+
+
+/* Empty-state messages in home blocks are deliberately subdued. */
+.home-ref .ref-empty {
+    color: var(--gray)
+}
