@@ -8772,3 +8772,5 @@ nav.menu {
 .home-ref .ref-empty {
     color: var(--gray)
 }
+
+.personal-cabinet .peach-history-card .card-heading>b{color:#aa6427;font-size:15px}.personal-cabinet .peach-history-card>p{margin:12px 0}.personal-cabinet .peach-transactions{display:grid;gap:6px;margin-top:10px}.personal-cabinet .peach-transaction{display:flex;justify-content:space-between;gap:8px;align-items:center;border-bottom:1px solid #eee7df;padding:0 0 6px;font-size:10px}.personal-cabinet .peach-transaction:last-child{border-bottom:0}.personal-cabinet .peach-transaction span{display:grid;gap:2px;min-width:0}.personal-cabinet .peach-transaction b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.personal-cabinet .peach-transaction small{font-size:8px;color:#9a9086}.personal-cabinet .peach-transaction strong{color:#4f8a62;white-space:nowrap}.personal-cabinet .peach-transaction strong.is-negative{color:#ba5e51}

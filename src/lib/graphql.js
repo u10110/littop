@@ -482,6 +482,19 @@ export const UNREAD_DIRECT_MESSAGES_COUNT_QUERY = gql`
   query UnreadDirectMessagesCount { unreadDirectMessagesCount }
 `;
 
+
+export const MY_PEACH_TRANSACTIONS_QUERY = gql`
+  query MyPeachTransactions($limit: Int!) {
+    myPeachTransactions(limit: $limit) {
+      id
+      amount
+      kind
+      note
+      createdAt
+    }
+  }
+`;
+
 export const LOGIN_MUTATION = gql`
   ${USER_SESSION_FIELDS}
   mutation Login($input: LoginInput!) {

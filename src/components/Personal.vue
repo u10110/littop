@@ -9,7 +9,8 @@ import { formatDate, formatDateTime } from '../lib/format.js';
 import { filenameToTrackTitle, probeAudioDuration, uploadRadioTrack } from '../lib/radio.js';
 import { uploadProfileImage } from '../lib/profileImages.js';
 import { buildAuthorPageLocation, buildWorkPageLocation } from '../lib/routes.js';
-import { WORKS_QUERY } from '../lib/graphql.js';
+import { apolloClient } from '../lib/apollo.js';
+import { MY_PEACH_TRANSACTIONS_QUERY, WORKS_QUERY } from '../lib/graphql.js';
 
 const {
   currentUser,
@@ -36,6 +37,10 @@ const { result: myWorksResult, loading: myWorksLoading } = useQuery(
   () => ({ enabled: Boolean(currentUser.value?.id), fetchPolicy: 'cache-and-network' }),
 );
 const myRecentWorks = computed(() => myWorksResult.value?.works ?? []);
+const peachTransactions = ref([]);
+const peachTransactionsBusy = ref(false);
+const peachTransactionsError = ref('');
+const peachBalance = computed(() => peachTransactions.value.reduce((total, transaction) => total + Number(transaction.amount || 0), 0));
 
 const profile = computed(() => currentUser.value?.profile ?? null);
 const displayName = computed(() => profile.value?.displayName || currentUser.value?.login || 'Автор');
@@ -74,6 +79,28 @@ onMounted(() => {
   bootstrapSession();
 });
 
+async function loadPeachTransactions() {
+  if (!isAuthenticated.value) {
+    peachTransactions.value = [];
+    return;
+  }
+
+  peachTransactionsBusy.value = true;
+  peachTransactionsError.value = '';
+  try {
+    const { data } = await apolloClient.query({
+      query: MY_PEACH_TRANSACTIONS_QUERY,
+      variables: { limit: 50 },
+      fetchPolicy: 'network-only',
+    });
+    peachTransactions.value = data?.myPeachTransactions ?? [];
+  } catch {
+    peachTransactionsError.value = 'Не удалось загрузить историю персиков.';
+  } finally {
+    peachTransactionsBusy.value = false;
+  }
+}
+
 function syncProfileForm({ clearSuccess = false } = {}) {
   if (clearSuccess) {
     profileSuccess.value = '';
@@ -93,6 +120,7 @@ watch(
   currentUser,
   () => {
     syncProfileForm();
+    loadPeachTransactions();
   },
   { immediate: true },
 );
@@ -332,6 +360,18 @@ async function submitProfileImage(kind) {
           </div>
         </article>
         <article class="dash-card stats-card"><div class="card-heading"><h2>Статистика писателя</h2><RouterLink :to="myWorksLink">Подробнее</RouterLink></div><div><span><small>Произведений</small><b>{{ profile?.worksCountCached ?? 0 }}</b></span><span><small>Рейтинг</small><b>{{ profile?.ratingTotal ?? 0 }}</b></span><span><small>В витрине</small><b>{{ profile?.isFeatured ? 'Да' : 'Нет' }}</b></span><span><small>Статус</small><b>{{ profile?.isClassic ? 'Классик' : 'Автор' }}</b></span></div></article>
+        <article class="dash-card peach-history-card">
+          <div class="card-heading"><h2>История персиков</h2><b>{{ peachBalance > 0 ? '+' : '' }}{{ peachBalance }}</b></div>
+          <p v-if="peachTransactionsBusy">Загружаем операции…</p>
+          <p v-else-if="peachTransactionsError" class="message error">{{ peachTransactionsError }}</p>
+          <p v-else-if="!peachTransactions.length">Операций с персиками пока нет.</p>
+          <div v-else class="peach-transactions">
+            <div v-for="transaction in peachTransactions.slice(0, 5)" :key="transaction.id" class="peach-transaction">
+              <span><b>{{ transaction.note || transaction.kind }}</b><small>{{ formatDateTime(transaction.createdAt) }}</small></span>
+              <strong :class="{ 'is-negative': Number(transaction.amount) < 0 }">{{ Number(transaction.amount) > 0 ? '+' : '' }}{{ transaction.amount }}</strong>
+            </div>
+          </div>
+        </article>
         <article class="dash-card public-info"><div class="card-heading"><h2>Публичная информация</h2><RouterLink v-if="currentUser?.login" :to="myAuthorPageLink">Просмотреть</RouterLink></div><p><small>Псевдоним</small><b>{{ displayName }}</b></p><p><small>Город</small><b>{{ profile?.city || 'Не указан' }}</b></p><p><small>О себе</small><b>{{ profile?.bio || 'Пока без описания' }}</b></p></article>
         <article class="dash-card author-profile"><div class="card-heading"><h2>Профиль автора</h2><RouterLink v-if="currentUser?.login" :to="myAuthorPageLink">Открыть</RouterLink></div><p>Логин <b>@{{ currentUser?.login }}</b></p><p>Роль <b>{{ currentUser?.role || 'author' }}</b></p><p>Сайт <b>{{ profile?.websiteUrl || '—' }}</b></p></article>
       </section>
