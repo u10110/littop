@@ -290,8 +290,7 @@ async function submitLogout() {
             <label for="login-password">Пароль</label>
             <input id="login-password" v-model="loginForm.password" class="input" type="password" required />
           </div>
-          <button class="btn btn-primary" type="submit" :disabled="authBusy">{{ authBusy ? 'Входим…' : 'Войти' }}</button>
-          <div class="social-auth-block">
+          <button class="btn btn-primary" type="submit" :disabled="authBusy">{{ authBusy ? 'Входим…' : 'Войти' }}</button><RouterLink class="btn btn-ghost" to="/login?auth=forgot" @click="closeAuthModal">Забыли пароль?</RouterLink><div class="social-auth-block">
             <div class="meta">Или войди через соцсеть</div>
             <div class="social-auth-grid">
               <button
