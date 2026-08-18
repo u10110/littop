@@ -8,6 +8,7 @@ import { FORUM_TOPIC_QUERY } from '../lib/graphql.js';
 import { buildForumTopicLookupVariables } from '../lib/forum.js';
 import { normalizeRouteParam } from '../lib/routes.js';
 import { useSession } from '../lib/session.js';
+import { setDocumentTitle } from '../lib/pageTitle.js';
 
 const route = useRoute();
 const { bootstrapSession } = useSession();
@@ -51,6 +52,7 @@ async function loadTopicPage(value) {
     }
 
     topic.value = data?.forumTopic ?? null;
+    setDocumentTitle(topic.value?.title || 'Тема форума');
   } catch (queryError) {
     if (currentRequest === requestVersion) {
       topicError.value = queryError.message;

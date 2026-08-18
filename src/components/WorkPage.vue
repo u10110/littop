@@ -18,6 +18,7 @@ import coverShadows from '../assets/new-reference/book-shadows.jpg';
 import coverRiver from '../assets/new-reference/book-river.jpg';
 import coverWind from '../assets/new-reference/book-wind.jpg';
 import { useSession } from '../lib/session.js';
+import { setDocumentTitle } from '../lib/pageTitle.js';
 
 const route = useRoute();
 const {
@@ -73,6 +74,7 @@ watch(slugOrId, (value) => {
 }, { immediate: true });
 
 watch(work, (value) => {
+  setDocumentTitle(value?.title || 'Произведение');
   if (value && !editMode.value) {
     syncEditForm(value);
   }

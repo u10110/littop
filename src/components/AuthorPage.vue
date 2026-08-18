@@ -7,6 +7,7 @@ import {useSession} from '../lib/session.js';
 import {AUTHOR_QUERY, WORKS_QUERY} from '../lib/graphql.js';
 import {excerptText, formatDate, formatDateTime, formatWorkSection} from '../lib/format.js';
 import {buildWorkPageLocation, normalizeRouteParam} from '../lib/routes.js';
+import {setDocumentTitle} from '../lib/pageTitle.js';
 
 const route = useRoute();
 const {isAuthenticated, currentUser} = useSession();
@@ -101,6 +102,7 @@ async function loadAuthorPage(login) {
     });
 
     author.value = data?.author ?? null;
+    setDocumentTitle(author.value?.displayName || author.value?.login || 'Автор');
 
     if (author.value?.id) {
       await loadAuthorWorks(author.value.id);
