@@ -55,6 +55,10 @@ watch(() => Boolean(result.value) && pagination.value.isInvalidPage, (isInvalidP
 function clearFilters() { sectionFilter.value = ''; genreFilter.value = ''; search.value = ''; mineOnly.value = false; todayOnly.value = false; page.value = 1; }
 function goToPage(nextPage) { page.value = Math.max(1, nextPage); }
 function coverFor(index) { return covers[index % covers.length]; }
+function catalogExcerpt(work) {
+  const preferred = String(work?.summary ?? work?.excerpt ?? '').trim();
+  return excerptText(preferred || work?.body || '', 180);
+}
 </script>
 
 <template>
@@ -79,7 +83,7 @@ function coverFor(index) { return covers[index % covers.length]; }
         <section v-else-if="works.length" class="catalog-cards">
           <article v-for="(work, index) in works" :key="work.id" class="catalog-card">
             <RouterLink class="catalog-cover" :to="buildWorkPageLocation(work)" :aria-label="`Открыть «${work.title}»`"><img :src="coverFor(index)" :alt="work.title"></RouterLink>
-            <div><h2><RouterLink class="work-link" :to="buildWorkPageLocation(work)">{{ work.title }}</RouterLink></h2><RouterLink v-if="work.author?.login" :to="buildAuthorPageLocation(work.author)">{{ work.author.displayName || work.author.login }}</RouterLink><p class="genres">{{ formatWorkSection(work.sectionCode) }}</p><p>{{ excerptText(work.summary || work.excerpt || work.body, 150) || 'Автор пока не добавил аннотацию к произведению.' }}</p><small>♡ {{ work.likesCount || 0 }} &nbsp; · Обновлено: {{ formatDate(work.publishedAt || work.createdAt) }}</small></div><b class="score">★ {{ ratingLabel(work.averageRating, work.ratingsCount).split(' / ')[0] }}</b>
+            <div class="catalog-card-copy"><h2><RouterLink class="work-link" :to="buildWorkPageLocation(work)">{{ work.title }}</RouterLink></h2><RouterLink v-if="work.author?.login" :to="buildAuthorPageLocation(work.author)">{{ work.author.displayName || work.author.login }}</RouterLink><p class="genres">{{ formatWorkSection(work.sectionCode) }}</p><p class="catalog-excerpt">{{ catalogExcerpt(work) }}</p><footer class="catalog-card-footer"><small>♡ {{ work.likesCount || 0 }} &nbsp; · Обновлено: {{ formatDate(work.publishedAt || work.createdAt) }}</small><RouterLink class="btn btn-outline catalog-read" :to="buildWorkPageLocation(work)">Читать</RouterLink></footer></div><b class="score">★ {{ ratingLabel(work.averageRating, work.ratingsCount).split(' / ')[0] }}</b>
           </article>
         </section>
         <section v-else class="catalog-empty"><h2>По этому запросу ничего не найдено</h2><p>Попробуйте изменить раздел или очистить условия поиска.</p><button type="button" @click="clearFilters">Очистить фильтры</button></section>

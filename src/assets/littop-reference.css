@@ -3306,6 +3306,55 @@ nav.menu {
     text-decoration: underline
 }
 
+/* Keep catalogue actions aligned even when a work has no authored summary. */
+.catalog-card-copy {
+    min-width: 0;
+    min-height: 114px;
+    display: flex;
+    flex-direction: column
+}
+
+.catalog-card .catalog-excerpt {
+    display: -webkit-box;
+    min-height: calc(1.45em * 3);
+    max-height: calc(1.45em * 3);
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3
+}
+
+.catalog-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: auto
+}
+
+.catalog-card-footer small {
+    min-width: 0
+}
+
+.catalog-card .catalog-read {
+    flex: 0 0 auto;
+    padding: 6px 10px;
+    font-size: 11px;
+    line-height: 1.1;
+    text-decoration: none
+}
+
+.catalog-card .catalog-read:hover,
+.catalog-card .catalog-read:focus-visible {
+    text-decoration: none
+}
+
+@media (max-width: 550px) {
+    .catalog-card-footer {
+        align-items: flex-start;
+        flex-direction: column
+    }
+}
+
 @media (max-width: 550px) {
     .catalog-cover {
         width: 65px;
