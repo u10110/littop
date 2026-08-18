@@ -1295,8 +1295,9 @@ nav.menu a:hover {
 .author-cover img {
     display: block;
     width: 100%;
-    max-height: 420px;
-    object-fit: cover
+    height: clamp(240px, 32vw, 420px);
+    object-fit: contain;
+    background: #f4ede4
 }
 
 .author-cover figcaption {
