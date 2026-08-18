@@ -11,7 +11,6 @@ import {
   validatePassword,
 } from '../lib/auth.js';
 import { useSession } from '../lib/session.js';
-import { formatDateTime } from '../lib/format.js';
 
 const props = defineProps({
   initialMode: { type: String, default: 'login' },
@@ -42,12 +41,10 @@ const socialProviders = Object.values(SOCIAL_AUTH_PROVIDERS);
 const {
   authBusy,
   authError,
-  authMeta,
   login,
   register,
   requestPasswordReset,
   resetPassword,
-  reopenClosedAccount,
 } = useSession();
 
 watch(
@@ -86,16 +83,6 @@ const authModalSubtitle = computed(
           reset: 'Введи новый пароль дважды.',
         }[authMode.value] || 'Войди в аккаунт по почте.'),
 );
-
-const canReopenClosedAccount = computed(
-    () =>
-        authMode.value === 'login' &&
-        authMeta.value?.code === 'ACCOUNT_REOPEN_AVAILABLE' &&
-        String(loginForm.value.identifier || '').trim() &&
-        String(loginForm.value.password || '').trim(),
-);
-
-const reopenUntilLabel = computed(() => formatDateTime(authMeta.value?.reopenUntil));
 
 function clearAuthLocalError() {
   authLocalError.value = '';
@@ -185,24 +172,6 @@ async function submitLogin() {
     emit('success', 'Вход выполнен.');
   } catch {
     // Ошибка уже отдана в authError из session store.
-  }
-}
-
-async function submitReopenClosedAccount() {
-  clearAuthLocalError();
-  const identifier = String(loginForm.value.identifier || '').trim();
-  if (!identifier || !loginForm.value.password) {
-    authLocalError.value = 'Сначала введи логин/email и пароль.';
-    return;
-  }
-
-  try {
-    await reopenClosedAccount({ identifier, password: loginForm.value.password });
-    loginForm.value = { identifier: '', password: '' };
-    loginPasswordVisible.value = false;
-    emit('success', 'Аккаунт снова открыт. Вы вошли автоматически.');
-  } catch {
-    // Ошибка уже отдана в authError/session.
   }
 }
 
@@ -360,14 +329,6 @@ async function submitResetPassword() {
         </button>
         <button class="btn btn-ghost" type="button" @click="openAuthModal('forgot')">Забыли пароль?</button>
       </div>
-      <div v-if="canReopenClosedAccount" class="message warn">
-        <div>Аккаунт закрыт, но его ещё можно открыть{{ reopenUntilLabel && reopenUntilLabel !== '—' ? ` до ${reopenUntilLabel}` : '' }}.</div>
-        <div class="inline-actions">
-          <button class="btn btn-primary" type="button" :disabled="authBusy" @click="submitReopenClosedAccount">
-            <Icon name="rotate-ccw" />Открыть аккаунт
-          </button>
-        </div>
-      </div>
       <div class="social-auth-block">
         <div class="meta">Или войди через соцсеть</div>
         <div class="social-auth-grid">
@@ -449,7 +410,7 @@ async function submitResetPassword() {
     <form v-else-if="authMode === 'forgot'" class="auth-grid" @submit.prevent="submitForgotPassword">
       <div class="field">
         <label for="forgot-email">Почта для восстановления</label>
-        <input id="forgot-email" v-model="forgotForm.email" class="input" type="email" name="email" inputmode="email" autocomplete="email" required />
+        <input id="forgot-email" v-model="forgotForm.email" class="input" type="email" name="email" inputmode="email" autocomplete="username" required />
       </div>
       <button class="btn btn-primary" type="submit" :disabled="authBusy">
         <Icon name="mail" />{{ authBusy ? 'Отправляем…' : 'Отправить письмо' }}
