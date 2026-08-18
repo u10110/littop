@@ -18,6 +18,7 @@ const authorWorks = ref([]);
 const pageLoading = ref(false);
 const worksLoading = ref(false);
 const pageError = ref('');
+const coverIsPortrait = ref(false);
 
 const authorLogin = computed(() => normalizeRouteParam(route.params.login));
 const hasAuthor = computed(() => Boolean(author.value));
@@ -88,6 +89,7 @@ async function loadAuthorPage(login) {
   author.value = null;
   authorWorks.value = [];
   pageError.value = '';
+  coverIsPortrait.value = false;
 
   if (!login) {
     return;
@@ -103,6 +105,7 @@ async function loadAuthorPage(login) {
     });
 
     author.value = data?.author ?? null;
+    detectCoverOrientation(author.value?.coverImageUrl);
     setDocumentTitle(author.value?.displayName || author.value?.login || 'Автор');
 
     if (author.value?.id) {
@@ -113,6 +116,15 @@ async function loadAuthorPage(login) {
   } finally {
     pageLoading.value = false;
   }
+}
+
+function detectCoverOrientation(url) {
+  if (!url) return;
+  const image = new Image();
+  image.onload = () => {
+    coverIsPortrait.value = image.naturalHeight > image.naturalWidth * 1.08;
+  };
+  image.src = url;
 }
 
 async function loadAuthorWorks(authorId) {
@@ -147,11 +159,14 @@ async function loadAuthorWorks(authorId) {
     <section v-else-if="pageLoading" class="detail-loading">Загружаем страницу автора…</section>
     <section v-else-if="notFound" class="detail-loading">Автор с таким логином не найден.</section>
     <section v-else-if="hasAuthor">
-      <figure v-if="author.coverImageUrl" class="author-cover">
+      <figure v-if="author.coverImageUrl && !coverIsPortrait" class="author-cover">
         <img :src="author.coverImageUrl" :alt="`Большое фото автора ${author.displayName || author.login}`"/>
         <figcaption>Большое фото автора</figcaption>
       </figure>
-      <div class="profile-hero">
+      <div class="profile-hero" :class="{ 'profile-hero-with-cover': coverIsPortrait }">
+        <figure v-if="author.coverImageUrl && coverIsPortrait" class="author-side-cover">
+          <img :src="author.coverImageUrl" :alt="`Фото автора ${author.displayName || author.login}`">
+        </figure>
         <div class="portrait"><img :src="authorAvatarUrl(author)" :alt="author.displayName || author.login"></div>
         <div><p class="author-profile-kicker">Публичная страница автора</p>
           <h1>{{ author.displayName || author.login }}</h1>
