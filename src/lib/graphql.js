@@ -208,16 +208,13 @@ export const HOME_QUERY = gql`
       ok
       database
     }
-    featuredAuthors: authors(limit: 6, featuredOnly: true) {
-      ...AuthorCardFields
-    }
     classicAuthors: authors(limit: 6, classicsOnly: true) {
       ...AuthorCardFields
     }
     todayVisitors(limit: 6) {
       ...AuthorCardFields
     }
-    recentWorks: works(limit: 6) {
+    recentWorks: works(limit: 24) {
       ...WorkPreviewFields
     }
     announcements: announcedWorks(limit: 3) {

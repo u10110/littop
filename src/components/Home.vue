@@ -16,7 +16,6 @@ import newLight from '../assets/new-reference/new-light.jpg';
 import contestSpring from '../assets/new-reference/contest-spring.jpg';
 
 const { result, loading, error } = useQuery(HOME_QUERY, null, { fetchPolicy: 'cache-and-network' });
-const featuredAuthors = computed(() => result.value?.featuredAuthors ?? []);
 const classicAuthors = computed(() => result.value?.classicAuthors ?? []);
 const todayVisitors = computed(() => result.value?.todayVisitors ?? []);
 const recentWorks = computed(() => result.value?.recentWorks ?? []);
@@ -43,7 +42,21 @@ const latestTopics = computed(() => recentTopics.value.slice(0, 3));
 const discussionTopics = computed(() => [...recentTopics.value].sort((a, b) => (b.repliesCount || 0) - (a.repliesCount || 0)).slice(0, 3));
 const featuredContest = computed(() => contests.value[0] ?? null);
 const nowTrack = computed(() => radioTracks.value[0] ?? null);
-const topAuthors = computed(() => [...featuredAuthors.value].sort((a,b) => (b.ratingTotal || 0) - (a.ratingTotal || 0)).slice(0, 5));
+const activeAuthors = computed(() => {
+  const authors = new Map();
+  recentWorks.value.forEach((work, index) => {
+    const author = work?.author;
+    const key = String(author?.id || author?.login || '');
+    if (!key) return;
+    const entry = authors.get(key) || { ...author, recentWorksCount: 0, latestWorkIndex: index };
+    entry.recentWorksCount += 1;
+    entry.latestWorkIndex = Math.min(entry.latestWorkIndex, index);
+    authors.set(key, entry);
+  });
+  return [...authors.values()]
+    .sort((a, b) => b.recentWorksCount - a.recentWorksCount || a.latestWorkIndex - b.latestWorkIndex)
+    .slice(0, 5);
+});
 function authorName(author) { return author?.displayName || author?.login || 'Автор Littop'; }
 function shortDate(value) { return value ? formatDate(value) : 'недавно'; }
 function editorialPreview(topic) {
@@ -99,7 +112,7 @@ function openAuth(mode) { window.dispatchEvent(new CustomEvent('littop:open-auth
       </section>
 
       <aside class="home-side"><section class="welcome"><h2>Добро пожаловать!</h2><p>Littop — это пространство, где рождаются истории, объединяются авторы и вдохновляются читатели.</p><div><button class="btn btn-primary" @click="openAuth('login')">Войти</button><button class="btn btn-secondary" @click="openAuth('register')">Регистрация</button></div></section>
-        <section class="side-block ranking"><div class="home-title"><h2>Рейтинг авторов</h2><RouterLink to="/authors" class="home-action-link" aria-label="Открыть рейтинг авторов" title="Открыть рейтинг авторов"><span aria-hidden="true">↗</span></RouterLink></div><ol><li v-for="author in topAuthors" :key="author.id"><img v-if="author.avatarUrl" :src="author.avatarUrl" :alt="authorName(author)"><i v-else>{{ authorName(author).slice(0,2).toUpperCase() }}</i><RouterLink :to="buildAuthorPageLocation(author)">{{ authorName(author) }}</RouterLink><b>{{ author.ratingTotal || 0 }}</b></li></ol><p v-if="!topAuthors.length" class="ref-empty">Рейтинг появится с авторами.</p></section>
+        <section class="side-block ranking"><div class="home-title"><div><h2>Активные авторы</h2><p class="activity-caption">По свежим публикациям</p></div><RouterLink to="/authors" class="home-action-link" aria-label="Открыть каталог авторов" title="Открыть каталог авторов"><span aria-hidden="true">↗</span></RouterLink></div><ol><li v-for="author in activeAuthors" :key="author.id || author.login"><img v-if="author.avatarUrl" :src="author.avatarUrl" :alt="authorName(author)"><i v-else>{{ authorName(author).slice(0,2).toUpperCase() }}</i><RouterLink :to="buildAuthorPageLocation(author)">{{ authorName(author) }}</RouterLink><b>{{ author.recentWorksCount }} {{ author.recentWorksCount === 1 ? 'публикация' : author.recentWorksCount < 5 ? 'публикации' : 'публикаций' }}</b></li></ol><p v-if="!activeAuthors.length" class="ref-empty">Активные авторы появятся с новыми публикациями.</p></section>
         <section class="side-block classics"><div class="home-title"><h2>Классики</h2><RouterLink to="/authors" class="home-action-link" aria-label="Открыть всех классиков" title="Открыть всех классиков"><span aria-hidden="true">↗</span></RouterLink></div><ol><li v-for="author in classicAuthors" :key="author.id"><img v-if="author.avatarUrl" :src="author.avatarUrl" :alt="authorName(author)"><i v-else>{{ authorName(author).slice(0,2).toUpperCase() }}</i><RouterLink :to="buildAuthorPageLocation(author)">{{ authorName(author) }}</RouterLink><b>{{ author.ratingTotal || 0 }}</b></li></ol><p v-if="!classicAuthors.length" class="ref-empty">Классики пока не отмечены.</p></section>
         <section class="side-block comments"><h2>Новые комментарии</h2><article v-for="comment in recentComments" :key="comment.id"><span class="comment-avatar">◉</span><p><b>{{ authorName(comment.author) }}</b> к <RouterLink :to="buildWorkPageLocation(comment.work)">«{{ comment.work?.title || 'произведению' }}»</RouterLink><strong>{{ comment.body }}</strong><small>{{ shortDate(comment.createdAt) }}</small></p></article><p v-if="!recentComments.length" class="ref-empty">Новых комментариев пока нет.</p><RouterLink to="/works" class="home-action-link" aria-label="Открыть каталог произведений" title="Открыть каталог произведений"><span aria-hidden="true">↗</span></RouterLink></section>
         <section class="side-block today-visitors"><div class="home-title"><h2>Сегодня заходили</h2><RouterLink to="/authors" class="home-action-link" aria-label="Открыть всех авторов" title="Открыть всех авторов"><span aria-hidden="true">↗</span></RouterLink></div><div class="visitor-list"><RouterLink v-for="author in todayVisitors" :key="author.id" :to="buildAuthorPageLocation(author)"><img v-if="author.avatarUrl" :src="author.avatarUrl" :alt="authorName(author)"><i v-else>◉</i><span><b>{{ authorName(author) }}</b><small>был сегодня на сайте</small></span><em>сегодня</em></RouterLink></div><p v-if="!todayVisitors.length" class="ref-empty">Сегодня ещё никто не отметился.</p></section>
