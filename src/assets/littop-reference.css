@@ -8366,3 +8366,14 @@ nav.menu {
     color: var(--terra);
     text-decoration: underline
 }
+
+
+/* Home editorial and contest cards: only their titles navigate. */
+.editor-item h3 a, .contest-home h3 a {
+    color: inherit
+}
+
+.editor-item h3 a:hover, .contest-home h3 a:hover {
+    color: var(--terra);
+    text-decoration: underline
+}
