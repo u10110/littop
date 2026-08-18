@@ -32,6 +32,6 @@ function clearFilters() { search.value = ''; onlyClassics.value = false; onlyFea
         <small>На сайте с {{ formatDate(author.registeredAt) }}</small>
       </article>
     </section>
-    <section v-else class="catalog-empty"><h2>Авторов не найдено</h2><p>Измените условия поиска или очистите фильтры.</p><button type="button" @click="clearFilters">Очистить фильтры</button></section>
+    <section v-else class="catalog-empty authors-empty"><h2>авторов не найдено</h2><p>Измените условия поиска или очистите фильтры.</p><button type="button" class="btn btn-secondary authors-empty-reset" @click="clearFilters">Очистить фильтры</button></section>
   </div>
 </template>

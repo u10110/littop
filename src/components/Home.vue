@@ -34,8 +34,16 @@ const contests = computed(() => result.value?.contests ?? []);
 const radioTracks = computed(() => result.value?.radioTracks ?? []);
 const workImages = [bookFog, bookShadows, bookRiver, bookWind];
 const freshImages = [newLetters, newStars, newLight];
+const workKey = (work) => String(work?.id || work?.slug || work?.title || '');
 const weeklyWorks = computed(() => recentWorks.value.slice(0, 4));
-const announcementWorks = computed(() => announcements.value);
+const announcementWorks = computed(() => {
+  const weeklyKeys = new Set(weeklyWorks.value.map(workKey));
+  return announcements.value.filter((work) => !weeklyKeys.has(workKey(work)));
+});
+const freshWorks = computed(() => {
+  const shownKeys = new Set([...weeklyWorks.value, ...announcementWorks.value].map(workKey));
+  return recentWorks.value.filter((work) => !shownKeys.has(workKey(work))).slice(0, 3);
+});
 const editorTopics = computed(() => editorColumnTopics.value);
 const latestTopics = computed(() => recentTopics.value.slice(0, 3));
 const discussionTopics = computed(() => [...recentTopics.value].sort((a, b) => (b.repliesCount || 0) - (a.repliesCount || 0)).slice(0, 3));
@@ -57,9 +65,9 @@ function openAuth(mode) { window.dispatchEvent(new CustomEvent('littop:open-auth
         <section class="weekly">
           <div class="home-title"><h1>Лучшие произведения недели</h1><RouterLink to="/works">Смотреть все <b>›</b></RouterLink></div>
           <div v-if="weeklyWorks.length" class="weekly-list">
-            <RouterLink v-for="(work, index) in weeklyWorks" :key="work.id" :to="buildWorkPageLocation(work)" class="weekly-work">
-              <img :src="workImages[index % workImages.length]" :alt="work.title"><div><h3>{{ work.title }}</h3><p>{{ authorName(work.author) }}</p><em>{{ formatWorkSection(work.sectionCode) }}</em><small>♡ {{ work.likesCount || 0 }}</small></div>
-            </RouterLink>
+            <article v-for="(work, index) in weeklyWorks" :key="work.id" class="weekly-work">
+              <img :src="workImages[index % workImages.length]" :alt="work.title"><div><h3><RouterLink :to="buildWorkPageLocation(work)">{{ work.title }}</RouterLink></h3><p>{{ authorName(work.author) }}</p><em>{{ formatWorkSection(work.sectionCode) }}</em><small>♡ {{ work.likesCount || 0 }}</small></div>
+            </article>
           </div>
           <p v-else class="ref-empty">Опубликованные произведения появятся здесь автоматически.</p>
         </section>
@@ -70,12 +78,12 @@ function openAuth(mode) { window.dispatchEvent(new CustomEvent('littop:open-auth
             <p v-if="!editorTopics.length" class="ref-empty">Редакционные темы появятся после публикации в разделе «Колонка редактора».</p>
           </section>
           <section class="live-card announcements"><div class="live-card-head"><div><span class="live-kicker">Выбор авторов</span><h2>Анонсы</h2></div><RouterLink to="/works">Все произведения ›</RouterLink></div>
-            <RouterLink v-for="work in announcementWorks" :key="work.id" :to="buildWorkPageLocation(work)" class="announce-item"><span class="announce-genre">{{ formatWorkSection(work.sectionCode).toUpperCase() }}</span><h3>{{ work.title }}</h3><p>{{ authorName(work.author) }} · опубликовано {{ shortDate(work.publishedAt || work.createdAt) }}</p><div><span>★ {{ ratingLabel(work.averageRating, work.ratingsCount) }}</span><span>◉ {{ work.commentsCount || 0 }}</span></div></RouterLink>
+            <article v-for="work in announcementWorks" :key="work.id" class="announce-item"><span class="announce-genre">{{ formatWorkSection(work.sectionCode).toUpperCase() }}</span><h3><RouterLink :to="buildWorkPageLocation(work)">{{ work.title }}</RouterLink></h3><p>{{ authorName(work.author) }} · опубликовано {{ shortDate(work.publishedAt || work.createdAt) }}</p><div><span>★ {{ ratingLabel(work.averageRating, work.ratingsCount) }}</span><span>◉ {{ work.commentsCount || 0 }}</span></div></article>
             <p v-if="!announcementWorks.length" class="ref-empty">Здесь пока нет анонсов.</p>
           </section>
           <section class="live-card fresh-works"><div class="live-card-head"><div><span class="live-kicker">Последние публикации</span><h2>Свежие произведения</h2></div><RouterLink to="/works">Открыть каталог ›</RouterLink></div>
-            <RouterLink v-for="(work,index) in recentWorks.slice(0,3)" :key="work.id" :to="buildWorkPageLocation(work)" class="fresh-work"><img :src="freshImages[index % freshImages.length]" :alt="work.title"><span><b>{{ work.title }}</b><small>{{ authorName(work.author) }} · {{ shortDate(work.publishedAt || work.createdAt) }}</small><em>{{ formatWorkSection(work.sectionCode) }}</em></span></RouterLink>
-            <p v-if="!recentWorks.length" class="ref-empty">Новых публикаций пока нет.</p>
+            <article v-for="(work,index) in freshWorks" :key="work.id" class="fresh-work"><img :src="freshImages[index % freshImages.length]" :alt="work.title"><span><b><RouterLink :to="buildWorkPageLocation(work)">{{ work.title }}</RouterLink></b><small>{{ authorName(work.author) }} · {{ shortDate(work.publishedAt || work.createdAt) }}</small><em>{{ formatWorkSection(work.sectionCode) }}</em></span></article>
+            <p v-if="!freshWorks.length" class="ref-empty">Новых публикаций пока нет.</p>
           </section>
         </section>
 

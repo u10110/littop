@@ -67,9 +67,6 @@ function coverFor(index) { return covers[index % covers.length]; }
         <p v-else class="ref-empty">Для выбранного раздела пока нет жанров.</p>
         <hr>
         <label>Рейтинг<select><option>Любой</option></select></label><p class="stars">★★★★★ <span>и выше</span></p>
-        <label>Длина произведения<select><option>Любая</option></select></label>
-        <label>Язык<select><option>Любой</option></select></label>
-        <label>Режим произведения<select><option>Любой</option></select></label>
         <button type="button" class="btn btn-primary" @click="page = 1">Применить</button>
         <button type="button" class="reset" @click="clearFilters">Сбросить</button>
       </aside>

@@ -8332,3 +8332,37 @@ nav.menu {
         margin-right: auto
     }
 }
+
+
+/* Empty search state uses the shared secondary-button component. */
+.authors-empty {
+    text-align: center;
+    padding: 42px 20px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--white)
+}
+
+.authors-empty h2 {
+    font: 600 20px Inter, Arial, sans-serif;
+    text-transform: none
+}
+
+.authors-empty p {
+    margin: 8px 0 18px;
+    color: var(--gray)
+}
+
+.authors-empty-reset {
+    justify-content: center
+}
+
+/* On the home page, only a work title is interactive. */
+.weekly-work h3 a, .announce-item h3 a, .fresh-work b a {
+    color: inherit
+}
+
+.weekly-work h3 a:hover, .announce-item h3 a:hover, .fresh-work b a:hover {
+    color: var(--terra);
+    text-decoration: underline
+}
