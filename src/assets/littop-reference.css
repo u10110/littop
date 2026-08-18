@@ -4382,6 +4382,9 @@ nav.menu {
 
 .excerpt-preview {
     margin: 18px 0 14px;
+    min-height: calc(1.55em * 6);
+    max-height: calc(1.55em * 6);
+    overflow: hidden;
     max-width: none;
     font-size: 12px;
     line-height: 1.55;
@@ -4389,7 +4392,11 @@ nav.menu {
 }
 
 .excerpt-preview p {
-    margin-bottom: 9px
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 6;
+    margin: 0
 }
 
 .read-full {
@@ -8667,6 +8674,79 @@ nav.menu {
     color: var(--terra) !important;
     background: #fdf7f0;
     text-decoration: none !important
+}
+
+/* Homepage feed data must not stretch cards when authors publish long titles or copy. */
+.weekly-work h3 a,
+.editor-column h3 a,
+.announce-item h3 a,
+.fresh-work b a,
+.forum-home-topic b,
+.contest-home h3 a,
+.radio-now b,
+.radio-list b,
+.ranking li > a,
+.classics li > a,
+.visitor-list b,
+.comments strong,
+.comments a {
+    display: -webkit-box;
+    overflow: hidden;
+    min-width: 0;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2
+}
+
+.weekly-work p,
+.editor-column p,
+.announce-item p,
+.fresh-work small,
+.forum-home-topic small,
+.contest-home p,
+.radio-now p,
+.radio-list small,
+.visitor-list small {
+    display: -webkit-box;
+    overflow: hidden;
+    min-width: 0;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2
+}
+
+.weekly-work > div,
+.announce-item,
+.fresh-work > span,
+.forum-home-topic > span:not(.forum-topic-mark),
+.radio-now > div,
+.comments article p,
+.visitor-list > a > span {
+    min-width: 0
+}
+
+.editor-column footer > span:first-child,
+.announce-item > div,
+.comments article small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap
+}
+
+@media (max-width: 700px) {
+    .weekly-work h3 a,
+    .editor-column h3 a,
+    .announce-item h3 a,
+    .fresh-work b a,
+    .forum-home-topic b,
+    .contest-home h3 a,
+    .radio-now b,
+    .radio-list b,
+    .ranking li > a,
+    .classics li > a,
+    .visitor-list b,
+    .comments strong,
+    .comments a {
+        -webkit-line-clamp: 3
+    }
 }
 
 

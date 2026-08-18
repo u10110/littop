@@ -275,6 +275,12 @@ function plainText(value) {
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/(?:p|div|h[1-6]|li|blockquote)>/gi, '\n\n')
     .replace(/<[^>]*>/g, ' ')
+    .replace(/&(nbsp|#160|#x0*a0);/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
     .replace(/\r/g, '')
     .replace(/[ \t]+/g, ' ')
     .replace(/ *\n */g, '\n')
@@ -282,11 +288,18 @@ function plainText(value) {
     .trim();
 }
 
+function truncatePreview(value, maxLength = 360) {
+  if (value.length <= maxLength) return value;
+  return `${value.slice(0, maxLength).trimEnd()}…`;
+}
+
 const readingText = computed(() => plainText(work.value?.body || work.value?.summary || work.value?.excerpt || 'Текст пока не добавлен.'));
 const readingParagraphs = computed(() => readingText.value.split(/\n{2,}/).map((paragraph) => paragraph.trim()).filter(Boolean));
 const previewParagraphs = computed(() => {
-  const paragraphs = readingParagraphs.value.slice(0, 2);
-  return paragraphs.length > 1 ? paragraphs : [...paragraphs, 'Откройте читалку, чтобы прочитать произведение целиком.'];
+  const authoredSummary = plainText(work.value?.summary || work.value?.excerpt || '');
+  const fallbackText = plainText(work.value?.body || '');
+  const preview = truncatePreview(authoredSummary || fallbackText);
+  return [preview || 'Автор пока не добавил текст произведения.'];
 });
 const readerDialog = ref(null);
 const shareStatus = ref('');

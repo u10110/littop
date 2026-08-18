@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { useQuery } from '@vue/apollo-composable';
 import { RouterLink } from 'vue-router';
 import { HOME_QUERY } from '../lib/graphql.js';
-import { formatDate, formatWorkSection, ratingLabel } from '../lib/format.js';
+import { formatDate, formatWorkSection, ratingLabel, excerptText } from '../lib/format.js';
 import { buildAuthorPageLocation, buildWorkPageLocation } from '../lib/routes.js';
 
 import bookFog from '../assets/new-reference/book-fog.jpg';
@@ -46,6 +46,14 @@ const nowTrack = computed(() => radioTracks.value[0] ?? null);
 const topAuthors = computed(() => [...featuredAuthors.value].sort((a,b) => (b.ratingTotal || 0) - (a.ratingTotal || 0)).slice(0, 5));
 function authorName(author) { return author?.displayName || author?.login || 'Автор Littop'; }
 function shortDate(value) { return value ? formatDate(value) : 'недавно'; }
+function editorialPreview(topic) {
+  const text = String(topic?.body || '')
+    .replace(/&(nbsp|#160|#x0*a0);/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'");
+  return excerptText(text, 340);
+}
 function openAuth(mode) { window.dispatchEvent(new CustomEvent('littop:open-auth', { detail: { mode } })); }
 </script>
 
@@ -68,7 +76,7 @@ function openAuth(mode) { window.dispatchEvent(new CustomEvent('littop:open-auth
 
         <section class="live-home-strip">
           <section class="live-card editor-column"><div class="live-card-head"><div><span class="live-kicker">Мнение команды</span><h2>Колонка редактора</h2></div><RouterLink to="/forum" class="home-action-link" aria-label="Открыть все статьи" title="Открыть все статьи"><span aria-hidden="true">↗</span></RouterLink></div>
-            <article v-for="topic in editorTopics" :key="topic.id" class="editor-item"><h3><RouterLink :to="{ name: 'forum-topic-public', params: { slugOrId: topic.slug || topic.id } }">{{ topic.title }}</RouterLink></h3><p>{{ topic.body }}</p><footer><span>{{ authorName(topic.author) }} · {{ shortDate(topic.createdAt) }}</span><span>💬 {{ topic.repliesCount || 0 }}</span></footer></article>
+            <article v-for="topic in editorTopics" :key="topic.id" class="editor-item"><h3><RouterLink :to="{ name: 'forum-topic-public', params: { slugOrId: topic.slug || topic.id } }">{{ topic.title }}</RouterLink></h3><p>{{ editorialPreview(topic) }}</p><footer><span>{{ authorName(topic.author) }} · {{ shortDate(topic.createdAt) }}</span><span>💬 {{ topic.repliesCount || 0 }}</span></footer></article>
             <p v-if="!editorTopics.length" class="ref-empty">Редакционные темы появятся после публикации в разделе «Колонка редактора».</p>
           </section>
           <section class="live-card announcements"><div class="live-card-head"><div><span class="live-kicker">Выбор авторов</span><h2>Анонсы</h2></div><RouterLink to="/works" class="home-action-link" aria-label="Открыть все произведения" title="Открыть все произведения"><span aria-hidden="true">↗</span></RouterLink></div>
