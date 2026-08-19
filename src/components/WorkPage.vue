@@ -295,18 +295,8 @@ function truncatePreview(value, maxLength = 360) {
   return `${value.slice(0, maxLength).trimEnd()}…`;
 }
 
-const readingText = computed(() => plainText(work.value?.body || work.value?.summary || work.value?.excerpt || 'Текст пока не добавлен.'));
-const readingParagraphs = computed(() => readingText.value.split(/\n{2,}/).map((paragraph) => paragraph.trim()).filter(Boolean));
-const previewParagraphs = computed(() => {
-  const authoredSummary = plainText(work.value?.summary || work.value?.excerpt || '');
-  const fallbackText = plainText(work.value?.body || '');
-  const preview = truncatePreview(authoredSummary || fallbackText);
-  return [preview || 'Автор пока не добавил текст произведения.'];
-});
-const readerDialog = ref(null);
+const formattedWorkBody = computed(() => plainText(work.value?.body || work.value?.summary || work.value?.excerpt || 'Текст пока не добавлен.'));
 const shareStatus = ref('');
-function openReader() { readerDialog.value?.showModal?.(); }
-function closeReader() { readerDialog.value?.close?.(); }
 async function shareWork() {
   const url = window.location.href;
   const data = { title: work.value?.title || 'Произведение на Littop', text: work.value?.summary || work.value?.excerpt || '', url };
@@ -344,8 +334,7 @@ async function shareWork() {
               <p class="dates">Опубликовано: {{ formatDate(work.publishedAt || work.createdAt) }}<br>Обновлено: {{ formatDate(work.updatedAt || work.publishedAt || work.createdAt) }}</p>
               <div class="work-actions"><span>◉ {{ work.viewsCount || 0 }}</span><span>♡ {{ work.likesCount || 0 }}</span><span>★ {{ ratingLabel(work.averageRating, work.ratingsCount) }}</span><button type="button" @click="shareWork">↗ Поделиться⌄</button><button v-if="isOwner" type="button" @click="editMode ? cancelEditing() : startEditing()">{{ editMode ? 'Отменить' : 'Редактировать' }}</button></div>
               <p v-if="shareStatus" class="share-status">{{ shareStatus }}</p>
-              <article class="excerpt excerpt-preview"><p v-for="(paragraph, index) in previewParagraphs" :key="index">{{ paragraph }}</p></article>
-              <button class="btn btn-primary read-full" type="button" @click="openReader">Читать полностью</button>
+              <article class="excerpt work-full-text">{{ formattedWorkBody }}</article>
             </div>
           </div>
           <form v-if="editMode && isOwner" class="work-edit-form" @submit.prevent="submitWorkUpdate">
@@ -361,7 +350,6 @@ async function shareWork() {
           </form>
           <p v-if="editStatus || deleteStatus" class="ref-error">{{ editStatus || deleteStatus }}</p>
           <WorkDiscussionPanel :work="work" @refresh="refreshCurrentWork" />
-          <dialog ref="readerDialog" class="book-reader" :aria-label="`Читалка: ${work.title}`" @click.self="closeReader"><div class="reader-bar"><div><span>{{ work.title }}</span><small>{{ authorLabel(work.author) }}</small></div><button type="button" class="reader-close" aria-label="Закрыть чтение" @click="closeReader">×</button></div><article class="reader-page"><p class="reader-kicker">{{ formatWorkSection(work.sectionCode) }}</p><h1>{{ work.title }}</h1><p v-for="(paragraph, index) in readingParagraphs" :key="index" class="reader-paragraph">{{ paragraph }}</p></article></dialog>
         </template>
       </section>
       <aside v-if="work" class="detail-side"><section class="author-card"><h2>Об авторе</h2><div class="author-top"><div class="author-avatar">{{ authorLabel(work.author).slice(0, 1) }}</div><p><b>{{ authorLabel(work.author) }}</b><span>Автор произведения</span></p></div><div class="author-stats"><b>{{ work.author?.worksCountCached ?? work.author?.worksCount ?? '—' }}<small>произведения</small></b><b>{{ work.author?.followersCount || '—' }}<small>подписчики</small></b><b>{{ ratingLabel(work.averageRating, work.ratingsCount) }}<small>рейтинг</small></b></div><RouterLink v-if="work.author?.login" class="btn btn-primary" :to="buildAuthorPageLocation(work.author)">Страница автора</RouterLink></section><section class="mini-works"><h2>Другие произведения автора</h2><article v-for="item in otherAuthorWorks" :key="item.id" class="mini-work-row"><RouterLink class="mini-work-cover" :to="buildWorkPageLocation(item)"><img :src="coverFor(item)" :alt="item.title"></RouterLink><span><RouterLink class="mini-work-title" :to="buildWorkPageLocation(item)">{{ item.title }}</RouterLink><small>{{ formatWorkSection(item.sectionCode) }}<br>◉ {{ item.viewsCount || 0 }}</small></span></article><p v-if="!otherAuthorWorks.length" class="mini-works-empty">У автора пока нет других опубликованных произведений.</p><RouterLink v-if="work.author?.login" class="all-link" :to="buildAuthorPageLocation(work.author)">Смотреть все произведения ›</RouterLink></section><section v-if="similarWorks.length" class="mini-works"><h2>Похожие произведения</h2><article v-for="item in similarWorks" :key="item.id" class="mini-work-row"><RouterLink class="mini-work-cover" :to="buildWorkPageLocation(item)"><img :src="coverFor(item)" :alt="item.title"></RouterLink><span><RouterLink class="mini-work-title" :to="buildWorkPageLocation(item)">{{ item.title }}</RouterLink><small>{{ authorLabel(item.author) }}<br>◉ {{ item.viewsCount || 0 }}</small></span></article><RouterLink class="all-link" :to="{ path: '/works', query: { section: work.sectionCode, ...(work.genreSlug ? { genre: work.genreSlug } : {}) } }">Смотреть все ›</RouterLink></section><section class="mini-works"><h2>О произведении</h2><p>{{ work.summary || work.excerpt || 'Аннотация пока не добавлена.' }}</p><p class="detail-meta">Комментарии: {{ work.commentsCount || 0 }}</p></section></aside>
