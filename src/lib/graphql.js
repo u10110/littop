@@ -162,7 +162,7 @@ export const HOME_COMMENT_FIELDS = gql`
 `;
 
 export const DIRECT_MESSAGE_FIELDS = gql`
-  fragment DirectMessageFields on DirectMessage {
+  fragment DirectMessageFields on PrivateMessage {
     id
     senderUserId
     recipientUserId
