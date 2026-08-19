@@ -25,7 +25,7 @@ const { result: conversationsResult, loading: conversationsLoading, error: conve
   () => ({ limit: 30 }),
   () => ({ enabled: isAuthenticated.value, fetchPolicy: 'cache-and-network' }),
 );
-const conversations = computed(() => conversationsResult.value?.myConversations ?? []);
+const conversations = computed(() => conversationsResult.value?.privateDialogs ?? []);
 const filteredConversations = computed(() => {
   const needle = search.value.trim().toLowerCase();
   if (!needle) return conversations.value;
@@ -92,7 +92,7 @@ const { result: messagesResult, loading: messagesLoading, error: messagesError, 
   () => ({ peerUserId: selectedPeerId.value }),
   () => ({ enabled: isAuthenticated.value && Boolean(selectedPeerId.value), fetchPolicy: 'network-only' }),
 );
-const messages = computed(() => messagesResult.value?.directMessages ?? []);
+const messages = computed(() => messagesResult.value?.privateMessages ?? []);
 const { mutate: sendDirectMessage, loading: sending } = useMutation(SEND_DIRECT_MESSAGE_MUTATION);
 
 watch(messages, async () => {

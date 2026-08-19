@@ -458,7 +458,7 @@ export const FORUM_TOPIC_QUERY = gql`
 
 export const MY_CONVERSATIONS_QUERY = gql`
   query MyConversations($limit: Int!) {
-    myConversations(limit: $limit) {
+    privateDialogs(limit: $limit) {
       peerUserId lastMessageBody lastMessageAt unreadCount
       peer { ...AuthorCardFields }
     }
@@ -479,7 +479,7 @@ export const MESSAGES_SIDEBAR_QUERY = gql`
 `;
 
 export const DIRECT_MESSAGES_QUERY = gql`
-  query DirectMessages($peerUserId: ID!) { directMessages(peerUserId: $peerUserId) { ...DirectMessageFields } }
+  query DirectMessages($peerUserId: ID!) { privateMessages(withUserId: $peerUserId) { ...DirectMessageFields } }
   ${DIRECT_MESSAGE_FIELDS}
 `;
 
@@ -555,7 +555,7 @@ export const RESET_PASSWORD_MUTATION = gql`
 `;
 
 export const SEND_DIRECT_MESSAGE_MUTATION = gql`
-  mutation SendDirectMessage($peerUserId: ID!, $body: String!) { sendDirectMessage(peerUserId: $peerUserId, body: $body) { ...DirectMessageFields } }
+  mutation SendDirectMessage($peerUserId: ID!, $body: String!) { sendPrivateMessage(recipientUserId: $peerUserId, body: $body) { ...DirectMessageFields } }
   ${DIRECT_MESSAGE_FIELDS}
 `;
 
