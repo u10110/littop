@@ -22,6 +22,9 @@ const htmlMode = ref(false);
 const htmlSource = ref('');
 const imageUploadBusy = ref(false);
 const imageUploadError = ref('');
+const insertModal = ref(null);
+const insertValue = ref('');
+const insertError = ref('');
 
 const editor = useEditor({
   content: props.modelValue,
@@ -55,24 +58,40 @@ function toggleHtmlMode() {
 function setLink() {
   if (!editor.value || props.disabled) return;
   const previousUrl = editor.value.getAttributes('link').href || '';
-  const url = window.prompt('Ссылка', previousUrl);
-  if (url === null) return;
-  if (!url.trim()) editor.value.chain().focus().unsetLink().run();
-  else editor.value.chain().focus().setLink({ href: url.trim(), target: '_blank', rel: 'noopener noreferrer' }).run();
+  openInsertModal('link', previousUrl);
 }
 function setImage() {
   if (!editor.value || props.disabled) return;
-  const url = window.prompt('Адрес изображения');
-  if (url?.trim()) editor.value.chain().focus().setImage({ src: url.trim(), alt: '' }).run();
+  openInsertModal('image');
 }
 function setVideo() {
   if (!editor.value || props.disabled) return;
-  const value = window.prompt('Ссылка Rutube или «Код для вставки» VK Видео');
-  if (value === null) return;
+  openInsertModal('video');
+}
+const insertModalTitle = computed(() => ({ link: 'Вставить ссылку', image: 'Вставить изображение', video: 'Вставить видео' })[insertModal.value?.kind] || 'Вставка');
+const insertModalHint = computed(() => ({
+  link: 'Укажите адрес ссылки. Пустое поле удалит ссылку с выделенного текста.',
+  image: 'Укажите прямую ссылку на изображение.',
+  video: 'Вставьте ссылку Rutube, код iframe VK Видео или ссылку video_ext.php.',
+})[insertModal.value?.kind] || '');
+function openInsertModal(kind, value = '') { insertModal.value = { kind }; insertValue.value = value; insertError.value = ''; }
+function closeInsertModal() { insertModal.value = null; insertValue.value = ''; insertError.value = ''; }
+function submitInsertModal() {
+  if (!editor.value || !insertModal.value) return;
+  const value = insertValue.value.trim();
   try {
-    editor.value.chain().focus().setVideoEmbed({ src: normalizeVideoEmbedUrl(value) }).run();
+    if (insertModal.value.kind === 'link') {
+      if (!value) editor.value.chain().focus().unsetLink().run();
+      else editor.value.chain().focus().setLink({ href: value, target: '_blank', rel: 'noopener noreferrer' }).run();
+    } else if (insertModal.value.kind === 'image') {
+      if (!value) throw new Error('Укажите адрес изображения.');
+      editor.value.chain().focus().setImage({ src: value, alt: '' }).run();
+    } else {
+      editor.value.chain().focus().setVideoEmbed({ src: normalizeVideoEmbedUrl(value) }).run();
+    }
+    closeInsertModal();
   } catch (error) {
-    window.alert(error instanceof Error ? error.message : 'Не удалось вставить видео.');
+    insertError.value = error instanceof Error ? error.message : 'Не удалось выполнить вставку.';
   }
 }
 function chooseImage() {
@@ -116,6 +135,16 @@ function applyFontSize(event) { const value = event.target.value; fontSize.value
     <textarea v-if="htmlMode" v-model="htmlSource" class="html-source" aria-label="HTML исходник" spellcheck="false" />
     <template v-else><EditorContent :editor="editor" /><span v-if="isEmpty" class="editor-placeholder">{{ placeholder }}</span></template>
     <p v-if="imageUploadError" class="image-upload-error" role="alert">{{ imageUploadError }}</p>
+    <div v-if="insertModal" class="insert-modal-backdrop" @click.self="closeInsertModal">
+      <form class="insert-modal" role="dialog" aria-modal="true" :aria-label="insertModalTitle" @submit.prevent="submitInsertModal">
+        <header><h3>{{ insertModalTitle }}</h3><button class="insert-modal-close" type="button" aria-label="Закрыть" @click="closeInsertModal">×</button></header>
+        <p>{{ insertModalHint }}</p>
+        <textarea v-if="insertModal.kind === 'video'" v-model="insertValue" autofocus rows="5" placeholder="https://rutube.ru/video/... или &lt;iframe src=&quot;https://vkvideo.ru/video_ext.php?...&quot;&gt;&lt;/iframe&gt;" />
+        <input v-else v-model="insertValue" autofocus type="url" :placeholder="insertModal.kind === 'image' ? 'https://…/image.jpg' : 'https://…'">
+        <p v-if="insertError" class="insert-modal-error" role="alert">{{ insertError }}</p>
+        <footer><button class="insert-modal-cancel" type="button" @click="closeInsertModal">Отмена</button><button class="insert-modal-submit" type="submit">Вставить</button></footer>
+      </form>
+    </div>
   </div>
 </template>
 
@@ -143,10 +172,27 @@ button:hover, button.active { background: #d9e2ea; }
 :deep(.rich-text-content [data-resize-handle="bottom-right"]) { transform: translate(50%, 50%); cursor: se-resize; }
 :deep(.rich-text-content [data-resize-handle="top-right"]) { transform: translate(50%, -50%); cursor: nesw-resize; }
 :deep(.rich-text-content [data-resize-handle="bottom-left"]) { transform: translate(-50%, 50%); cursor: nesw-resize; }
-:deep(.rich-text-content [data-resize-container][data-resize-state="true"] img) { outline: 1px solid #2d668f; outline-offset: 2px; }
+:deep(.rich-text-content [data-resize-container][data-resize-state="true"] img), :deep(.rich-text-content [data-resize-container][data-resize-state="true"] iframe) { outline: 1px solid #2d668f; outline-offset: 2px; }
+:deep(.rich-text-content iframe) { display: block; max-width: 100%; border: 0; margin: 1rem 0; background: #000; }
 :deep(.rich-text-content hr) { border: 0; border-top: 1px solid #aeb6bd; margin: 1.4rem 0; }
 .html-source { display: block; width: 100%; min-height: 300px; box-sizing: border-box; padding: 15px 16px; border: 0; outline: 0; resize: vertical; font: 14px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; color: #27211c; background: #fffdf8; }
 .image-upload-error { margin: 0; padding: 7px 12px; border-top: 1px solid #edc1c1; color: #a02c2c; background: #fff2f2; font-size: 13px; }
+.insert-modal-backdrop { position: absolute; z-index: 20; inset: 0; display: grid; place-items: center; padding: 18px; background: rgba(42, 50, 56, .42); }
+.insert-modal { width: min(100%, 510px); box-sizing: border-box; padding: 0; overflow: hidden; border: 1px solid #b8c0c5; border-radius: 5px; background: #fffdf8; box-shadow: 0 14px 35px rgba(28, 35, 40, .28); color: #302b25; }
+.insert-modal header { display: flex; align-items: center; justify-content: space-between; padding: 13px 16px; border-bottom: 1px solid #d5d9dc; background: linear-gradient(#f6f7f8, #e9edf0); }
+.insert-modal h3 { margin: 0; font: 18px/1.2 Georgia, serif; }
+.insert-modal > p { margin: 15px 16px 9px; color: #655e56; font-size: 13px; line-height: 1.45; }
+.insert-modal input, .insert-modal textarea { display: block; width: calc(100% - 32px); box-sizing: border-box; margin: 0 16px; padding: 9px 10px; border: 1px solid #aeb7bd; border-radius: 3px; outline: none; background: #fff; color: #27211c; font: 14px/1.45 Arial, sans-serif; resize: vertical; }
+.insert-modal input:focus, .insert-modal textarea:focus { border-color: #4f7794; box-shadow: 0 0 0 2px rgba(79, 119, 148, .16); }
+.insert-modal-error { margin: 9px 16px 0 !important; color: #a02c2c !important; }
+.insert-modal footer { display: flex; justify-content: flex-end; gap: 8px; padding: 15px 16px; }
+.insert-modal-close, .insert-modal-cancel, .insert-modal-submit { height: 32px; border: 1px solid #aeb7bd; border-radius: 3px; padding: 0 13px; font: 14px/1 Arial, sans-serif; }
+.insert-modal-close { min-width: auto; height: 26px; border: 0; font-size: 22px; color: #6b747b; }
+.insert-modal-close:hover { background: transparent; color: #252b30; }
+.insert-modal-cancel { background: #f6f5f1; color: #45403b; }
+.insert-modal-submit { border-color: #315e7a; background: #3d708f; color: #fff; }
+.insert-modal-cancel:hover { background: #e9e6df; }
+.insert-modal-submit:hover { background: #2f6281; }
 .editor-placeholder { position: absolute; top: 54px; left: 16px; color: #8e9498; pointer-events: none; font: 18px Georgia, serif; }
 .is-disabled { opacity: .65; }
 .is-disabled button, .is-disabled .tool-select { cursor: not-allowed; }
