@@ -3272,13 +3272,21 @@ nav.menu {
     padding: 8px
 }
 
-.mini-works > a:not(.all-link) {
+.mini-work-row {
     display: flex;
     gap: 10px;
-    padding: 7px 0
+    padding: 7px 0;
+    margin: 0
+}
+
+.mini-work-cover {
+    flex: 0 0 auto;
+    display: block;
+    line-height: 0
 }
 
 .mini-works img {
+    display: block;
     width: 43px;
     height: 50px;
     object-fit: cover;
@@ -3286,10 +3294,32 @@ nav.menu {
 }
 
 .mini-works span {
+    min-width: 0;
     display: grid;
     align-content: center;
     gap: 3px;
     font-size: 11px
+}
+
+.mini-work-title {
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    color: var(--ink);
+    font-weight: 700;
+    text-decoration: none
+}
+
+.mini-work-title:hover,
+.mini-work-title:focus-visible,
+.mini-work-cover:hover + span .mini-work-title,
+.mini-work-cover:focus-visible + span .mini-work-title {
+    color: var(--terra);
+    text-decoration: underline
+}
+
+.mini-work-row small {
+    text-decoration: none
 }
 
 .all-link {
