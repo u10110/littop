@@ -1,17 +1,8 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { EditorContent, useEditor } from '@tiptap/vue-3';
-import StarterKit from '@tiptap/starter-kit';
-import Underline from '@tiptap/extension-underline';
-import Link from '@tiptap/extension-link';
-import Image from '@tiptap/extension-image';
-import TextAlign from '@tiptap/extension-text-align';
-import { TextStyle } from '@tiptap/extension-text-style';
-import Color from '@tiptap/extension-color';
-import Highlight from '@tiptap/extension-highlight';
-import FontFamily from '@tiptap/extension-font-family';
-
-import { normalizeRichTextHtml } from '../lib/richText.js';
+import { normalizeHtmlSource, normalizeRichTextHtml } from '../lib/richText.js';
+import { richTextExtensions } from '../lib/editorExtensions.js';
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
@@ -24,41 +15,13 @@ const textColorInput = ref(null);
 const highlightColorInput = ref(null);
 const fontFamily = ref('');
 const fontSize = ref('');
-const FontSize = TextStyle.extend({
-  addAttributes() {
-    return {
-      ...this.parent?.(),
-      fontSize: {
-        default: null,
-        parseHTML: (element) => element.style.fontSize || null,
-        renderHTML: (attributes) => attributes.fontSize ? { style: `font-size: ${attributes.fontSize}` } : {},
-      },
-    };
-  },
-  addCommands() {
-    return {
-      ...this.parent?.(),
-      setFontSize: (fontSizeValue) => ({ chain }) => chain().setMark('textStyle', { fontSize: fontSizeValue }).run(),
-      unsetFontSize: () => ({ chain }) => chain().setMark('textStyle', { fontSize: null }).removeEmptyTextStyle().run(),
-    };
-  },
-});
+const htmlMode = ref(false);
+const htmlSource = ref('');
 
 const editor = useEditor({
   content: props.modelValue,
   editable: !props.disabled,
-  extensions: [
-    StarterKit.configure({ heading: false, codeBlock: false }),
-    Underline,
-    Link.configure({ openOnClick: false, autolink: true, linkOnPaste: true }),
-    Image.configure({ inline: false, allowBase64: false }),
-    TextAlign.configure({ types: ['paragraph'] }),
-    TextStyle,
-    FontSize,
-    Color,
-    Highlight.configure({ multicolor: true }),
-    FontFamily.configure({ types: ['textStyle'] }),
-  ],
+  extensions: richTextExtensions,
   editorProps: { attributes: { class: 'rich-text-content', 'aria-label': 'Текст произведения' } },
   onUpdate: ({ editor: currentEditor }) => emit('update:modelValue', normalizeRichTextHtml(currentEditor.getHTML())),
 });
@@ -72,6 +35,18 @@ watch(() => props.disabled, (value) => editor.value?.setEditable(!value));
 onBeforeUnmount(() => editor.value?.destroy());
 
 function run(command) { if (!editor.value || props.disabled) return; command(editor.value.chain().focus()); }
+function toggleHtmlMode() {
+  if (!editor.value || props.disabled) return;
+  if (!htmlMode.value) {
+    htmlSource.value = editor.value.getHTML();
+    htmlMode.value = true;
+    return;
+  }
+  const html = normalizeHtmlSource(htmlSource.value);
+  editor.value.commands.setContent(html, { emitUpdate: false });
+  emit('update:modelValue', normalizeRichTextHtml(editor.value.getHTML()));
+  htmlMode.value = false;
+}
 function setLink() {
   if (!editor.value || props.disabled) return;
   const previousUrl = editor.value.getAttributes('link').href || '';
@@ -94,7 +69,7 @@ function applyFontSize(event) { const value = event.target.value; fontSize.value
 <template>
   <div class="rich-text-editor" :class="{ 'is-disabled': disabled }">
     <div v-if="editor" class="rich-text-toolbar" role="toolbar" aria-label="Форматирование текста">
-      <div class="tool-group"><button type="button" title="Код" :class="{ active: editor.isActive('code') }" @mousedown.prevent @click="run((chain) => chain.toggleCode().run())">&lt;/&gt;</button></div>
+      <div class="tool-group"><button type="button" title="Режим HTML" :class="{ active: htmlMode }" @mousedown.prevent @click="toggleHtmlMode">&lt;/&gt;</button></div>
       <div class="tool-group"><button type="button" title="Жирный" :class="{ active: editor.isActive('bold') }" @mousedown.prevent @click="run((chain) => chain.toggleBold().run())"><b>B</b></button><button type="button" title="Курсив" :class="{ active: editor.isActive('italic') }" @mousedown.prevent @click="run((chain) => chain.toggleItalic().run())"><i>I</i></button><button type="button" title="Подчёркивание" :class="{ active: editor.isActive('underline') }" @mousedown.prevent @click="run((chain) => chain.toggleUnderline().run())"><u>U</u></button><button type="button" title="Зачёркивание" :class="{ active: editor.isActive('strike') }" @mousedown.prevent @click="run((chain) => chain.toggleStrike().run())"><s>T</s></button></div>
       <div class="tool-group"><button type="button" title="Маркированный список" :class="{ active: editor.isActive('bulletList') }" @mousedown.prevent @click="run((chain) => chain.toggleBulletList().run())">•≡</button><button type="button" title="Нумерованный список" :class="{ active: editor.isActive('orderedList') }" @mousedown.prevent @click="run((chain) => chain.toggleOrderedList().run())">1≡</button></div>
       <div class="tool-group"><button type="button" title="Вставить изображение по ссылке" @mousedown.prevent @click="setImage">▧</button><button type="button" title="Вставить ссылку" :class="{ active: editor.isActive('link') }" @mousedown.prevent @click="setLink">⌁</button></div>
@@ -102,8 +77,8 @@ function applyFontSize(event) { const value = event.target.value; fontSize.value
       <div class="tool-group"><button type="button" title="Горизонтальная линия" @mousedown.prevent @click="run((chain) => chain.setHorizontalRule().run())">—</button></div>
       <div class="tool-group typography-tools"><button type="button" title="Цвет текста" @mousedown.prevent @click="textColorInput?.click()"><span class="text-color-icon">A</span></button><input ref="textColorInput" class="color-control" type="color" value="#1f2933" @input="applyTextColor"><button type="button" title="Цвет фона" @mousedown.prevent @click="highlightColorInput?.click()"><span class="highlight-color-icon">A</span></button><input ref="highlightColorInput" class="color-control" type="color" value="#fff176" @input="applyHighlightColor"><label title="Шрифт" class="tool-select"><span>Aa</span><select v-model="fontFamily" @change="applyFontFamily"><option value="">Шрифт</option><option value="Georgia">Georgia</option><option value="Arial">Arial</option><option value="'Courier New'">Courier New</option><option value="'Times New Roman'">Times New Roman</option></select></label><label title="Размер текста" class="tool-select"><span>a↕</span><select v-model="fontSize" @change="applyFontSize"><option value="">Размер</option><option value="14px">14</option><option value="16px">16</option><option value="18px">18</option><option value="20px">20</option><option value="24px">24</option></select></label></div>
     </div>
-    <EditorContent :editor="editor" />
-    <span v-if="isEmpty" class="editor-placeholder">{{ placeholder }}</span>
+    <textarea v-if="htmlMode" v-model="htmlSource" class="html-source" aria-label="HTML исходник" spellcheck="false" />
+    <template v-else><EditorContent :editor="editor" /><span v-if="isEmpty" class="editor-placeholder">{{ placeholder }}</span></template>
   </div>
 </template>
 
@@ -125,6 +100,7 @@ button:hover, button.active { background: #d9e2ea; }
 :deep(.rich-text-content p:last-child) { margin-bottom: 0; }
 :deep(.rich-text-content img) { max-width: 100%; height: auto; margin: 1rem 0; }
 :deep(.rich-text-content hr) { border: 0; border-top: 1px solid #aeb6bd; margin: 1.4rem 0; }
+.html-source { display: block; width: 100%; min-height: 300px; box-sizing: border-box; padding: 15px 16px; border: 0; outline: 0; resize: vertical; font: 14px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; color: #27211c; background: #fffdf8; }
 .editor-placeholder { position: absolute; top: 54px; left: 16px; color: #8e9498; pointer-events: none; font: 18px Georgia, serif; }
 .is-disabled { opacity: .65; }
 .is-disabled button, .is-disabled .tool-select { cursor: not-allowed; }

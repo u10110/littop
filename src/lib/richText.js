@@ -12,3 +12,7 @@ export function normalizeRichTextHtml(value) {
   const html = String(value ?? '').trim();
   return /^(<p>(<br\s*\/?>)?<\/p>|<p>\s*<\/p>)$/i.test(html) ? '' : html;
 }
+
+export function normalizeHtmlSource(value) {
+  return String(value ?? '').trim() || '<p></p>';
+}
