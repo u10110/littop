@@ -1,8 +1,9 @@
 <script setup>
-import { ref } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { useQuery } from '@vue/apollo-composable';
 
 import { apolloClient } from '../lib/apollo.js';
-import { CREATE_WORK_MUTATION } from '../lib/graphql.js';
+import { CREATE_WORK_MUTATION, WORK_GENRES_QUERY } from '../lib/graphql.js';
 
 const emit = defineEmits(['created']);
 
@@ -11,10 +12,23 @@ const createStatus = ref('');
 const createError = ref('');
 const createForm = ref({
   sectionCode: 'poetry',
+  genreSlug: '',
   title: '',
   summary: '',
   body: '',
   projectFormat: '',
+});
+
+const genreQueryVariables = computed(() => ({ sectionCode: createForm.value.sectionCode || null }));
+const { result: genresResult, loading: genresLoading } = useQuery(
+  WORK_GENRES_QUERY,
+  genreQueryVariables,
+  { fetchPolicy: 'cache-and-network' },
+);
+const genreOptions = computed(() => genresResult.value?.workGenres ?? []);
+
+watch(() => createForm.value.sectionCode, () => {
+  createForm.value.genreSlug = '';
 });
 
 const projectFormats = [
@@ -42,6 +56,7 @@ async function submitCreateWork() {
       variables: {
         input: {
           sectionCode: createForm.value.sectionCode,
+          genreSlug: normalizeOptional(createForm.value.genreSlug),
           title: createForm.value.title.trim(),
           summary: normalizeOptional(createForm.value.summary),
           body: normalizeOptional(createForm.value.body),
@@ -54,6 +69,7 @@ async function submitCreateWork() {
     const createdWork = data?.createWork ?? null;
     createForm.value = {
       sectionCode: 'poetry',
+      genreSlug: '',
       title: '',
       summary: '',
       body: '',
@@ -70,24 +86,30 @@ async function submitCreateWork() {
 </script>
 
 <template>
-  <article class="panel stack">
+  <article class="panel work-publish-form">
     <div class="section-head">
-      <h2>Новая публикация</h2>
+      <div><span class="publish-kicker">Новая публикация</span><h2>Добавьте произведение</h2></div>
     </div>
+    <p class="publish-hint">Заполните основные данные — произведение сразу появится в вашем кабинете.</p>
 
-    <div class="note">
-      Новая публикация теперь создаётся прямо из кабинета автора. После сохранения её можно сразу открыть через ссылку
-      «Мои произведения».
-    </div>
-
-    <form class="stack" @submit.prevent="submitCreateWork">
-      <div class="field">
-        <label for="create-section">Раздел</label>
+    <form @submit.prevent="submitCreateWork">
+      <div class="publish-classification">
+        <div class="field">
+          <label for="create-section">Раздел</label>
         <select id="create-section" v-model="createForm.sectionCode" class="select">
           <option value="poetry">Поэзия</option>
           <option value="prose">Проза</option>
           <option value="project">Творческий проект</option>
         </select>
+        </div>
+
+        <div class="field">
+          <label for="create-genre">Рубрикатор</label>
+          <select id="create-genre" v-model="createForm.genreSlug" class="select" :disabled="genresLoading">
+            <option value="">{{ genresLoading ? 'Загружаем рубрики…' : 'Не выбирать рубрику' }}</option>
+            <option v-for="genre in genreOptions" :key="genre.slug" :value="genre.slug">{{ genre.name }}</option>
+          </select>
+        </div>
       </div>
 
       <div v-if="createForm.sectionCode === 'project'" class="field">
@@ -98,23 +120,21 @@ async function submitCreateWork() {
       </div>
 
       <div class="field">
-        <label for="create-title">Заголовок</label>
+        <label for="create-title">Название произведения</label>
         <input id="create-title" v-model="createForm.title" class="input" required />
       </div>
 
       <div class="field">
-        <label for="create-summary">Краткое описание</label>
-        <textarea id="create-summary" v-model="createForm.summary" class="textarea" placeholder="2–3 предложения о публикации" />
+        <label for="create-summary">Анонс произведения <small>(необязательно)</small></label>
+        <textarea id="create-summary" v-model="createForm.summary" class="textarea" rows="4" placeholder="Коротко расскажите о произведении" />
       </div>
 
       <div class="field">
-        <label for="create-body">Текст</label>
-        <textarea id="create-body" v-model="createForm.body" class="textarea" placeholder="Полный текст произведения" />
+        <label for="create-body">Текст произведения <small>* Перенос строки — Shift+Enter</small></label>
+        <textarea id="create-body" v-model="createForm.body" class="textarea publish-body" rows="14" required placeholder="Введите полный текст произведения" />
       </div>
 
-      <button class="btn btn-primary" type="submit" :disabled="createBusy">
-        {{ createBusy ? 'Публикуем…' : 'Опубликовать' }}
-      </button>
+      <div class="publish-submit"><button class="btn btn-primary" type="submit" :disabled="createBusy">{{ createBusy ? 'Публикуем…' : 'Опубликовать произведение' }}</button><span>После публикации можно отредактировать текст в кабинете.</span></div>
       <div v-if="createStatus" class="message success">{{ createStatus }}</div>
       <div v-if="createError" class="message error">{{ createError }}</div>
     </form>

@@ -8986,3 +8986,23 @@ nav.menu {
     .quick-review-compose { grid-template-columns: 1fr; }
     .quick-review .btn { justify-self: start; }
 }
+
+/* Work publication follows the supplied compact author form: classification first, then title, announcement and body. */
+.personal-cabinet .work-publish-form { padding: 20px; }
+.personal-cabinet .work-publish-form .section-head { margin-bottom: 5px; }
+.personal-cabinet .work-publish-form .section-head h2 { margin: 3px 0 0; font: 600 19px Inter, Arial, sans-serif; }
+.publish-kicker { color: #a26f35; font: 700 9px Inter, Arial, sans-serif; text-transform: uppercase; letter-spacing: .1em; }
+.publish-hint { margin: 0 0 16px; color: #7d746b; font-size: 11px; }
+.work-publish-form form { display: grid; gap: 12px; }
+.work-publish-form .field { display: grid; gap: 5px; }
+.work-publish-form label { color: #5f554c; font: 600 11px Inter, Arial, sans-serif; }
+.work-publish-form label small { color: #948a80; font: 400 10px Inter, Arial, sans-serif; }
+.work-publish-form .input, .work-publish-form .select, .work-publish-form .textarea { width: 100%; box-sizing: border-box; border: 1px solid #dfd4c8; border-radius: 5px; padding: 9px 10px; background: #fffdf8; color: #342e28; font: 12px Inter, Arial, sans-serif; }
+.work-publish-form .textarea { line-height: 1.5; resize: vertical; }
+.work-publish-form .input:focus, .work-publish-form .select:focus, .work-publish-form .textarea:focus { outline: 2px solid rgba(201,130,61,.14); border-color: #c9823d; }
+.publish-classification { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 11px; border: 1px solid #eee2d6; border-radius: 7px; background: #fcf7f1; }
+.publish-body { min-height: 250px; font: 15px/1.7 Georgia, 'Times New Roman', serif !important; }
+.publish-submit { display: flex; align-items: center; gap: 10px; padding-top: 2px; }
+.publish-submit .btn { padding: 9px 13px; font-size: 11px; }
+.publish-submit span { color: #948a80; font-size: 10px; }
+@media (max-width: 700px) { .publish-classification { grid-template-columns: 1fr; } .publish-submit { align-items: flex-start; flex-direction: column; } }

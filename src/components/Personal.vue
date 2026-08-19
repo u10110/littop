@@ -395,6 +395,28 @@ async function submitProfileImage(kind) {
       </section>
 
       <section class="cabinet-top">
+        <article class="dash-card actions-card">
+          <h2>Быстрые действия</h2>
+          <div>
+            <a href="#publish-work">▤ <span>Добавить<br>произведение</span></a>
+            <RouterLink :to="myWorksLink">▧ <span>Мои<br>публикации</span></RouterLink>
+            <RouterLink to="/contests">♜ <span>Участвовать<br>в конкурсе</span></RouterLink>
+            <RouterLink to="/messages">✉ <span>Мои<br>сообщения</span></RouterLink>
+            <RouterLink v-if="currentUser?.login" :to="myAuthorPageLink">▥ <span>Страница<br>автора</span></RouterLink>
+            <a href="#profile-edit">⚙ <span>Настройки<br>профиля</span></a>
+          </div>
+        </article>
+
+        <article class="dash-card activity-card">
+          <div class="card-heading"><h2>Активность</h2><RouterLink :to="myWorksLink">Подробнее</RouterLink></div>
+          <div>
+            <span><small>Регистрация</small><b>{{ formatDate(currentUser?.registeredAt || currentUser?.createdAt) }}</b></span>
+            <span><small>Последний вход</small><b>{{ formatDateTime(currentUser?.lastLoginAt) }}</b></span>
+            <span><small>Публикаций</small><b>{{ profile?.worksCountCached ?? 0 }}</b></span>
+          </div>
+          <p class="verified">✓ Подтверждён email<br>✓ Активный автор</p>
+        </article>
+
         <article class="dash-card photo-card">
           <div class="card-heading"><h2>Фото автора</h2><a href="#profile-images">Изменить фото</a></div>
           <p>Фотография отображается на странице автора и в публикациях.</p>
@@ -411,28 +433,6 @@ async function submitProfileImage(kind) {
               <b>Обложка профиля</b><small>Большое фото на странице автора</small>
               <a class="btn btn-secondary" href="#profile-images">Загрузить обложку</a>
             </div>
-          </div>
-        </article>
-
-        <article class="dash-card activity-card">
-          <div class="card-heading"><h2>Активность</h2><RouterLink :to="myWorksLink">Подробнее</RouterLink></div>
-          <div>
-            <span><small>Регистрация</small><b>{{ formatDate(currentUser?.registeredAt || currentUser?.createdAt) }}</b></span>
-            <span><small>Последний вход</small><b>{{ formatDateTime(currentUser?.lastLoginAt) }}</b></span>
-            <span><small>Публикаций</small><b>{{ profile?.worksCountCached ?? 0 }}</b></span>
-          </div>
-          <p class="verified">✓ Подтверждён email<br>✓ Активный автор</p>
-        </article>
-
-        <article class="dash-card actions-card">
-          <h2>Быстрые действия</h2>
-          <div>
-            <a href="#publish-work">▤ <span>Добавить<br>произведение</span></a>
-            <RouterLink :to="myWorksLink">▧ <span>Мои<br>публикации</span></RouterLink>
-            <RouterLink to="/contests">♜ <span>Участвовать<br>в конкурсе</span></RouterLink>
-            <RouterLink to="/messages">✉ <span>Мои<br>сообщения</span></RouterLink>
-            <RouterLink v-if="currentUser?.login" :to="myAuthorPageLink">▥ <span>Страница<br>автора</span></RouterLink>
-            <a href="#profile-edit">⚙ <span>Настройки<br>профиля</span></a>
           </div>
         </article>
       </section>
