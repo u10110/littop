@@ -10,7 +10,7 @@ import { filenameToTrackTitle, probeAudioDuration, uploadRadioTrack } from '../l
 import { uploadProfileImage } from '../lib/profileImages.js';
 import { buildAuthorPageLocation, buildWorkPageLocation } from '../lib/routes.js';
 import { apolloClient } from '../lib/apollo.js';
-import { MY_PEACH_TRANSACTIONS_QUERY, MY_RATING_EVENTS_QUERY, PURCHASE_AUDIO_UPLOAD_PACK_MUTATION, REQUEST_ADMIN_REVIEW_MUTATION, WORKS_QUERY } from '../lib/graphql.js';
+import { MY_MANAGED_AUTHORS_QUERY, MY_PEACH_TRANSACTIONS_QUERY, MY_RATING_EVENTS_QUERY, PURCHASE_AUDIO_UPLOAD_PACK_MUTATION, REQUEST_ADMIN_REVIEW_MUTATION, WORKS_QUERY } from '../lib/graphql.js';
 
 const {
   currentUser,
@@ -18,8 +18,12 @@ const {
   bootstrapped,
   profileBusy,
   profileError,
+  authBusy,
+  hasStoredOwnerSession,
   bootstrapSession,
   saveProfile,
+  switchToManagedAuthor,
+  restoreOwnerSession,
 } = useSession();
 
 const myWorksQueryVariables = computed(() => ({
@@ -63,6 +67,11 @@ const myWorksLink = computed(() => ({
 }));
 const myAuthorPageLink = computed(() => buildAuthorPageLocation(currentUser.value?.login || ''));
 const profileSuccess = ref('');
+const managedAuthors = ref([]);
+const managedAuthorsBusy = ref(false);
+const managedAuthorsError = ref('');
+const managedSwitchStatus = ref('');
+const isAdmin = computed(() => currentUser.value?.role === 'admin');
 const publishStatus = ref('');
 const audioBusy = ref(false);
 const audioError = ref('');
@@ -92,6 +101,47 @@ const audioForm = ref({
 onMounted(() => {
   bootstrapSession();
 });
+
+async function loadManagedAuthors() {
+  if (!isAdmin.value) {
+    managedAuthors.value = [];
+    return;
+  }
+  managedAuthorsBusy.value = true;
+  managedAuthorsError.value = '';
+  try {
+    const { data } = await apolloClient.query({
+      query: MY_MANAGED_AUTHORS_QUERY,
+      variables: { limit: 100 },
+      fetchPolicy: 'network-only',
+    });
+    managedAuthors.value = data?.myManagedAuthors ?? [];
+  } catch (error) {
+    managedAuthorsError.value = error instanceof Error ? error.message : 'Не удалось загрузить управляемые аккаунты.';
+  } finally {
+    managedAuthorsBusy.value = false;
+  }
+}
+
+async function switchManagedAuthor(author) {
+  managedSwitchStatus.value = '';
+  try {
+    await switchToManagedAuthor(author.id);
+    managedSwitchStatus.value = `Открыт кабинет автора «${author.displayName}». Теперь публикации и изменения будут выполняться от его имени.`;
+  } catch (error) {
+    managedSwitchStatus.value = error instanceof Error ? error.message : 'Не удалось переключить аккаунт.';
+  }
+}
+
+async function returnToAdminAccount() {
+  managedSwitchStatus.value = '';
+  try {
+    await restoreOwnerSession();
+    managedSwitchStatus.value = 'Вы вернулись в аккаунт администратора.';
+  } catch (error) {
+    managedSwitchStatus.value = error instanceof Error ? error.message : 'Не удалось вернуться в аккаунт администратора.';
+  }
+}
 
 async function loadCabinetStatistics() {
   if (!isAuthenticated.value) {
@@ -170,6 +220,7 @@ watch(
   () => {
     syncProfileForm();
     loadCabinetStatistics();
+    loadManagedAuthors();
   },
   { immediate: true },
 );
@@ -383,6 +434,27 @@ async function submitProfileImage(kind) {
             <RouterLink v-if="currentUser?.login" :to="myAuthorPageLink">▥ <span>Страница<br>автора</span></RouterLink>
             <a href="#profile-edit">⚙ <span>Настройки<br>профиля</span></a>
           </div>
+        </article>
+      </section>
+
+      <section v-if="isAdmin || hasStoredOwnerSession" class="cabinet-managed-section">
+        <article class="dash-card managed-authors-card">
+          <div class="card-heading"><h2>Управляемые аккаунты</h2><span v-if="isAdmin">{{ managedAuthors.length }}</span></div>
+          <p v-if="isAdmin">Переключитесь в профиль автора, чтобы размещать, редактировать и удалять материалы от его имени.</p>
+          <p v-else>Вы работаете от имени автора. Вернитесь в админ-аккаунт, чтобы выбрать другой профиль.</p>
+          <div v-if="managedSwitchStatus" class="message" :class="managedSwitchStatus.includes('Не удалось') ? 'error' : 'success'">{{ managedSwitchStatus }}</div>
+          <div v-if="isAdmin">
+            <p v-if="managedAuthorsBusy">Загружаем аккаунты…</p>
+            <p v-else-if="managedAuthorsError" class="message error">{{ managedAuthorsError }}</p>
+            <p v-else-if="!managedAuthors.length">Управляемых аккаунтов пока нет.</p>
+            <div v-else class="managed-authors-list">
+              <div v-for="author in managedAuthors" :key="author.id" class="managed-author-row">
+                <span><b>{{ author.displayName }}</b><small>@{{ author.login }} · {{ author.worksCountCached || 0 }} произведений</small></span>
+                <div class="inline-actions"><RouterLink class="btn btn-outline" :to="buildAuthorPageLocation(author)">Страница автора</RouterLink><button class="btn btn-primary" type="button" :disabled="authBusy" @click="switchManagedAuthor(author)">{{ authBusy ? 'Открываем…' : 'Работать от имени автора' }}</button></div>
+              </div>
+            </div>
+          </div>
+          <div v-else class="inline-actions"><button class="btn btn-primary" type="button" :disabled="authBusy" @click="returnToAdminAccount">{{ authBusy ? 'Возвращаем…' : 'Вернуться в админ-аккаунт' }}</button></div>
         </article>
       </section>
 

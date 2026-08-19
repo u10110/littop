@@ -567,6 +567,27 @@ export const UPDATE_MY_PROFILE_MUTATION = gql`
   }
 `;
 
+export const MY_MANAGED_AUTHORS_QUERY = gql`
+  ${AUTHOR_CARD_FIELDS}
+  query MyManagedAuthors($limit: Int!) {
+    myManagedAuthors(limit: $limit) {
+      ...AuthorCardFields
+    }
+  }
+`;
+
+export const ADMIN_SWITCH_MANAGED_AUTHOR_MUTATION = gql`
+  ${USER_SESSION_FIELDS}
+  mutation AdminSwitchManagedAuthor($managedUserId: ID!) {
+    adminSwitchManagedAuthor(managedUserId: $managedUserId) {
+      token
+      user {
+        ...UserSessionFields
+      }
+    }
+  }
+`;
+
 export const PURCHASE_AUDIO_UPLOAD_PACK_MUTATION = gql`
   ${USER_SESSION_FIELDS}
   mutation PurchaseAudioUploadPack {
