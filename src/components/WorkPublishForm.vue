@@ -4,6 +4,7 @@ import { useQuery } from '@vue/apollo-composable';
 
 import { apolloClient } from '../lib/apollo.js';
 import { CREATE_WORK_MUTATION, WORK_GENRES_QUERY } from '../lib/graphql.js';
+import RichTextEditor from './RichTextEditor.vue';
 
 const emit = defineEmits(['created']);
 
@@ -131,7 +132,7 @@ async function submitCreateWork() {
 
       <div class="field">
         <label for="create-body">Текст произведения <small>* Перенос строки — Shift+Enter</small></label>
-        <textarea id="create-body" v-model="createForm.body" class="textarea publish-body" rows="14" required placeholder="Введите полный текст произведения" />
+        <RichTextEditor v-model="createForm.body" placeholder="Введите полный текст произведения" :disabled="createBusy" />
       </div>
 
       <div class="publish-submit"><button class="btn btn-primary" type="submit" :disabled="createBusy">{{ createBusy ? 'Публикуем…' : 'Опубликовать произведение' }}</button><span>После публикации можно отредактировать текст в кабинете.</span></div>

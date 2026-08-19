@@ -1,8 +1,10 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
+import DOMPurify from 'dompurify';
 
 import WorkDiscussionPanel from './WorkDiscussionPanel.vue';
+import RichTextEditor from './RichTextEditor.vue';
 import { apolloClient } from '../lib/apollo.js';
 import {
   DELETE_WORK_MUTATION,
@@ -295,7 +297,16 @@ function truncatePreview(value, maxLength = 360) {
   return `${value.slice(0, maxLength).trimEnd()}…`;
 }
 
-const formattedWorkBody = computed(() => plainText(work.value?.body || work.value?.summary || work.value?.excerpt || 'Текст пока не добавлен.'));
+const formattedWorkBody = computed(() => {
+  const source = work.value?.body || work.value?.summary || work.value?.excerpt || 'Текст пока не добавлен.';
+  const text = String(source);
+  if (!/<[a-z][\s\S]*>/i.test(text)) return text;
+  return DOMPurify.sanitize(text, {
+    ALLOWED_TAGS: ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'code', 'ul', 'ol', 'li', 'a', 'img', 'hr', 'span'],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'style'],
+  });
+});
+const workBodyIsHtml = computed(() => /<[a-z][\s\S]*>/i.test(String(work.value?.body || work.value?.summary || work.value?.excerpt || '')));
 const shareStatus = ref('');
 async function shareWork() {
   const url = window.location.href;
@@ -334,7 +345,8 @@ async function shareWork() {
               <p class="dates">Опубликовано: {{ formatDate(work.publishedAt || work.createdAt) }}<br>Обновлено: {{ formatDate(work.updatedAt || work.publishedAt || work.createdAt) }}</p>
               <div class="work-actions"><span>◉ {{ work.viewsCount || 0 }}</span><span>♡ {{ work.likesCount || 0 }}</span><span>★ {{ ratingLabel(work.averageRating, work.ratingsCount) }}</span><button type="button" @click="shareWork">↗ Поделиться⌄</button><button v-if="isOwner" type="button" @click="editMode ? cancelEditing() : startEditing()">{{ editMode ? 'Отменить' : 'Редактировать' }}</button></div>
               <p v-if="shareStatus" class="share-status">{{ shareStatus }}</p>
-              <article class="excerpt work-full-text">{{ formattedWorkBody }}</article>
+              <article v-if="workBodyIsHtml" class="excerpt work-full-text rich-work-body" v-html="formattedWorkBody"></article>
+              <article v-else class="excerpt work-full-text">{{ formattedWorkBody }}</article>
             </div>
           </div>
           <form v-if="editMode && isOwner" class="work-edit-form" @submit.prevent="submitWorkUpdate">
@@ -344,7 +356,7 @@ async function shareWork() {
               <label>Заголовок<input v-model="editForm.title" required maxlength="240"></label>
               <label class="work-edit-wide">Краткое описание<textarea v-model="editForm.summary" rows="4" placeholder="Коротко расскажите о произведении" /></label>
               <label v-if="editForm.sectionCode === 'project'">Формат<select v-model="editForm.projectFormat"><option v-for="format in projectFormats" :key="format.value" :value="format.value">{{ format.label }}</option></select></label>
-              <label class="work-edit-wide">Текст<textarea v-model="editForm.body" rows="14" placeholder="Текст произведения" /></label>
+              <label class="work-edit-wide">Текст<RichTextEditor v-model="editForm.body" placeholder="Текст произведения" :disabled="editBusy" /></label>
             </div>
             <div class="work-edit-actions"><button class="btn btn-primary" type="submit" :disabled="editBusy">{{ editBusy ? 'Сохраняем…' : 'Сохранить изменения' }}</button><button class="btn btn-outline" type="button" :disabled="editBusy" @click="cancelEditing">Отменить</button><button class="work-archive" type="button" :disabled="deleteBusy" @click="softDeleteCurrentWork">{{ deleteBusy ? 'Архивируем…' : 'Убрать в архив' }}</button></div>
           </form>
