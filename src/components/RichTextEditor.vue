@@ -126,6 +126,13 @@ button:hover, button.active { background: #d9e2ea; }
 :deep(.rich-text-content p) { margin: 0 0 1em; }
 :deep(.rich-text-content p:last-child) { margin-bottom: 0; }
 :deep(.rich-text-content img) { max-width: 100%; height: auto; margin: 1rem 0; }
+:deep(.rich-text-content [data-resize-wrapper]) { display: inline-block !important; }
+:deep(.rich-text-content [data-resize-handle]) { width: 14px; height: 14px; box-sizing: border-box; border: 2px solid #2d668f; border-radius: 2px; background: #fff; z-index: 3; touch-action: none; }
+:deep(.rich-text-content [data-resize-handle="top-left"]) { transform: translate(-50%, -50%); cursor: nwse-resize; }
+:deep(.rich-text-content [data-resize-handle="bottom-right"]) { transform: translate(50%, 50%); cursor: se-resize; }
+:deep(.rich-text-content [data-resize-handle="top-right"]) { transform: translate(50%, -50%); cursor: nesw-resize; }
+:deep(.rich-text-content [data-resize-handle="bottom-left"]) { transform: translate(-50%, 50%); cursor: nesw-resize; }
+:deep(.rich-text-content [data-resize-container][data-resize-state="true"] img) { outline: 1px solid #2d668f; outline-offset: 2px; }
 :deep(.rich-text-content hr) { border: 0; border-top: 1px solid #aeb6bd; margin: 1.4rem 0; }
 .html-source { display: block; width: 100%; min-height: 300px; box-sizing: border-box; padding: 15px 16px; border: 0; outline: 0; resize: vertical; font: 14px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; color: #27211c; background: #fffdf8; }
 .image-upload-error { margin: 0; padding: 7px 12px; border-top: 1px solid #edc1c1; color: #a02c2c; background: #fff2f2; font-size: 13px; }

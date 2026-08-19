@@ -62,6 +62,9 @@ test('image node view enables drag resize with locked aspect ratio', async () =>
   const source = await readFile(new URL('./editorExtensions.js', import.meta.url), 'utf8');
   assert.match(source, /Image\.configure\(\{[\s\S]*resize:\s*\{[\s\S]*enabled:\s*true/);
   assert.match(source, /alwaysPreserveAspectRatio:\s*true/);
+  const component = await readFile(new URL('../components/RichTextEditor.vue', import.meta.url), 'utf8');
+  assert.match(component, /data-resize-handle\]\)\s*\{[\s\S]*width:\s*14px[\s\S]*height:\s*14px/);
+  assert.match(component, /data-resize-handle="bottom-right"\]\)\s*\{[\s\S]*cursor:\s*se-resize/);
 });
 
 test('HTML source helpers switch markup mode without converting it to literal text', () => {
