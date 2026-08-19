@@ -22,7 +22,7 @@ const coverIsPortrait = ref(false);
 
 const authorLogin = computed(() => normalizeRouteParam(route.params.login));
 const hasAuthor = computed(() => Boolean(author.value));
-const authorMessageBlocked = computed(() => Boolean(author.value?.isClassic || author.value?.isMemorialPage));
+const authorMessageBlocked = computed(() => Boolean(author.value?.isClassic || author.value?.isMemorialPage || author.value?.canReceivePrivateMessages === false));
 const canMessageAuthor = computed(() => isAuthenticated.value && !authorMessageBlocked.value && Boolean(author.value?.id) && String(author.value.id) !== String(currentUser.value?.id));
 const messageAuthorLocation = computed(() => ({ path: '/messages', query: { to: author.value?.login } }));
 const notFound = computed(() => !pageLoading.value && !pageError.value && Boolean(authorLogin.value) && !author.value);

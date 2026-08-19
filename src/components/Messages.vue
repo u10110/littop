@@ -40,7 +40,8 @@ function canMessageAuthor(author) {
   return Boolean(author?.id)
     && String(author.id) !== String(currentUser.value?.id)
     && !author.isClassic
-    && !author.isMemorialPage;
+    && !author.isMemorialPage
+    && author.canReceivePrivateMessages !== false;
 }
 const foundAuthors = computed(() => authorSearch.value.trim().length >= 2
   ? (authorsResult.value?.authors ?? []).filter(canMessageAuthor)
@@ -121,7 +122,7 @@ function startConversation(author) {
   selectedPeerId.value = String(author.id);
 }
 
-const selectedPeerMessageBlocked = computed(() => Boolean(selectedPeer.value?.isClassic || selectedPeer.value?.isMemorialPage));
+const selectedPeerMessageBlocked = computed(() => Boolean(selectedPeer.value?.isClassic || selectedPeer.value?.isMemorialPage || selectedPeer.value?.canReceivePrivateMessages === false));
 
 async function submitMessage() {
   const body = draft.value.trim();

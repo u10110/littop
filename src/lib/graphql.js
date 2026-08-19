@@ -16,6 +16,7 @@ export const AUTHOR_CARD_FIELDS = gql`
     worksCountCached
     isClassic
     isMemorialPage
+    canReceivePrivateMessages
     isFeatured
     registeredAt
     createdAt
