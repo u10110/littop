@@ -1,9 +1,16 @@
 const RUTUBE_VIDEO_ID = /^[a-zA-Z0-9_-]{16,}$/;
 const VK_EMBED_HOSTS = new Set(['vk.com', 'www.vk.com', 'vkvideo.ru', 'www.vkvideo.ru']);
 
+function extractEmbedSource(value) {
+  const input = String(value || '').trim();
+  if (!/^<iframe\b/i.test(input)) return input;
+  const src = input.match(/\bsrc\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s>]+))/i);
+  return src?.[1] || src?.[2] || src?.[3] || '';
+}
+
 function parseHttpsUrl(value) {
   try {
-    const url = new URL(String(value || '').trim());
+    const url = new URL(extractEmbedSource(value));
     return url.protocol === 'https:' ? url : null;
   } catch {
     return null;

@@ -14,6 +14,14 @@ test('normalizes Rutube public and embed links into a Rutube embed URL', () => {
   );
 });
 
+test('accepts a full VK Video iframe code and extracts its verified embed URL', () => {
+  const code = '<iframe src="https://vkvideo.ru/video_ext.php?oid=-211437014&id=456248398&hash=b0bca6ce6edf263a" width="640" height="360" frameborder="0" allowfullscreen="1" style="background-color: #000" allow="autoplay; encrypted-media; fullscreen; picture-in-picture"></iframe>';
+  assert.equal(
+    normalizeVideoEmbedUrl(code),
+    'https://vkvideo.ru/video_ext.php?oid=-211437014&id=456248398&hash=b0bca6ce6edf263a',
+  );
+});
+
 test('accepts only VK Video embed links because public VK links lack the required embed hash', () => {
   assert.equal(
     normalizeVideoEmbedUrl('https://vk.com/video_ext.php?oid=-1&id=2&hash=abc123'),
