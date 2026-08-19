@@ -4,6 +4,7 @@ import { EditorContent, useEditor } from '@tiptap/vue-3';
 import { normalizeHtmlSource, normalizeRichTextHtml } from '../lib/richText.js';
 import { richTextExtensions } from '../lib/editorExtensions.js';
 import { uploadWorkImage } from '../lib/workMedia.js';
+import { normalizeVideoEmbedUrl } from '../lib/videoEmbeds.js';
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
@@ -64,6 +65,16 @@ function setImage() {
   const url = window.prompt('Адрес изображения');
   if (url?.trim()) editor.value.chain().focus().setImage({ src: url.trim(), alt: '' }).run();
 }
+function setVideo() {
+  if (!editor.value || props.disabled) return;
+  const value = window.prompt('Ссылка Rutube или «Код для вставки» VK Видео');
+  if (value === null) return;
+  try {
+    editor.value.chain().focus().setVideoEmbed({ src: normalizeVideoEmbedUrl(value) }).run();
+  } catch (error) {
+    window.alert(error instanceof Error ? error.message : 'Не удалось вставить видео.');
+  }
+}
 function chooseImage() {
   if (props.disabled || imageUploadBusy.value) return;
   imageUploadError.value = '';
@@ -97,7 +108,7 @@ function applyFontSize(event) { const value = event.target.value; fontSize.value
       <div class="tool-group"><button type="button" title="Режим HTML" :class="{ active: htmlMode }" @mousedown.prevent @click="toggleHtmlMode">&lt;/&gt;</button></div>
       <div class="tool-group"><button type="button" title="Жирный" :class="{ active: editor.isActive('bold') }" @mousedown.prevent @click="run((chain) => chain.toggleBold().run())"><b>B</b></button><button type="button" title="Курсив" :class="{ active: editor.isActive('italic') }" @mousedown.prevent @click="run((chain) => chain.toggleItalic().run())"><i>I</i></button><button type="button" title="Подчёркивание" :class="{ active: editor.isActive('underline') }" @mousedown.prevent @click="run((chain) => chain.toggleUnderline().run())"><u>U</u></button><button type="button" title="Зачёркивание" :class="{ active: editor.isActive('strike') }" @mousedown.prevent @click="run((chain) => chain.toggleStrike().run())"><s>T</s></button></div>
       <div class="tool-group"><button type="button" title="Маркированный список" :class="{ active: editor.isActive('bulletList') }" @mousedown.prevent @click="run((chain) => chain.toggleBulletList().run())">•≡</button><button type="button" title="Нумерованный список" :class="{ active: editor.isActive('orderedList') }" @mousedown.prevent @click="run((chain) => chain.toggleOrderedList().run())">1≡</button></div>
-      <div class="tool-group"><button type="button" :title="imageUploadBusy ? 'Загружаем изображение…' : 'Загрузить изображение'" :disabled="imageUploadBusy" @mousedown.prevent @click="chooseImage">{{ imageUploadBusy ? '…' : '▧' }}</button><input ref="imageFileInput" class="file-control" type="file" accept="image/jpeg,image/png,image/webp,image/gif" @change="uploadAndInsertImage"><button type="button" title="Вставить изображение по ссылке" @mousedown.prevent @click="setImage">▧⌁</button><button type="button" title="Вставить ссылку" :class="{ active: editor.isActive('link') }" @mousedown.prevent @click="setLink">⌁</button></div>
+      <div class="tool-group"><button type="button" :title="imageUploadBusy ? 'Загружаем изображение…' : 'Загрузить изображение'" :disabled="imageUploadBusy" @mousedown.prevent @click="chooseImage">{{ imageUploadBusy ? '…' : '▧' }}</button><input ref="imageFileInput" class="file-control" type="file" accept="image/jpeg,image/png,image/webp,image/gif" @change="uploadAndInsertImage"><button type="button" title="Вставить изображение по ссылке" @mousedown.prevent @click="setImage">▧⌁</button><button type="button" title="Вставить видео VK или Rutube" @mousedown.prevent @click="setVideo">▶</button><button type="button" title="Вставить ссылку" :class="{ active: editor.isActive('link') }" @mousedown.prevent @click="setLink">⌁</button></div>
       <div class="tool-group"><button type="button" title="Выровнять по левому краю" :class="{ active: editor.isActive({ textAlign: 'left' }) }" @mousedown.prevent @click="run((chain) => chain.setTextAlign('left').run())">≡</button></div>
       <div class="tool-group"><button type="button" title="Горизонтальная линия" @mousedown.prevent @click="run((chain) => chain.setHorizontalRule().run())">—</button></div>
       <div class="tool-group typography-tools"><button type="button" title="Цвет текста" @mousedown.prevent @click="textColorInput?.click()"><span class="text-color-icon">A</span></button><input ref="textColorInput" class="color-control" type="color" value="#1f2933" @input="applyTextColor"><button type="button" title="Цвет фона" @mousedown.prevent @click="highlightColorInput?.click()"><span class="highlight-color-icon">A</span></button><input ref="highlightColorInput" class="color-control" type="color" value="#fff176" @input="applyHighlightColor"><label title="Шрифт" class="tool-select"><span>Aa</span><select v-model="fontFamily" @change="applyFontFamily"><option value="">Шрифт</option><option value="Georgia">Georgia</option><option value="Arial">Arial</option><option value="'Courier New'">Courier New</option><option value="'Times New Roman'">Times New Roman</option></select></label><label title="Размер текста" class="tool-select"><span>a↕</span><select v-model="fontSize" @change="applyFontSize"><option value="">Размер</option><option value="14px">14</option><option value="16px">16</option><option value="18px">18</option><option value="20px">20</option><option value="24px">24</option></select></label></div>

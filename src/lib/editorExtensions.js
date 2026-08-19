@@ -7,6 +7,7 @@ import { FontSize, TextStyle } from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
 import Highlight from '@tiptap/extension-highlight';
 import FontFamily from '@tiptap/extension-font-family';
+import { VideoEmbed } from './videoEmbedExtension.js';
 
 export const richTextExtensions = [
   StarterKit.configure({ heading: false, codeBlock: false, link: false, underline: false }),
@@ -29,4 +30,5 @@ export const richTextExtensions = [
   Color,
   Highlight.configure({ multicolor: true }),
   FontFamily.configure({ types: ['textStyle'] }),
+  VideoEmbed,
 ];

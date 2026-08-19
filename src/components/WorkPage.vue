@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import DOMPurify from 'dompurify';
+import { isAllowedVideoEmbedUrl } from '../lib/videoEmbeds.js';
 
 import WorkDiscussionPanel from './WorkDiscussionPanel.vue';
 import RichTextEditor from './RichTextEditor.vue';
@@ -301,10 +302,16 @@ const formattedWorkBody = computed(() => {
   const source = work.value?.body || work.value?.summary || work.value?.excerpt || 'Текст пока не добавлен.';
   const text = String(source);
   if (!/<[a-z][\s\S]*>/i.test(text)) return text;
-  return DOMPurify.sanitize(text, {
-    ALLOWED_TAGS: ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'code', 'ul', 'ol', 'li', 'a', 'img', 'hr', 'span'],
-    ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'style'],
+  const sanitized = DOMPurify.sanitize(text, {
+    ALLOWED_TAGS: ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'code', 'ul', 'ol', 'li', 'a', 'img', 'hr', 'span', 'div', 'iframe'],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'style', 'class', 'title', 'loading', 'allowfullscreen', 'allow', 'referrerpolicy'],
   });
+  const template = document.createElement('template');
+  template.innerHTML = sanitized;
+  template.content.querySelectorAll('iframe').forEach((iframe) => {
+    if (!isAllowedVideoEmbedUrl(iframe.getAttribute('src'))) iframe.remove();
+  });
+  return template.innerHTML;
 });
 const workBodyIsHtml = computed(() => /<[a-z][\s\S]*>/i.test(String(work.value?.body || work.value?.summary || work.value?.excerpt || '')));
 const shareStatus = ref('');
