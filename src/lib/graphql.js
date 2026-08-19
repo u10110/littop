@@ -11,6 +11,7 @@ export const AUTHOR_CARD_FIELDS = gql`
     coverImageUrl
     city
     websiteUrl
+    profileLinks { label url }
     ratingTotal
     worksCountCached
     isClassic
@@ -187,6 +188,7 @@ export const USER_SESSION_FIELDS = gql`
       coverImageUrl
       city
       websiteUrl
+      profileLinks { label url }
       ratingTotal
       worksCountCached
       isClassic

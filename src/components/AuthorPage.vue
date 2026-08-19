@@ -31,6 +31,10 @@ const authorInitial = computed(() => {
   return source ? source[0].toUpperCase() : 'А';
 });
 
+const authorResourceLinks = computed(() => Array.isArray(author.value?.profileLinks)
+  ? author.value.profileLinks.filter((link) => String(link?.label || '').trim() && String(link?.url || '').trim())
+  : []);
+
 const profileLinkLabel = computed(() => {
   const url = String(author.value?.websiteUrl || '').toLowerCase();
   if (!url) return '';
@@ -173,7 +177,10 @@ async function loadAuthorWorks(authorId) {
             {{ formatDate(author.registeredAt) }}</p>
           <p>{{ excerptText(author.bio, 240) || 'Автор пока не добавил биографию.' }}</p></div>
         <div class="profile-hero-actions">
-          <a v-if="author.websiteUrl" class="btn btn-primary" :href="author.websiteUrl" target="_blank" rel="noreferrer">{{ profileLinkLabel }}</a>
+          <div v-if="author.websiteUrl || authorResourceLinks.length" class="author-resource-links">
+            <a v-if="author.websiteUrl" class="btn btn-primary" :href="author.websiteUrl" target="_blank" rel="noreferrer">{{ profileLinkLabel }}</a>
+            <a v-for="link in authorResourceLinks" :key="`${link.label}-${link.url}`" class="btn btn-outline" :href="link.url" target="_blank" rel="noreferrer noopener">{{ link.label }}</a>
+          </div>
           <RouterLink v-if="canMessageAuthor" class="btn btn-outline" :to="messageAuthorLocation">✉ Написать сообщение</RouterLink>
           <RouterLink v-else-if="!isAuthenticated" class="btn btn-outline" to="/messages">✉ Войти, чтобы написать</RouterLink>
         </div>

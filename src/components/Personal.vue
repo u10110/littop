@@ -82,6 +82,7 @@ const profileForm = ref({
   bio: '',
   avatarUrl: '',
   coverImageUrl: '',
+  profileLinks: [],
 });
 const audioForm = ref({
   title: '',
@@ -158,6 +159,9 @@ function syncProfileForm({ clearSuccess = false } = {}) {
     bio: currentUser.value?.profile?.bio || '',
     avatarUrl: currentUser.value?.profile?.avatarUrl || '',
     coverImageUrl: currentUser.value?.profile?.coverImageUrl || '',
+    profileLinks: Array.isArray(currentUser.value?.profile?.profileLinks)
+      ? currentUser.value.profile.profileLinks.map((link) => ({ label: link?.label || '', url: link?.url || '' }))
+      : [],
   };
 }
 
@@ -178,6 +182,20 @@ function resetProfileForm() {
   syncProfileForm({ clearSuccess: true });
 }
 
+function normalizeProfileLinks() {
+  return (profileForm.value.profileLinks || [])
+    .map((link) => ({ label: String(link?.label || '').trim(), url: String(link?.url || '').trim() }))
+    .filter((link) => link.label && link.url);
+}
+
+function addProfileLink() {
+  profileForm.value.profileLinks = [...profileForm.value.profileLinks, { label: '', url: '' }];
+}
+
+function removeProfileLink(index) {
+  profileForm.value.profileLinks = profileForm.value.profileLinks.filter((_, itemIndex) => itemIndex !== index);
+}
+
 function buildProfilePayload(overrides = {}) {
   return {
     displayName: profileForm.value.displayName,
@@ -186,6 +204,7 @@ function buildProfilePayload(overrides = {}) {
     bio: profileForm.value.bio,
     avatarUrl: profileForm.value.avatarUrl || null,
     coverImageUrl: profileForm.value.coverImageUrl || null,
+    profileLinks: normalizeProfileLinks(),
     ...overrides,
   };
 }
@@ -388,6 +407,16 @@ async function submitProfileImage(kind) {
             <label>Отображаемое имя<input v-model="profileForm.displayName" required></label>
             <label>Город<input v-model="profileForm.city" placeholder="Например, Москва"></label>
             <label>Сайт<input v-model="profileForm.websiteUrl" placeholder="https://example.com"></label>
+            <fieldset class="profile-links-editor">
+              <legend>Кнопки-ссылки на другие ресурсы</legend>
+              <p>Например: Telegram, VK, музыкальная площадка или личный сайт.</p>
+              <div v-for="(link, index) in profileForm.profileLinks" :key="`profile-link-${index}`" class="profile-link-editor-row">
+                <input v-model="link.label" placeholder="Подпись кнопки">
+                <input v-model="link.url" type="url" placeholder="https://…">
+                <button class="btn btn-outline" type="button" @click="removeProfileLink(index)">Удалить</button>
+              </div>
+              <button class="btn btn-outline" type="button" @click="addProfileLink">+ Добавить кнопку</button>
+            </fieldset>
             <label class="profile-bio-field">О себе<textarea v-model="profileForm.bio" placeholder="Короткое описание автора"></textarea></label>
             <div class="inline-actions"><button class="btn btn-primary" type="submit" :disabled="profileBusy || profileImageBusy">{{ profileBusy ? 'Сохраняем…' : 'Сохранить' }}</button><button class="btn btn-outline" type="button" @click="resetProfileForm">Сбросить</button></div>
           </form>
