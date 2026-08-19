@@ -36,16 +36,22 @@ const { result: authorsResult, loading: authorsLoading } = useQuery(
   () => ({ limit: 8, offset: 0, search: authorSearch.value.trim() || null, classicsOnly: false, featuredOnly: false }),
   () => ({ enabled: isAuthenticated.value && authorSearch.value.trim().length >= 2, fetchPolicy: 'network-only' }),
 );
+function canMessageAuthor(author) {
+  return Boolean(author?.id)
+    && String(author.id) !== String(currentUser.value?.id)
+    && !author.isClassic
+    && !author.isMemorialPage;
+}
 const foundAuthors = computed(() => authorSearch.value.trim().length >= 2
-  ? (authorsResult.value?.authors ?? []).filter((author) => String(author.id) !== String(currentUser.value?.id))
+  ? (authorsResult.value?.authors ?? []).filter(canMessageAuthor)
   : []);
 const { result: sidebarResult, loading: sidebarLoading } = useQuery(
   MESSAGES_SIDEBAR_QUERY,
   null,
   () => ({ enabled: isAuthenticated.value, fetchPolicy: 'cache-and-network' }),
 );
-const onlineAuthors = computed(() => (sidebarResult.value?.onlineAuthors ?? []).filter((author) => String(author.id) !== String(currentUser.value?.id)));
-const recentAuthors = computed(() => (sidebarResult.value?.todayVisitors ?? []).filter((author) => String(author.id) !== String(currentUser.value?.id)));
+const onlineAuthors = computed(() => (sidebarResult.value?.onlineAuthors ?? []).filter(canMessageAuthor));
+const recentAuthors = computed(() => (sidebarResult.value?.todayVisitors ?? []).filter(canMessageAuthor));
 
 watch(conversations, (items) => {
   const existing = items.find((item) => String(item.peerUserId) === String(selectedPeerId.value));
@@ -66,6 +72,7 @@ watch(
       const peer = data?.author ?? null;
       if (!peer?.id) throw new Error('Автор не найден.');
       if (String(peer.id) === String(currentUserId)) throw new Error('Нельзя написать сообщение самому себе.');
+      if (!canMessageAuthor(peer)) throw new Error('Личные сообщения недоступны для этой авторской страницы.');
       selectedPeerId.value = String(peer.id);
       requestedPeer.value = peer;
     } catch (error) {
@@ -107,16 +114,18 @@ function selectConversation(peerUserId) {
   selectedPeerId.value = String(peerUserId);
 }
 function startConversation(author) {
-  if (!author?.id || String(author.id) === String(currentUser.value?.id)) return;
+  if (!canMessageAuthor(author)) return;
   authorSearch.value = '';
   requestedPeerError.value = '';
   requestedPeer.value = author;
   selectedPeerId.value = String(author.id);
 }
 
+const selectedPeerMessageBlocked = computed(() => Boolean(selectedPeer.value?.isClassic || selectedPeer.value?.isMemorialPage));
+
 async function submitMessage() {
   const body = draft.value.trim();
-  if (!body || !selectedPeerId.value || sending.value) return;
+  if (!body || !selectedPeerId.value || sending.value || selectedPeerMessageBlocked.value) return;
   sendError.value = '';
   try {
     await sendDirectMessage({ peerUserId: selectedPeerId.value, body });
@@ -165,7 +174,7 @@ async function submitMessage() {
           <template v-if="selectedPeer">
             <header class="thread-head"><img :src="authorAvatarUrl(selectedPeer)" :alt="authorName(selectedPeer)"><div><h2>{{ authorName(selectedPeer) }}</h2><small>{{ selectedPeer.isOnline ? 'Сейчас в сети' : `Был(а) на сайте: ${formatDate(selectedPeer.lastSeenAt || selectedPeer.updatedAt)}` }}</small></div><RouterLink :to="`/authors/${selectedPeer.login}`">Страница автора</RouterLink></header>
             <div ref="threadBody" class="thread-body"><p v-if="messagesLoading && !messagesResult" class="ref-loading">Открываем переписку…</p><p v-else-if="messagesError" class="message error">{{ messagesError.message }}</p><p v-else-if="!messages.length" class="messages-empty">Это начало диалога. Напишите первое сообщение.</p><article v-for="message in messages" :key="message.id" class="bubble" :class="String(message.senderUserId) === String(currentUser?.id) ? 'outgoing' : 'incoming'">{{ message.body }}<time>{{ formatMessageTime(message.createdAt) }}<span v-if="String(message.senderUserId) === String(currentUser?.id) && message.readAt"> ✓✓</span></time></article></div>
-            <form class="message-compose" @submit.prevent="submitMessage"><input v-model="draft" :disabled="sending" maxlength="5000" placeholder="Напишите сообщение…"><button class="btn btn-primary" type="submit" :disabled="sending || !draft.trim()">{{ sending ? 'Отправляем…' : '➤ Отправить' }}</button></form><p v-if="sendError" class="message error compose-error">{{ sendError }}</p>
+            <p v-if="selectedPeerMessageBlocked" class="message message-info compose-error">Личные сообщения для этой авторской страницы недоступны.</p><form v-else class="message-compose" @submit.prevent="submitMessage"><input v-model="draft" :disabled="sending" maxlength="5000" placeholder="Напишите сообщение…"><button class="btn btn-primary" type="submit" :disabled="sending || !draft.trim()">{{ sending ? 'Отправляем…' : '➤ Отправить' }}</button></form><p v-if="sendError" class="message error compose-error">{{ sendError }}</p>
           </template>
           <div v-else class="messages-empty thread-placeholder"><h2>Выберите диалог</h2><p>Все личные переписки будут отображаться здесь.</p></div>
         </section>

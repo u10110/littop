@@ -22,7 +22,8 @@ const coverIsPortrait = ref(false);
 
 const authorLogin = computed(() => normalizeRouteParam(route.params.login));
 const hasAuthor = computed(() => Boolean(author.value));
-const canMessageAuthor = computed(() => isAuthenticated.value && Boolean(author.value?.id) && String(author.value.id) !== String(currentUser.value?.id));
+const authorMessageBlocked = computed(() => Boolean(author.value?.isClassic || author.value?.isMemorialPage));
+const canMessageAuthor = computed(() => isAuthenticated.value && !authorMessageBlocked.value && Boolean(author.value?.id) && String(author.value.id) !== String(currentUser.value?.id));
 const messageAuthorLocation = computed(() => ({ path: '/messages', query: { to: author.value?.login } }));
 const notFound = computed(() => !pageLoading.value && !pageError.value && Boolean(authorLogin.value) && !author.value);
 
@@ -182,6 +183,7 @@ async function loadAuthorWorks(authorId) {
             <a v-for="link in authorResourceLinks" :key="`${link.label}-${link.url}`" class="btn btn-outline" :href="link.url" target="_blank" rel="noreferrer noopener">{{ link.label }}</a>
           </div>
           <RouterLink v-if="canMessageAuthor" class="btn btn-outline" :to="messageAuthorLocation">✉ Написать сообщение</RouterLink>
+          <span v-else-if="authorMessageBlocked" class="profile-message-unavailable">Личные сообщения недоступны</span>
           <RouterLink v-else-if="!isAuthenticated" class="btn btn-outline" to="/messages">✉ Войти, чтобы написать</RouterLink>
         </div>
       </div>

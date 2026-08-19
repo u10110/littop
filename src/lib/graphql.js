@@ -15,6 +15,7 @@ export const AUTHOR_CARD_FIELDS = gql`
     ratingTotal
     worksCountCached
     isClassic
+    isMemorialPage
     isFeatured
     registeredAt
     createdAt
