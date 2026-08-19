@@ -12,7 +12,17 @@ export const richTextExtensions = [
   StarterKit.configure({ heading: false, codeBlock: false, link: false, underline: false }),
   Underline,
   Link.configure({ openOnClick: false, autolink: true, linkOnPaste: true }),
-  Image.configure({ inline: false, allowBase64: false }),
+  Image.configure({
+    inline: false,
+    allowBase64: false,
+    resize: {
+      enabled: true,
+      directions: ['bottom-left', 'bottom-right', 'top-left', 'top-right'],
+      minWidth: 48,
+      minHeight: 48,
+      alwaysPreserveAspectRatio: true,
+    },
+  }),
   TextAlign.configure({ types: ['paragraph'] }),
   TextStyle,
   FontSize.configure({ types: ['textStyle'] }),

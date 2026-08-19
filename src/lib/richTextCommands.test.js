@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
 import { Editor } from '@tiptap/core';
 import { richTextExtensions } from './editorExtensions.js';
@@ -11,6 +12,8 @@ globalThis.document = dom.window.document;
 globalThis.navigator = dom.window.navigator;
 globalThis.DOMParser = dom.window.DOMParser;
 globalThis.Node = dom.window.Node;
+globalThis.Element = dom.window.Element;
+globalThis.HTMLElement = dom.window.HTMLElement;
 globalThis.getSelection = dom.window.getSelection.bind(dom.window);
 
 function editorWithText() {
@@ -36,7 +39,7 @@ test('rich-text commands apply every mark and typography format to the selected 
   }
 });
 
-test('rich-text commands insert lists, link, image, alignment and horizontal rule', () => {
+test('rich-text commands insert lists, link, a resizable image, alignment and horizontal rule', () => {
   const editor = editorWithText();
   assert.equal(editor.chain().selectAll().toggleBulletList().run(), true);
   assert.match(editor.getHTML(), /<ul>/);
@@ -47,11 +50,18 @@ test('rich-text commands insert lists, link, image, alignment and horizontal rul
   assert.match(editor.getHTML(), /href="https:\/\/example.com"/);
   assert.equal(editor.chain().setTextAlign('left').run(), true);
   assert.match(editor.getHTML(), /text-align: left/);
-  assert.equal(editor.chain().setImage({ src: 'https://example.com/image.png', alt: 'Обложка' }).run(), true);
+  assert.equal(editor.chain().setImage({ src: 'https://example.com/image.png', alt: 'Обложка', width: 320 }).run(), true);
   assert.match(editor.getHTML(), /<img[^>]+src="https:\/\/example.com\/image.png"/);
+  assert.match(editor.getHTML(), /width="320"/);
   assert.equal(editor.chain().setHorizontalRule().run(), true);
   assert.match(editor.getHTML(), /<hr>/);
   editor.destroy();
+});
+
+test('image node view enables drag resize with locked aspect ratio', async () => {
+  const source = await readFile(new URL('./editorExtensions.js', import.meta.url), 'utf8');
+  assert.match(source, /Image\.configure\(\{[\s\S]*resize:\s*\{[\s\S]*enabled:\s*true/);
+  assert.match(source, /alwaysPreserveAspectRatio:\s*true/);
 });
 
 test('HTML source helpers switch markup mode without converting it to literal text', () => {
