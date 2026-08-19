@@ -489,8 +489,8 @@ function ledgerSummary(ledger, noun) {
 </script>
 
 <template>
-  <section class="panel stack">
-    <div class="section-head">
+  <section class="panel stack work-discussion-panel">
+    <div class="section-head discussion-heading">
       <h3>Отзывы и реакции</h3>
       <div class="chips">
         <span class="pill">отзывов: {{ work.commentsCount }}</span>
@@ -498,9 +498,9 @@ function ledgerSummary(ledger, noun) {
       </div>
     </div>
 
-    <div class="stack">
-      <div class="field">
-        <span class="label">Оценить произведение</span>
+    <div class="discussion-tools">
+      <div class="discussion-rating">
+        <span class="discussion-label">Оценка</span>
         <div class="rate-row">
           <button
             v-for="rating in [1, 2, 3, 4, 5]"
@@ -517,8 +517,8 @@ function ledgerSummary(ledger, noun) {
         <div v-if="ratingStatus" class="message" :class="ratingStatus.includes('сохранена') ? 'success' : 'error'">{{ ratingStatus }}</div>
       </div>
 
-      <div class="field">
-        <span class="label">Лайки произведения</span>
+      <div class="discussion-actions">
+        <span class="discussion-label">Реакции</span>
         <div class="inline-actions">
           <button
             v-if="isAuthenticated"
@@ -592,19 +592,20 @@ function ledgerSummary(ledger, noun) {
       </div>
     </div>
 
-    <div v-if="isAuthenticated" class="stack">
-      <form class="stack" @submit.prevent="submitRootComment">
-        <div class="field">
-          <label for="root-work-review">Новый отзыв</label>
+    <div v-if="isAuthenticated" class="quick-review">
+      <form @submit.prevent="submitRootComment">
+        <label for="root-work-review">Оставить отзыв</label>
+        <div class="quick-review-compose">
           <textarea
             id="root-work-review"
             v-model="rootCommentBody"
             class="textarea"
             required
-            placeholder="Напиши отзыв о произведении"
+            rows="3"
+            placeholder="Напишите отзыв о произведении"
           />
+          <button class="btn btn-primary" type="submit" :disabled="commentBusy">{{ commentBusy ? 'Публикуем…' : 'Опубликовать' }}</button>
         </div>
-        <button class="btn btn-primary" type="submit" :disabled="commentBusy">{{ commentBusy ? 'Публикуем…' : 'Опубликовать отзыв' }}</button>
       </form>
     </div>
     <div v-else class="message">Чтобы оставлять отзывы и ставить лайки, войди или зарегистрируйся в шапке.</div>
