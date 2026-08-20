@@ -57,6 +57,10 @@ function toggleHtmlMode() {
 }
 function setLink() {
   if (!editor.value || props.disabled) return;
+  if (editor.value.state.selection.node?.type.name === 'image') {
+    openInsertModal('imageLink', editor.value.getAttributes('image').linkHref || '');
+    return;
+  }
   const previousUrl = editor.value.getAttributes('link').href || '';
   openInsertModal('link', previousUrl);
 }
@@ -68,9 +72,10 @@ function setVideo() {
   if (!editor.value || props.disabled) return;
   openInsertModal('video');
 }
-const insertModalTitle = computed(() => ({ link: 'Вставить ссылку', image: 'Вставить изображение', video: 'Вставить видео' })[insertModal.value?.kind] || 'Вставка');
+const insertModalTitle = computed(() => ({ link: 'Вставить ссылку', imageLink: 'Ссылка для изображения', image: 'Вставить изображение', video: 'Вставить видео' })[insertModal.value?.kind] || 'Вставка');
 const insertModalHint = computed(() => ({
   link: 'Укажите адрес ссылки. Пустое поле удалит ссылку с выделенного текста.',
+  imageLink: 'Укажите адрес, который откроется по клику на изображение. Пустое поле удалит ссылку.',
   image: 'Укажите прямую ссылку на изображение.',
   video: 'Вставьте ссылку Rutube, код iframe VK Видео или ссылку video_ext.php.',
 })[insertModal.value?.kind] || '');
@@ -83,6 +88,8 @@ function submitInsertModal() {
     if (insertModal.value.kind === 'link') {
       if (!value) editor.value.chain().focus().unsetLink().run();
       else editor.value.chain().focus().setLink({ href: value, target: '_blank', rel: 'noopener noreferrer' }).run();
+    } else if (insertModal.value.kind === 'imageLink') {
+      editor.value.chain().focus().updateAttributes('image', { linkHref: value || null }).run();
     } else if (insertModal.value.kind === 'image') {
       if (!value) throw new Error('Укажите адрес изображения.');
       editor.value.chain().focus().setImage({ src: value, alt: '' }).run();

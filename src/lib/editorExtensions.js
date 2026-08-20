@@ -9,11 +9,28 @@ import Highlight from '@tiptap/extension-highlight';
 import FontFamily from '@tiptap/extension-font-family';
 import { VideoEmbed } from './videoEmbedExtension.js';
 
+const LinkedImage = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      linkHref: {
+        default: null,
+        parseHTML: (element) => element.parentElement?.tagName === 'A' ? element.parentElement.getAttribute('href') : null,
+      },
+    };
+  },
+  renderHTML({ HTMLAttributes }) {
+    const { linkHref, ...imageAttributes } = HTMLAttributes;
+    const image = ['img', imageAttributes];
+    return linkHref ? ['a', { href: linkHref, target: '_blank', rel: 'noopener noreferrer' }, image] : image;
+  },
+});
+
 export const richTextExtensions = [
   StarterKit.configure({ heading: false, codeBlock: false, link: false, underline: false }),
   Underline,
   Link.configure({ openOnClick: false, autolink: true, linkOnPaste: true }),
-  Image.configure({
+  LinkedImage.configure({
     inline: false,
     allowBase64: false,
     resize: {
@@ -31,4 +48,13 @@ export const richTextExtensions = [
   Highlight.configure({ multicolor: true }),
   FontFamily.configure({ types: ['textStyle'] }),
   VideoEmbed,
+];
+export const RICH_TEXT_TOOLBAR_GROUPS = [
+  { id: 'code', commands: ['code'] },
+  { id: 'marks', commands: ['bold', 'italic', 'underline', 'strike'] },
+  { id: 'lists', commands: ['bulletList', 'orderedList'] },
+  { id: 'insert', commands: ['image', 'video', 'link'] },
+  { id: 'align', commands: ['alignLeft'] },
+  { id: 'rule', commands: ['horizontalRule'] },
+  { id: 'typography', commands: ['textColor', 'highlight', 'fontFamily', 'fontSize'] },
 ];

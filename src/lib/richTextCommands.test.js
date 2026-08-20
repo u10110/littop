@@ -54,6 +54,8 @@ test('rich-text commands insert lists, link, a resizable image, alignment and ho
   assert.equal(editor.chain().setImage({ src: 'https://example.com/image.png', alt: 'Обложка', width: 320 }).run(), true);
   assert.match(editor.getHTML(), /<img[^>]+src="https:\/\/example.com\/image.png"/);
   assert.match(editor.getHTML(), /width="320"/);
+  assert.equal(editor.chain().setImage({ src: 'https://example.com/linked.png', alt: 'Ссылка-картинка', linkHref: 'https://example.org/page' }).run(), true);
+  assert.match(editor.getHTML(), /<a[^>]+href="https:\/\/example.org\/page"[^>]*><img[^>]+src="https:\/\/example.com\/linked.png"/);
   assert.equal(editor.chain().setVideoEmbed({
     src: normalizeVideoEmbedUrl('https://rutube.ru/video/0123456789abcdef0123456789abcdef/'),
     width: 480,
@@ -81,6 +83,8 @@ test('editor uses Littop modal dialogs instead of native prompts and alerts', as
   assert.doesNotMatch(component, /window\.(prompt|alert)\s*\(/);
   assert.match(component, /role="dialog"[\s\S]*Вставить/);
   assert.match(component, /@submit\.prevent="submitInsertModal"/);
+  assert.match(component, /selection\.node\?\.type\.name === 'image'/);
+  assert.match(component, /Ссылка для изображения/);
 });
 
 test('HTML source helpers switch markup mode without converting it to literal text', () => {
