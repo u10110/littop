@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
+import { useQuery } from '@vue/apollo-composable';
 import { RouterLink, useRoute } from 'vue-router';
 import DOMPurify from 'dompurify';
 import { isAllowedVideoEmbedUrl } from '../lib/videoEmbeds.js';
@@ -10,6 +11,7 @@ import { apolloClient } from '../lib/apollo.js';
 import {
   DELETE_WORK_MUTATION,
   UPDATE_WORK_MUTATION,
+  WORK_GENRES_QUERY,
   WORK_QUERY,
   WORK_PAGE_SIDEBAR_QUERY,
 } from '../lib/graphql.js';
@@ -39,11 +41,19 @@ const deleteBusy = ref(false);
 const deleteStatus = ref('');
 const editForm = ref({
   sectionCode: 'poetry',
+  genreSlug: '',
   title: '',
   summary: '',
   body: '',
   projectFormat: '',
 });
+const editGenreQueryVariables = computed(() => ({ sectionCode: editForm.value.sectionCode || null }));
+const { result: editGenresResult, loading: editGenresLoading } = useQuery(
+  WORK_GENRES_QUERY,
+  editGenreQueryVariables,
+  { fetchPolicy: 'cache-and-network' },
+);
+const editGenreOptions = computed(() => editGenresResult.value?.workGenres ?? []);
 const otherAuthorWorks = ref([]);
 const similarWorks = ref([]);
 let workRequestVersion = 0;
@@ -83,6 +93,10 @@ watch(work, (value) => {
   }
 }, { immediate: true });
 
+function clearEditGenreForSectionChange() {
+  editForm.value.genreSlug = '';
+}
+
 function currentLookupVariables(value) {
   const normalized = String(value || '').trim();
   if (!normalized) {
@@ -101,6 +115,7 @@ function authorLabel(author) {
 function syncEditForm(sourceWork = work.value) {
   editForm.value = {
     sectionCode: sourceWork?.sectionCode || 'poetry',
+    genreSlug: sourceWork?.genreSlug || '',
     title: sourceWork?.title || '',
     summary: sourceWork?.summary || sourceWork?.excerpt || '',
     body: sourceWork?.body || '',
@@ -238,6 +253,7 @@ async function submitWorkUpdate() {
         workId: work.value.id,
         input: {
           sectionCode: editForm.value.sectionCode,
+          genreSlug: normalizeOptional(editForm.value.genreSlug),
           title: editForm.value.title.trim(),
           summary: normalizeOptional(editForm.value.summary),
           body: normalizeOptional(editForm.value.body),
@@ -359,7 +375,8 @@ async function shareWork() {
           <form v-if="editMode && isOwner" class="work-edit-form" @submit.prevent="submitWorkUpdate">
             <header><span>Редактирование</span><h2>Настройте публикацию</h2></header>
             <div class="work-edit-grid">
-              <label>Раздел<select v-model="editForm.sectionCode"><option value="poetry">Поэзия</option><option value="prose">Проза</option><option value="project">Творческий проект</option></select></label>
+              <label>Раздел<select v-model="editForm.sectionCode" @change="clearEditGenreForSectionChange"><option value="poetry">Поэзия</option><option value="prose">Проза</option><option value="project">Творческий проект</option></select></label>
+              <label>Рубрикатор<select v-model="editForm.genreSlug" :disabled="editGenresLoading"><option value="">{{ editGenresLoading ? 'Загружаем рубрики…' : 'Не выбирать рубрику' }}</option><option v-for="genre in editGenreOptions" :key="genre.slug" :value="genre.slug">{{ genre.name }}</option></select></label>
               <label>Заголовок<input v-model="editForm.title" required maxlength="240"></label>
               <label class="work-edit-wide">Краткое описание<textarea v-model="editForm.summary" rows="4" placeholder="Коротко расскажите о произведении" /></label>
               <label v-if="editForm.sectionCode === 'project'">Формат<select v-model="editForm.projectFormat"><option v-for="format in projectFormats" :key="format.value" :value="format.value">{{ format.label }}</option></select></label>

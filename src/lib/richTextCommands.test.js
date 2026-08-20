@@ -87,6 +87,16 @@ test('editor uses Littop modal dialogs instead of native prompts and alerts', as
   assert.match(component, /Ссылка для изображения/);
 });
 
+test('work edit form keeps rubric options linked to its selected section', async () => {
+  const page = await readFile(new URL('../components/WorkPage.vue', import.meta.url), 'utf8');
+  assert.match(page, /WORK_GENRES_QUERY/);
+  assert.match(page, /sectionCode: editForm\.value\.sectionCode/);
+  assert.match(page, /@change="clearEditGenreForSectionChange"/);
+  assert.match(page, /function clearEditGenreForSectionChange\(\)[\s\S]*genreSlug = ''/);
+  assert.match(page, /genreSlug: normalizeOptional\(editForm\.value\.genreSlug\)/);
+  assert.match(page, /v-for="genre in editGenreOptions"/);
+});
+
 test('HTML source helpers switch markup mode without converting it to literal text', () => {
   assert.equal(normalizeHtmlSource('  <p><strong>Текст</strong></p>  '), '<p><strong>Текст</strong></p>');
   assert.equal(normalizeHtmlSource(''), '<p></p>');
