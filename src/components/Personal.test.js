@@ -11,5 +11,7 @@ test('personal cabinet provides controls to remove avatar and cover photo', asyn
   assert.match(page, /Удалить обложку/);
   assert.match(page, /@click="removeProfileImage\('cover'\)"/);
   assert.match(page, /:disabled="profileImageBusy \|\| !profileForm.coverImageUrl"/);
-  assert.doesNotMatch(page, /v-if="profileForm\.(avatarUrl|coverImageUrl)" class="btn btn-outline"/);
+  assert.match(page, /v-if="profileForm.avatarUrl" class="author-photo"/);
+  assert.match(page, /v-if="profileForm.coverImageUrl" class="cover-photo-image"/);
+  assert.doesNotMatch(page, /<article class="dash-card photo-card">/);
 });
