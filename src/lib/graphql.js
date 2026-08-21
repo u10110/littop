@@ -11,12 +11,9 @@ export const AUTHOR_CARD_FIELDS = gql`
     coverImageUrl
     city
     websiteUrl
-    profileLinks { label url }
     ratingTotal
     worksCountCached
     isClassic
-    isMemorialPage
-    canReceivePrivateMessages
     isFeatured
     registeredAt
     createdAt
@@ -90,6 +87,7 @@ export const FORUM_TOPIC_PREVIEW_FIELDS = gql`
       ...AuthorCardFields
     }
   }
+  ${AUTHOR_CARD_FIELDS}
 `;
 
 export const FORUM_POST_FIELDS = gql`
@@ -106,6 +104,7 @@ export const FORUM_POST_FIELDS = gql`
       ...AuthorCardFields
     }
   }
+  ${AUTHOR_CARD_FIELDS}
 `;
 
 export const CONTEST_FIELDS = gql`
@@ -291,11 +290,9 @@ export const WORKS_QUERY = gql`
 export const WORK_GENRES_QUERY = gql`
   query WorkGenres($sectionCode: String) {
     workGenres(sectionCode: $sectionCode) {
-      id
       slug
       name
       sectionCode
-      sortOrder
     }
   }
 `;
