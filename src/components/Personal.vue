@@ -521,7 +521,30 @@ async function submitProfileImage(kind) {
           <p class="verified">✓ Подтверждён email<br>✓ Активный автор</p>
         </article>
 
-      </section>
+
+
+        <article class="dash-card image-settings-card">
+          <div class="card-heading"><h2>Настройки фото</h2><a href="#profile-images">Загрузить</a></div>
+          <div v-if="profileImageError" class="message error">{{ profileImageError }}</div>
+          <div v-if="profileImageSuccess" class="message success">{{ profileImageSuccess }}</div>
+          <div class="profile-image-grid">
+            <div class="profile-image-card">
+              <b>Аватар</b>
+              <img v-if="profileForm.avatarUrl" class="author-photo" :src="profileForm.avatarUrl" alt="Аватар автора">
+              <div v-else class="author-photo author-photo-placeholder">{{ displayName.slice(0, 1).toUpperCase() }}</div>
+              <small>Изображение для публикаций и сообщений</small>
+              <input ref="avatarFileInput" type="file" accept="image/*" @change="handleProfileImageChange('avatar', $event)">
+              <div class="inline-actions"><button class="btn btn-primary" type="button" :disabled="profileImageBusy" @click="submitProfileImage('avatar')">Загрузить</button><button class="btn btn-outline" type="button" :disabled="profileImageBusy || !profileForm.avatarUrl" @click="removeProfileImage('avatar')">Удалить аватар</button></div>
+            </div>
+            <div class="profile-image-card">
+              <b>Обложка</b>
+              <img v-if="profileForm.coverImageUrl" class="cover-photo-image" :src="profileForm.coverImageUrl" alt="Обложка профиля">
+              <div v-else class="cover-photo"></div>
+              <small>Большое фото на странице автора</small>
+              <input ref="coverFileInput" type="file" accept="image/*" @change="handleProfileImageChange('cover', $event)">
+              <div class="inline-actions"><button class="btn btn-secondary" type="button" :disabled="profileImageBusy" @click="submitProfileImage('cover')">Загрузить</button><button class="btn btn-outline" type="button" :disabled="profileImageBusy || !profileForm.coverImageUrl" @click="removeProfileImage('cover')">Удалить обложку</button></div>
+            </div>
+          </div>        </article>      </section>
 
       <section v-if="isAdmin || hasStoredOwnerSession" class="cabinet-managed-section">
         <article class="dash-card managed-authors-card">
@@ -603,28 +626,7 @@ async function submitProfileImage(kind) {
       </section>
 
       <section id="profile-images" class="cabinet-info">
-        <article class="dash-card image-settings-card">
-          <div class="card-heading"><h2>Настройки фото</h2><a href="#profile-images">Загрузить</a></div>
-          <div v-if="profileImageError" class="message error">{{ profileImageError }}</div>
-          <div v-if="profileImageSuccess" class="message success">{{ profileImageSuccess }}</div>
-          <div class="profile-image-grid">
-            <div class="profile-image-card">
-              <b>Аватар</b>
-              <img v-if="profileForm.avatarUrl" class="author-photo" :src="profileForm.avatarUrl" alt="Аватар автора">
-              <div v-else class="author-photo author-photo-placeholder">{{ displayName.slice(0, 1).toUpperCase() }}</div>
-              <small>Изображение для публикаций и сообщений</small>
-              <input ref="avatarFileInput" type="file" accept="image/*" @change="handleProfileImageChange('avatar', $event)">
-              <div class="inline-actions"><button class="btn btn-primary" type="button" :disabled="profileImageBusy" @click="submitProfileImage('avatar')">Загрузить</button><button class="btn btn-outline" type="button" :disabled="profileImageBusy || !profileForm.avatarUrl" @click="removeProfileImage('avatar')">Удалить аватар</button></div>
-            </div>
-            <div class="profile-image-card">
-              <b>Обложка</b>
-              <img v-if="profileForm.coverImageUrl" class="cover-photo-image" :src="profileForm.coverImageUrl" alt="Обложка профиля">
-              <div v-else class="cover-photo"></div>
-              <small>Большое фото на странице автора</small>
-              <input ref="coverFileInput" type="file" accept="image/*" @change="handleProfileImageChange('cover', $event)">
-              <div class="inline-actions"><button class="btn btn-secondary" type="button" :disabled="profileImageBusy" @click="submitProfileImage('cover')">Загрузить</button><button class="btn btn-outline" type="button" :disabled="profileImageBusy || !profileForm.coverImageUrl" @click="removeProfileImage('cover')">Удалить обложку</button></div>
-            </div>
-          </div>        </article>
+
         <article class="dash-card stats-card"><div class="card-heading"><h2>Статистика писателя</h2><RouterLink :to="myWorksLink">Подробнее</RouterLink></div><div><span><small>Произведений</small><b>{{ profile?.worksCountCached ?? 0 }}</b></span><span><small>Рейтинг</small><b>{{ profile?.ratingTotal ?? 0 }}</b></span><span><small>В витрине</small><b>{{ profile?.isFeatured ? 'Да' : 'Нет' }}</b></span><span><small>Статус</small><b>{{ profile?.isClassic ? 'Классик' : 'Автор' }}</b></span></div></article>
         <article class="dash-card cabinet-ledger-card">
           <div class="card-heading"><h2>Рейтинг и персики</h2><b>{{ ratingTotal }} ★</b></div>

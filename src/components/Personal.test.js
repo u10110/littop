@@ -14,4 +14,7 @@ test('personal cabinet provides controls to remove avatar and cover photo', asyn
   assert.match(page, /v-if="profileForm.avatarUrl" class="author-photo"/);
   assert.match(page, /v-if="profileForm.coverImageUrl" class="cover-photo-image"/);
   assert.doesNotMatch(page, /<article class="dash-card photo-card">/);
+  const photoSettingsIndex = page.indexOf('<article class="dash-card image-settings-card">');
+  const cabinetTopEnd = page.indexOf('</section>', page.indexOf('<section class="cabinet-top">'));
+  assert.ok(photoSettingsIndex > -1 && photoSettingsIndex < cabinetTopEnd, 'photo controls belong in the top cabinet row');
 });
