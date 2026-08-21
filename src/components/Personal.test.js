@@ -17,4 +17,7 @@ test('personal cabinet provides controls to remove avatar and cover photo', asyn
   const photoSettingsIndex = page.indexOf('<article class="dash-card image-settings-card">');
   const cabinetTopEnd = page.indexOf('</section>', page.indexOf('<section class="cabinet-top">'));
   assert.ok(photoSettingsIndex > -1 && photoSettingsIndex < cabinetTopEnd, 'photo controls belong in the top cabinet row');
+  const activityIndex = page.indexOf('<article class="dash-card activity-card">');
+  const authorProfileIndex = page.indexOf('<article class="dash-card author-profile">');
+  assert.ok(activityIndex > -1 && authorProfileIndex > activityIndex && authorProfileIndex < cabinetTopEnd, 'author profile belongs below activity in the top row');
 });

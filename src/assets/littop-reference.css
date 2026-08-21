@@ -9008,3 +9008,6 @@ nav.menu {
 .publish-submit .btn { padding: 9px 13px; font-size: 11px; }
 .publish-submit span { color: #948a80; font-size: 10px; }
 @media (max-width: 700px) { .publish-classification { grid-template-columns: 1fr; } .publish-submit { align-items: flex-start; flex-direction: column; } }
+
+.personal-cabinet .activity-profile-column{display:flex;flex-direction:column;gap:14px;min-width:0}.personal-cabinet .activity-profile-column .dash-card{flex:1}
+@media(max-width:1100px){.personal-cabinet .activity-profile-column{grid-column:auto}}

@@ -511,8 +511,11 @@ async function submitProfileImage(kind) {
           </div>
         </article>
 
+        <div class="activity-profile-column">
         <article class="dash-card activity-card">
-          <div class="card-heading"><h2>Активность</h2><RouterLink :to="myWorksLink">Подробнее</RouterLink></div>
+          <div class="card-heading"><h2>Активность</h2><RouterLink :to="myWorksLink">Подробнее</RouterLink>
+          <article class="dash-card author-profile"><div class="card-heading"><h2>Профиль автора</h2><RouterLink v-if="currentUser?.login" :to="myAuthorPageLink">Открыть</RouterLink></div><p>Логин <b>@{{ currentUser?.login }}</b></p><p>Роль <b>{{ currentUser?.role || 'author' }}</b></p><p>Сайт <b>{{ profile?.websiteUrl || '—' }}</b></p></article>
+        </div>
           <div>
             <span><small>Регистрация</small><b>{{ formatDate(currentUser?.registeredAt || currentUser?.createdAt) }}</b></span>
             <span><small>Последний вход</small><b>{{ formatDateTime(currentUser?.lastLoginAt) }}</b></span>
@@ -520,6 +523,9 @@ async function submitProfileImage(kind) {
           </div>
           <p class="verified">✓ Подтверждён email<br>✓ Активный автор</p>
         </article>
+
+
+        </div>
 
 
 
