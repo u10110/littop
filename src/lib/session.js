@@ -15,6 +15,7 @@ const state = reactive({
   bootstrapped: false,
   authBusy: false,
   authError: '',
+  authMeta: null,
   profileBusy: false,
   profileError: '',
   bootstrapError: '',
@@ -72,6 +73,7 @@ export function useSession() {
   async function login(input) {
     state.authBusy = true;
     state.authError = '';
+    state.authMeta = null;
     try {
       const { data } = await apolloClient.mutate({
         mutation: LOGIN_MUTATION,
@@ -81,6 +83,7 @@ export function useSession() {
       return data?.login?.user ?? null;
     } catch (error) {
       state.authError = extractGraphqlErrorMessage(error, 'Не удалось войти.');
+      state.authMeta = error?.graphQLErrors?.[0]?.extensions ?? null;
       throw error;
     } finally {
       state.authBusy = false;
@@ -155,6 +158,7 @@ export function useSession() {
     isAuthenticated: computed(() => Boolean(state.currentUser && state.token)),
     authBusy: computed(() => state.authBusy),
     authError: computed(() => state.authError),
+    authMeta: computed(() => state.authMeta),
     profileBusy: computed(() => state.profileBusy),
     profileError: computed(() => state.profileError),
     bootstrapError: computed(() => state.bootstrapError),
