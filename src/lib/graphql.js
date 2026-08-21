@@ -90,7 +90,6 @@ export const FORUM_TOPIC_PREVIEW_FIELDS = gql`
       ...AuthorCardFields
     }
   }
-  ${AUTHOR_CARD_FIELDS}
 `;
 
 export const FORUM_POST_FIELDS = gql`
@@ -107,7 +106,6 @@ export const FORUM_POST_FIELDS = gql`
       ...AuthorCardFields
     }
   }
-  ${AUTHOR_CARD_FIELDS}
 `;
 
 export const CONTEST_FIELDS = gql`
@@ -158,7 +156,6 @@ export const HOME_COMMENT_FIELDS = gql`
       ...AuthorCardFields
     }
   }
-  ${AUTHOR_CARD_FIELDS}
 `;
 
 export const DIRECT_MESSAGE_FIELDS = gql`
@@ -202,7 +199,6 @@ export const USER_SESSION_FIELDS = gql`
 `;
 
 export const HOME_QUERY = gql`
-  ${AUTHOR_CARD_FIELDS}
   ${WORK_PREVIEW_FIELDS}
   ${FORUM_TOPIC_PREVIEW_FIELDS}
   ${CONTEST_FIELDS}
@@ -272,7 +268,6 @@ export const AUTHOR_QUERY = gql`
 `;
 
 export const AUTHOR_DETAILS_QUERY = gql`
-  ${AUTHOR_CARD_FIELDS}
   ${WORK_PREVIEW_FIELDS}
   query AuthorDetails($login: String!, $authorId: ID!) {
     author(login: $login) {
@@ -296,9 +291,11 @@ export const WORKS_QUERY = gql`
 export const WORK_GENRES_QUERY = gql`
   query WorkGenres($sectionCode: String) {
     workGenres(sectionCode: $sectionCode) {
+      id
       slug
       name
       sectionCode
+      sortOrder
     }
   }
 `;
@@ -445,6 +442,7 @@ export const FORUM_SECTIONS_QUERY = gql`
 `;
 
 export const FORUM_TOPIC_QUERY = gql`
+  ${AUTHOR_CARD_FIELDS}
   ${FORUM_TOPIC_PREVIEW_FIELDS}
   ${FORUM_POST_FIELDS}
   query ForumTopicDetails($topicId: ID, $slug: String) {
@@ -587,6 +585,24 @@ export const ADMIN_SWITCH_MANAGED_AUTHOR_MUTATION = gql`
         ...UserSessionFields
       }
     }
+  }
+`;
+
+export const ADMIN_CREATE_WORK_GENRE_MUTATION = gql`
+  mutation AdminCreateWorkGenre($input: WorkGenreInput!) {
+    adminCreateWorkGenre(input: $input) { id slug name sectionCode sortOrder }
+  }
+`;
+
+export const ADMIN_UPDATE_WORK_GENRE_MUTATION = gql`
+  mutation AdminUpdateWorkGenre($genreId: ID!, $input: UpdateWorkGenreInput!) {
+    adminUpdateWorkGenre(genreId: $genreId, input: $input) { id slug name sectionCode sortOrder }
+  }
+`;
+
+export const ADMIN_DELETE_WORK_GENRE_MUTATION = gql`
+  mutation AdminDeleteWorkGenre($genreId: ID!) {
+    adminDeleteWorkGenre(genreId: $genreId)
   }
 `;
 

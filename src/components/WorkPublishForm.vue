@@ -105,9 +105,9 @@ async function submitCreateWork() {
         </div>
 
         <div class="field">
-          <label for="create-genre">Рубрикатор</label>
+          <label for="create-genre">Жанр</label>
           <select id="create-genre" v-model="createForm.genreSlug" class="select" :disabled="genresLoading">
-            <option value="">{{ genresLoading ? 'Загружаем рубрики…' : 'Не выбирать рубрику' }}</option>
+            <option value="">{{ genresLoading ? 'Загружаем рубрики…' : 'Не выбирать жанр' }}</option>
             <option v-for="genre in genreOptions" :key="genre.slug" :value="genre.slug">{{ genre.name }}</option>
           </select>
         </div>

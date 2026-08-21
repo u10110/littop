@@ -10,7 +10,7 @@ import { filenameToTrackTitle, probeAudioDuration, uploadRadioTrack } from '../l
 import { uploadProfileImage } from '../lib/profileImages.js';
 import { buildAuthorPageLocation, buildWorkPageLocation } from '../lib/routes.js';
 import { apolloClient } from '../lib/apollo.js';
-import { MY_MANAGED_AUTHORS_QUERY, MY_PEACH_TRANSACTIONS_QUERY, MY_RATING_EVENTS_QUERY, PURCHASE_AUDIO_UPLOAD_PACK_MUTATION, REQUEST_ADMIN_REVIEW_MUTATION, WORKS_QUERY } from '../lib/graphql.js';
+import { ADMIN_CREATE_WORK_GENRE_MUTATION, ADMIN_DELETE_WORK_GENRE_MUTATION, ADMIN_UPDATE_WORK_GENRE_MUTATION, MY_MANAGED_AUTHORS_QUERY, MY_PEACH_TRANSACTIONS_QUERY, MY_RATING_EVENTS_QUERY, PURCHASE_AUDIO_UPLOAD_PACK_MUTATION, REQUEST_ADMIN_REVIEW_MUTATION, WORK_GENRES_QUERY, WORKS_QUERY } from '../lib/graphql.js';
 
 const {
   currentUser,
@@ -72,6 +72,86 @@ const managedAuthorsBusy = ref(false);
 const managedAuthorsError = ref('');
 const managedSwitchStatus = ref('');
 const isAdmin = computed(() => currentUser.value?.role === 'admin');
+const adminGenres = ref([]);
+const adminGenresBusy = ref(false);
+const adminGenresStatus = ref('');
+const adminGenreForm = ref({ sectionCode: 'poetry', name: '' });
+const editingAdminGenreId = ref(null);
+const editingAdminGenre = ref({ name: '', sortOrder: 0 });
+
+async function loadAdminGenres() {
+  if (!isAdmin.value) return;
+  adminGenresBusy.value = true;
+  adminGenresStatus.value = '';
+  try {
+    const { data } = await apolloClient.query({ query: WORK_GENRES_QUERY, variables: { sectionCode: null }, fetchPolicy: 'network-only' });
+    adminGenres.value = data?.workGenres ?? [];
+  } catch (error) {
+    adminGenresStatus.value = error instanceof Error ? error.message : 'Не удалось загрузить жанры.';
+  } finally {
+    adminGenresBusy.value = false;
+  }
+}
+
+async function addAdminGenre() {
+  const name = adminGenreForm.value.name.trim();
+  if (!name) return;
+  adminGenresBusy.value = true;
+  adminGenresStatus.value = '';
+  try {
+    await apolloClient.mutate({ mutation: ADMIN_CREATE_WORK_GENRE_MUTATION, variables: { input: { sectionCode: adminGenreForm.value.sectionCode, name } } });
+    adminGenreForm.value.name = '';
+    await loadAdminGenres();
+    adminGenresStatus.value = 'Жанр добавлен.';
+  } catch (error) {
+    adminGenresStatus.value = error instanceof Error ? error.message : 'Не удалось добавить жанр.';
+  } finally {
+    adminGenresBusy.value = false;
+  }
+}
+
+function startAdminGenreEdit(genre) {
+  editingAdminGenreId.value = genre.id;
+  editingAdminGenre.value = { name: genre.name, sortOrder: genre.sortOrder };
+}
+
+function cancelAdminGenreEdit() {
+  editingAdminGenreId.value = null;
+  editingAdminGenre.value = { name: '', sortOrder: 0 };
+}
+
+async function saveAdminGenre(genre) {
+  const name = editingAdminGenre.value.name.trim();
+  if (!name) return;
+  adminGenresBusy.value = true;
+  adminGenresStatus.value = '';
+  try {
+    await apolloClient.mutate({ mutation: ADMIN_UPDATE_WORK_GENRE_MUTATION, variables: { genreId: genre.id, input: { name, sortOrder: Number(editingAdminGenre.value.sortOrder) || 0 } } });
+    await loadAdminGenres();
+    cancelAdminGenreEdit();
+    adminGenresStatus.value = 'Жанр сохранён.';
+  } catch (error) {
+    adminGenresStatus.value = error instanceof Error ? error.message : 'Не удалось сохранить жанр.';
+  } finally {
+    adminGenresBusy.value = false;
+  }
+}
+
+async function deleteAdminGenre(genre) {
+  if (!window.confirm(`Удалить жанр «${genre.name}»? У ранее опубликованных произведений этот жанр будет снят.`)) return;
+  adminGenresBusy.value = true;
+  adminGenresStatus.value = '';
+  try {
+    await apolloClient.mutate({ mutation: ADMIN_DELETE_WORK_GENRE_MUTATION, variables: { genreId: genre.id } });
+    await loadAdminGenres();
+    adminGenresStatus.value = 'Жанр удалён.';
+  } catch (error) {
+    adminGenresStatus.value = error instanceof Error ? error.message : 'Не удалось удалить жанр.';
+  } finally {
+    adminGenresBusy.value = false;
+  }
+}
+
 const publishStatus = ref('');
 const audioBusy = ref(false);
 const audioError = ref('');
@@ -221,6 +301,7 @@ watch(
     syncProfileForm();
     loadCabinetStatistics();
     loadManagedAuthors();
+  loadAdminGenres();
   },
   { immediate: true },
 );
@@ -455,6 +536,27 @@ async function submitProfileImage(kind) {
             </div>
           </div>
           <div v-else class="inline-actions"><button class="btn btn-primary" type="button" :disabled="authBusy" @click="returnToAdminAccount">{{ authBusy ? 'Возвращаем…' : 'Вернуться в админ-аккаунт' }}</button></div>
+        </article>
+      </section>
+
+      <section v-if="isAdmin" id="genre-management" class="cabinet-managed-section">
+        <article class="dash-card managed-authors-card">
+          <div class="card-heading"><h2>Рубрикатор произведений</h2></div>
+          <p>Рубрики фиксированы: Поэзия, Проза и Творческие проекты. Добавляйте жанры внутри нужной рубрики.</p>
+          <form class="inline-actions" @submit.prevent="addAdminGenre">
+            <select v-model="adminGenreForm.sectionCode" :disabled="adminGenresBusy"><option value="poetry">Поэзия</option><option value="prose">Проза</option><option value="project">Творческие проекты</option></select>
+            <input v-model="adminGenreForm.name" required placeholder="Название жанра" :disabled="adminGenresBusy">
+            <button class="btn btn-primary" type="submit" :disabled="adminGenresBusy">Добавить жанр</button>
+          </form>
+          <p v-if="adminGenresBusy">Обновляем жанры…</p>
+          <div v-else class="managed-authors-list">
+            <div v-for="genre in adminGenres" :key="genre.id" class="managed-author-row">
+              <template v-if="editingAdminGenreId === genre.id"><span class="inline-actions"><input v-model="editingAdminGenre.name" required aria-label="Название жанра"><input v-model.number="editingAdminGenre.sortOrder" type="number" aria-label="Порядок жанра"></span><div class="inline-actions"><button class="btn btn-primary" type="button" :disabled="adminGenresBusy" @click="saveAdminGenre(genre)">Сохранить</button><button class="btn btn-outline" type="button" @click="cancelAdminGenreEdit">Отмена</button></div></template>
+              <template v-else><span><b>{{ genre.name }}</b><small>{{ genre.sectionCode === 'poetry' ? 'Поэзия' : genre.sectionCode === 'prose' ? 'Проза' : 'Творческие проекты' }} · порядок {{ genre.sortOrder }}</small></span><div class="inline-actions"><button class="btn btn-outline" type="button" @click="startAdminGenreEdit(genre)">Изменить</button><button class="btn btn-outline" type="button" @click="deleteAdminGenre(genre)">Удалить</button></div></template>
+            </div>
+            <p v-if="!adminGenres.length">Жанров пока нет. Добавьте первый жанр в нужной рубрике.</p>
+          </div>
+          <div v-if="adminGenresStatus" class="message" :class="adminGenresStatus.includes('добавлен') || adminGenresStatus.includes('удалён') ? 'success' : 'error'">{{ adminGenresStatus }}</div>
         </article>
       </section>
 

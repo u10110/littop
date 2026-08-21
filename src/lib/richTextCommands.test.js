@@ -87,6 +87,13 @@ test('editor uses Littop modal dialogs instead of native prompts and alerts', as
   assert.match(component, /Ссылка для изображения/);
 });
 
+test('work publish form requests rubrics for its selected section and clears the old choice', async () => {
+  const form = await readFile(new URL('../components/WorkPublishForm.vue', import.meta.url), 'utf8');
+  assert.match(form, /sectionCode: createForm\.value\.sectionCode/);
+  assert.match(form, /watch\(\(\) => createForm\.value\.sectionCode,[\s\S]*genreSlug = ''/);
+  assert.match(form, /v-for="genre in genreOptions"/);
+});
+
 test('work edit form keeps rubric options linked to its selected section', async () => {
   const page = await readFile(new URL('../components/WorkPage.vue', import.meta.url), 'utf8');
   assert.match(page, /WORK_GENRES_QUERY/);
