@@ -1,5 +1,6 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import draggable from 'vuedraggable';
 import { useQuery } from '@vue/apollo-composable';
 import { RouterLink } from 'vue-router';
 
@@ -10,7 +11,7 @@ import { filenameToTrackTitle, probeAudioDuration, uploadRadioTrack } from '../l
 import { uploadProfileImage } from '../lib/profileImages.js';
 import { buildAuthorPageLocation, buildWorkPageLocation } from '../lib/routes.js';
 import { apolloClient } from '../lib/apollo.js';
-import { ADMIN_CREATE_WORK_GENRE_MUTATION, ADMIN_DELETE_WORK_GENRE_MUTATION, ADMIN_UPDATE_WORK_GENRE_MUTATION, MY_MANAGED_AUTHORS_QUERY, MY_PEACH_TRANSACTIONS_QUERY, MY_RATING_EVENTS_QUERY, PURCHASE_AUDIO_UPLOAD_PACK_MUTATION, REQUEST_ADMIN_REVIEW_MUTATION, WORK_GENRES_QUERY, WORKS_QUERY } from '../lib/graphql.js';
+import { ADMIN_CREATE_WORK_GENRE_MUTATION, ADMIN_DELETE_WORK_GENRE_MUTATION, ADMIN_UPDATE_WORK_GENRE_MUTATION, CREATE_MY_WORK_GROUP_MUTATION, MY_CABINET_WORKS_QUERY, MY_MANAGED_AUTHORS_QUERY, MY_PEACH_TRANSACTIONS_QUERY, MY_RATING_EVENTS_QUERY, MY_WORK_GROUPS_QUERY, PURCHASE_AUDIO_UPLOAD_PACK_MUTATION, REORDER_MY_WORK_GROUPS_MUTATION, REQUEST_ADMIN_REVIEW_MUTATION, SET_MY_WORK_GROUP_ITEMS_MUTATION, SET_MY_WORK_GROUP_COLLAPSED_MUTATION, WORK_GENRES_QUERY, WORKS_QUERY } from '../lib/graphql.js';
 
 const {
   currentUser,
@@ -41,6 +42,48 @@ const { result: myWorksResult, loading: myWorksLoading } = useQuery(
   () => ({ enabled: Boolean(currentUser.value?.id), fetchPolicy: 'cache-and-network' }),
 );
 const myRecentWorks = computed(() => myWorksResult.value?.works ?? []);
+const { result: myGroupsResult, loading: myGroupsLoading, refetch: refetchMyGroups } = useQuery(MY_WORK_GROUPS_QUERY, null, () => ({ enabled: Boolean(currentUser.value?.id), fetchPolicy: 'cache-and-network' }));
+const { result: cabinetWorksResult, refetch: refetchCabinetWorks } = useQuery(MY_CABINET_WORKS_QUERY, computed(() => ({ authorId: currentUser.value?.id ?? null })), () => ({ enabled: Boolean(currentUser.value?.id), fetchPolicy: 'cache-and-network' }));
+const myWorkGroups = computed(() => myGroupsResult.value?.myWorkGroups ?? []);
+const cabinetWorks = computed(() => cabinetWorksResult.value?.works ?? []);
+const draggableGroups = ref([]);
+const draggableUngroupedWorks = ref([]);
+const collapsedWorkGroups = ref(new Set());
+const workGroupsBusy = ref(false);
+const workGroupsError = ref('');
+watch(myWorkGroups, (groups) => {
+  draggableGroups.value = groups.map((group) => ({ ...group, works: [...group.works] }));
+  collapsedWorkGroups.value = new Set(groups.filter((group) => group.isCollapsed).map((group) => String(group.id)));
+}, { immediate: true });
+watch([cabinetWorks, draggableGroups], ([works, groups]) => {
+  const grouped = new Set(groups.flatMap((group) => group.works.map((work) => String(work.id))));
+  draggableUngroupedWorks.value = works.filter((work) => !grouped.has(String(work.id)));
+}, { immediate: true, deep: true });
+const ungroupedWorks = computed(() => draggableUngroupedWorks.value);
+function isWorkGroupCollapsed(id) { return collapsedWorkGroups.value.has(String(id)); }
+async function toggleWorkGroup(id) {
+  const key = String(id); const next = new Set(collapsedWorkGroups.value); const isCollapsed = !next.has(key);
+  if (isCollapsed) next.add(key); else next.delete(key);
+  collapsedWorkGroups.value = next;
+  try { await apolloClient.mutate({ mutation: SET_MY_WORK_GROUP_COLLAPSED_MUTATION, variables: { groupId: id, isCollapsed } }); }
+  catch (error) { if (isCollapsed) next.delete(key); else next.add(key); collapsedWorkGroups.value = new Set(next); workGroupsError.value = error instanceof Error ? error.message : 'Не удалось сохранить состояние группы.'; }
+}
+async function persistGroupOrder(groups = draggableGroups.value) {
+  workGroupsBusy.value = true; workGroupsError.value = '';
+  try { await apolloClient.mutate({ mutation: REORDER_MY_WORK_GROUPS_MUTATION, variables: { groupIds: groups.map((group) => group.id) } }); await refetchMyGroups(); }
+  catch (error) { workGroupsError.value = error instanceof Error ? error.message : 'Не удалось сохранить порядок групп.'; await refetchMyGroups(); }
+  finally { workGroupsBusy.value = false; }
+}
+async function persistAllGroupWorks() {
+  workGroupsBusy.value = true; workGroupsError.value = '';
+  try {
+    await Promise.all(draggableGroups.value.map((group) => apolloClient.mutate({ mutation: SET_MY_WORK_GROUP_ITEMS_MUTATION, variables: { groupId: group.id, workIds: group.works.map((work) => work.id) } })));
+    await refetchMyGroups(); await refetchCabinetWorks();
+  } catch (error) { workGroupsError.value = error instanceof Error ? error.message : 'Не удалось сохранить порядок произведений.'; await refetchMyGroups(); }
+  finally { workGroupsBusy.value = false; }
+}
+async function createWorkGroup() { const name = window.prompt('Название новой группы'); if (!name?.trim()) return; workGroupsBusy.value = true; workGroupsError.value = ''; try { await apolloClient.mutate({ mutation: CREATE_MY_WORK_GROUP_MUTATION, variables: { input: { name: name.trim(), description: null } } }); await refetchMyGroups(); } catch (error) { workGroupsError.value = error instanceof Error ? error.message : 'Не удалось создать группу.'; } finally { workGroupsBusy.value = false; } }
+
 const peachTransactions = ref([]);
 const peachTransactionsBusy = ref(false);
 const peachTransactionsError = ref('');
@@ -61,6 +104,16 @@ const ratingMonthPoints = computed(() => ratingEvents.value.filter((event) => ne
 
 const profile = computed(() => currentUser.value?.profile ?? null);
 const displayName = computed(() => profile.value?.displayName || currentUser.value?.login || 'Автор');
+const activeCabinetTab = ref('works');
+const workPublishOpen = ref(false);
+const cabinetTabs = computed(() => [
+  { id: 'overview', label: 'Обзор' },
+  { id: 'works', label: 'Мои произведения' },
+  { id: 'profile', label: 'Профиль' },
+  { id: 'creative', label: 'Творчество' },
+  { id: 'community', label: 'Сообщество' },
+  ...(isAdmin.value || hasStoredOwnerSession.value ? [{ id: 'manage', label: 'Управление' }] : []),
+]);
 const myWorksLink = computed(() => ({
   path: '/works',
   query: { mine: '1' },
@@ -498,7 +551,11 @@ async function submitProfileImage(kind) {
         <p><b>Добро пожаловать, {{ displayName }}!</b> Управляйте профилем, произведениями и активностью на сайте.</p>
       </section>
 
-      <section class="cabinet-top">
+      <nav class="cabinet-workspace-tabs" aria-label="Разделы личного кабинета">
+        <button v-for="tab in cabinetTabs" :key="tab.id" type="button" :class="{ active: activeCabinetTab === tab.id }" @click="activeCabinetTab = tab.id">{{ tab.label }}</button>
+      </nav>
+
+      <section v-show="activeCabinetTab === 'overview'" class="cabinet-top">
         <article class="dash-card actions-card">
           <h2>Быстрые действия</h2>
           <div>
@@ -552,7 +609,7 @@ async function submitProfileImage(kind) {
             </div>
           </div>        </article>      </section>
 
-      <section v-if="isAdmin || hasStoredOwnerSession" class="cabinet-managed-section">
+      <section v-if="(isAdmin || hasStoredOwnerSession) && activeCabinetTab === 'manage'" class="cabinet-managed-section">
         <article class="dash-card managed-authors-card">
           <div class="card-heading"><h2>Управляемые аккаунты</h2><span v-if="isAdmin">{{ managedAuthors.length }}</span></div>
           <p v-if="isAdmin">Переключитесь в профиль автора, чтобы размещать, редактировать и удалять материалы от его имени.</p>
@@ -573,7 +630,7 @@ async function submitProfileImage(kind) {
         </article>
       </section>
 
-      <section v-if="isAdmin" id="genre-management" class="cabinet-managed-section">
+      <section v-if="isAdmin && activeCabinetTab === 'manage'" id="genre-management" class="cabinet-managed-section">
         <article class="dash-card managed-authors-card">
           <div class="card-heading"><h2>Рубрикатор произведений</h2></div>
           <p>Рубрики фиксированы: Поэзия, Проза и Творческие проекты. Добавляйте жанры внутри нужной рубрики.</p>
@@ -594,7 +651,27 @@ async function submitProfileImage(kind) {
         </article>
       </section>
 
-      <section class="cabinet-mid">
+      <section v-show="activeCabinetTab === 'works'" id="my-works" class="cabinet-work-groups">
+        <div class="card-heading"><div><h2>Мои произведения</h2><p>Собирайте циклы и подборки. Перетаскивайте группы и произведения за ручку ⠿.</p></div><div class="inline-actions"><button class="btn btn-outline" type="button" :disabled="workGroupsBusy" @click="createWorkGroup">+ Новая группа</button><button class="btn btn-primary" type="button" @click="workPublishOpen = true">+ Произведение</button></div></div>
+        <p v-if="workGroupsError" class="message error">{{ workGroupsError }}</p><p v-if="myGroupsLoading" class="message">Загружаем группы…</p>
+        <draggable v-model="draggableGroups" item-key="id" class="work-groups-sortable" :animation="180" :force-fallback="true" :fallback-tolerance="3" :swap-threshold="0.35" handle=".group-drag-handle" ghost-class="sortable-ghost" chosen-class="sortable-chosen" @end="saveGroupOrderAfterDrag">
+          <template #item="{ element: group }">
+            <section class="work-group">
+              <header class="work-group-header"><span class="drag-handle group-drag-handle" title="Переместить группу">⠿</span><button class="group-collapse" type="button" :aria-expanded="!isWorkGroupCollapsed(group.id)" @click="toggleWorkGroup(group.id)">{{ isWorkGroupCollapsed(group.id) ? '›' : '⌄' }}</button><span><b>{{ group.name }}</b><small>{{ group.description || 'Подборка произведений' }}</small></span><em>{{ group.works.length }} работ</em></header>
+              <draggable v-show="!isWorkGroupCollapsed(group.id)" v-model="group.works" item-key="id" class="work-group-items" :group="{ name: 'cabinet-works', pull: true, put: true }" :animation="150" :force-fallback="true" :fallback-tolerance="3" :swap-threshold="0.35" handle=".work-drag-handle" ghost-class="sortable-ghost" chosen-class="sortable-chosen" @end="saveWorkOrderAfterDrag">
+                <template #item="{ element: work }">
+                  <article class="group-work-row"><span class="drag-handle work-drag-handle" title="Переместить произведение">⠿</span><span class="publication-cover">{{ work.title.slice(0,1).toUpperCase() }}</span><RouterLink :to="buildWorkPageLocation(work)"><b>{{ work.title }}</b><small>{{ work.status === 'draft' ? 'Черновик' : formatDate(work.publishedAt || work.createdAt) }} · ♡ {{ work.likesCount || 0 }}</small></RouterLink><span>{{ work.status === 'draft' ? 'Черновик' : `${work.commentsCount || 0} отзывов` }}</span></article>
+                </template>
+                <template #footer><p v-if="!group.works.length" class="group-empty">В группе пока нет произведений.</p></template>
+              </draggable>
+            </section>
+          </template>
+        </draggable>
+        <section v-if="ungroupedWorks.length" class="work-group ungrouped"><header class="work-group-header"><span class="drag-handle">⠿</span><span> </span><span><b>Без группы</b><small>Отдельные публикации</small></span><em>{{ ungroupedWorks.length }} работ</em></header><draggable v-model="draggableUngroupedWorks" item-key="id" class="work-group-items" :group="{ name: 'cabinet-works', pull: true, put: false }" :animation="150" :force-fallback="true" :fallback-tolerance="3" :swap-threshold="0.35" handle=".work-drag-handle" ghost-class="sortable-ghost" chosen-class="sortable-chosen" @end="saveWorkOrderAfterDrag"><template #item="{ element: work }"><article class="group-work-row"><span class="drag-handle work-drag-handle" title="Переместить произведение в группу">⠿</span><span class="publication-cover">{{ work.title.slice(0,1).toUpperCase() }}</span><RouterLink :to="buildWorkPageLocation(work)"><b>{{ work.title }}</b><small>{{ work.status === 'draft' ? 'Черновик' : formatDate(work.publishedAt || work.createdAt) }} · ♡ {{ work.likesCount || 0 }}</small></RouterLink><span>{{ work.status === 'draft' ? 'Черновик' : `${work.commentsCount || 0} отзывов` }}</span></article></template></draggable></section>
+        <p class="groups-help">↕ Порядок сохраняется сразу после перетаскивания. Произведения можно менять местами внутри своей группы.</p>
+      </section>
+
+      <section v-show="activeCabinetTab === 'profile'" class="cabinet-mid">
         <article class="dash-card quick-nav">
           <h2>Быстрая навигация</h2>
           <div class="cab-tabs">
@@ -631,7 +708,7 @@ async function submitProfileImage(kind) {
         </article>
       </section>
 
-      <section id="profile-images" class="cabinet-info">
+      <section v-show="activeCabinetTab === 'creative'" id="profile-images" class="cabinet-info">
 
         <article class="dash-card stats-card"><div class="card-heading"><h2>Статистика писателя</h2><RouterLink :to="myWorksLink">Подробнее</RouterLink></div><div><span><small>Произведений</small><b>{{ profile?.worksCountCached ?? 0 }}</b></span><span><small>Рейтинг</small><b>{{ profile?.ratingTotal ?? 0 }}</b></span><span><small>В витрине</small><b>{{ profile?.isFeatured ? 'Да' : 'Нет' }}</b></span><span><small>Статус</small><b>{{ profile?.isClassic ? 'Классик' : 'Автор' }}</b></span></div></article>
         <article class="dash-card cabinet-ledger-card">
@@ -646,14 +723,14 @@ async function submitProfileImage(kind) {
         <article class="dash-card author-profile"><div class="card-heading"><h2>Профиль автора</h2><RouterLink v-if="currentUser?.login" :to="myAuthorPageLink">Открыть</RouterLink></div><p>Логин <b>@{{ currentUser?.login }}</b></p><p>Роль <b>{{ currentUser?.role || 'author' }}</b></p><p>Сайт <b>{{ profile?.websiteUrl || '—' }}</b></p></article>
       </section>
 
-      <section class="cabinet-bottom">
+      <section v-show="activeCabinetTab === 'community'" class="cabinet-bottom">
         <article class="dash-card notifications"><div class="card-heading"><h2>Разделы автора</h2><RouterLink to="/messages">Сообщения</RouterLink></div><p><RouterLink to="/forum">▣ Сообщество и обсуждения</RouterLink></p><p><RouterLink to="/contests">♜ Литературные конкурсы</RouterLink></p><p><RouterLink to="/radio">◉ Радио Littop</RouterLink></p></article>
         <article class="dash-card publications"><div class="card-heading"><h2>Ваши публикации</h2><RouterLink :to="myWorksLink">Все публикации</RouterLink></div><p v-if="myWorksLoading">Загружаем публикации…</p><p v-else-if="!myRecentWorks.length">Публикаций пока нет. Добавьте первую работу.</p><div v-else><RouterLink v-for="work in myRecentWorks" :key="work.id" :to="buildWorkPageLocation(work)"><div class="publication-cover">{{ work.title.slice(0, 1).toUpperCase() }}</div><span><b>{{ work.title }}</b><small>{{ formatDate(work.publishedAt || work.createdAt) }} · ♡ {{ work.likesCount || 0 }}</small></span></RouterLink></div></article>
       </section>
 
-      <section id="publish-work" class="cabinet-live-section"><div v-if="publishStatus" class="message success">{{ publishStatus }}</div><WorkPublishForm @created="handleWorkCreated" /></section>
+      <section v-if="activeCabinetTab === 'works' && workPublishOpen" id="publish-work" class="cabinet-live-section cabinet-publish-panel"><div class="card-heading"><h2>Новое произведение</h2><button class="btn btn-outline" type="button" @click="workPublishOpen = false">Свернуть</button></div><div v-if="publishStatus" class="message success">{{ publishStatus }}</div><WorkPublishForm @created="handleWorkCreated" /></section>
 
-      <section id="upload-audio" class="cabinet-live-section"><article class="dash-card"><div class="card-heading"><h2>Добавить аудио</h2><RouterLink to="/radio">Открыть радио</RouterLink></div><div v-if="audioError" class="message error">{{ audioError }}</div><div v-if="audioSuccess" class="message success">{{ audioSuccess }}</div><form class="cabinet-profile-form" @submit.prevent="submitAudio"><label>Название аудио<input v-model="audioForm.title" required placeholder="Например, Вечерний эфир"></label><label>Аудиофайл<input ref="audioFileInput" type="file" accept="audio/*" required @change="handleAudioFileChange"></label><div class="inline-actions"><button class="btn btn-primary" type="submit" :disabled="audioBusy">{{ audioBusy ? 'Загружаем…' : 'Загрузить аудио' }}</button><button class="btn btn-outline" type="button" @click="resetAudioForm">Сбросить</button></div></form></article></section>
+      <section v-show="activeCabinetTab === 'creative'" id="upload-audio" class="cabinet-live-section"><article class="dash-card"><div class="card-heading"><h2>Добавить аудио</h2><RouterLink to="/radio">Открыть радио</RouterLink></div><div v-if="audioError" class="message error">{{ audioError }}</div><div v-if="audioSuccess" class="message success">{{ audioSuccess }}</div><form class="cabinet-profile-form" @submit.prevent="submitAudio"><label>Название аудио<input v-model="audioForm.title" required placeholder="Например, Вечерний эфир"></label><label>Аудиофайл<input ref="audioFileInput" type="file" accept="audio/*" required @change="handleAudioFileChange"></label><div class="inline-actions"><button class="btn btn-primary" type="submit" :disabled="audioBusy">{{ audioBusy ? 'Загружаем…' : 'Загрузить аудио' }}</button><button class="btn btn-outline" type="button" @click="resetAudioForm">Сбросить</button></div></form></article></section>
     </template>
   </main>
 </template>

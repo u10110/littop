@@ -4,7 +4,7 @@ import {RouterLink, useRoute} from 'vue-router';
 
 import {apolloClient} from '../lib/apollo.js';
 import {useSession} from '../lib/session.js';
-import {AUTHOR_QUERY, WORKS_QUERY} from '../lib/graphql.js';
+import {AUTHOR_QUERY, AUTHOR_WORK_GROUPS_QUERY, WORKS_QUERY} from '../lib/graphql.js';
 import {excerptText, formatDate, formatDateTime, formatWorkSection} from '../lib/format.js';
 import {buildWorkPageLocation, normalizeRouteParam} from '../lib/routes.js';
 import {setDocumentTitle} from '../lib/pageTitle.js';
@@ -15,10 +15,12 @@ const {isAuthenticated, currentUser} = useSession();
 
 const author = ref(null);
 const authorWorks = ref([]);
+const authorWorkGroups = ref([]);
 const pageLoading = ref(false);
 const worksLoading = ref(false);
 const pageError = ref('');
 const coverIsPortrait = ref(false);
+const expandedWorkGroups = ref(new Set());
 
 const authorLogin = computed(() => normalizeRouteParam(route.params.login));
 const hasAuthor = computed(() => Boolean(author.value));
@@ -66,25 +68,27 @@ const authorFacts = computed(() => {
   return facts;
 });
 
-const workRows = computed(() => authorWorks.value.map((work, index) => {
+function buildWorkMeta(work) {
   const parts = [formatWorkSection(work.sectionCode)];
-
-  if (Number(work.averageRating) > 0 || Number(work.ratingsCount) > 0) {
-    parts.push(`рейтинг ${Number(work.averageRating || 0).toFixed(1)}`);
-  }
-
-  if (Number(work.commentsCount) > 0) {
-    parts.push(`отзывов ${work.commentsCount}`);
-  }
-
+  if (Number(work.averageRating) > 0 || Number(work.ratingsCount) > 0) parts.push(`рейтинг ${Number(work.averageRating || 0).toFixed(1)}`);
+  if (Number(work.commentsCount) > 0) parts.push(`отзывов ${work.commentsCount}`);
   parts.push(`опубл. ${formatDateTime(work.publishedAt || work.createdAt)}`);
+  return parts.join(' / ');
+}
+const groupedWorkSections = computed(() => {
+  const groupedIds = new Set();
+  const groups = [...authorWorkGroups.value].sort((a,b) => Number(a.position ?? 0)-Number(b.position ?? 0)).map((group, groupIndex) => ({
+    ...group, order: groupIndex + 1,
+    works: (Array.isArray(group.works) ? group.works : []).map((work,index) => { groupedIds.add(String(work.id)); return {...work, order:index+1, metaLine:buildWorkMeta(work)}; }),
+  }));
+  const ungrouped = authorWorks.value.filter(work => !groupedIds.has(String(work.id))).map((work,index) => ({...work, order:index+1, metaLine:buildWorkMeta(work)}));
+  if (ungrouped.length) groups.push({id:'ungrouped',name:'Без группы',description:'Отдельные публикации',position:Number.MAX_SAFE_INTEGER,isCollapsed:false,order:groups.length+1,works:ungrouped});
+  return groups;
+});
+const publicationCount = computed(() => groupedWorkSections.value.reduce((total,group) => total + group.works.length, 0));
+function isWorkGroupExpanded(group) { return expandedWorkGroups.value.has(String(group.id)); }
+function toggleWorkGroup(group) { const key=String(group.id); const next=new Set(expandedWorkGroups.value); if(next.has(key)) next.delete(key); else next.add(key); expandedWorkGroups.value=next; }
 
-  return {
-    ...work,
-    order: index + 1,
-    metaLine: parts.join(' / '),
-  };
-}));
 
 watch(authorLogin, (login) => {
   loadAuthorPage(login);
@@ -93,6 +97,8 @@ watch(authorLogin, (login) => {
 async function loadAuthorPage(login) {
   author.value = null;
   authorWorks.value = [];
+  authorWorkGroups.value = [];
+  expandedWorkGroups.value = new Set();
   pageError.value = '';
   coverIsPortrait.value = false;
 
@@ -114,7 +120,7 @@ async function loadAuthorPage(login) {
     setDocumentTitle(author.value?.displayName || author.value?.login || 'Автор');
 
     if (author.value?.id) {
-      await loadAuthorWorks(author.value.id);
+      await Promise.all([loadAuthorWorks(author.value.id), loadAuthorWorkGroups(author.value.id)]);
     }
   } catch (queryError) {
     pageError.value = queryError.message;
@@ -130,6 +136,17 @@ function detectCoverOrientation(url) {
     coverIsPortrait.value = image.naturalHeight > image.naturalWidth * 1.08;
   };
   image.src = url;
+}
+
+async function loadAuthorWorkGroups(authorId) {
+  try {
+    const {data} = await apolloClient.query({ query: AUTHOR_WORK_GROUPS_QUERY, variables: { authorId }, fetchPolicy: 'network-only' });
+    authorWorkGroups.value = data?.authorWorkGroups ?? [];
+    expandedWorkGroups.value = new Set(authorWorkGroups.value.filter(group => !group.isCollapsed).map(group => String(group.id)));
+  } catch (queryError) {
+    pageError.value = queryError.message;
+    authorWorkGroups.value = [];
+  }
 }
 
 async function loadAuthorWorks(authorId) {
@@ -202,17 +219,28 @@ async function loadAuthorWorks(authorId) {
         <div class="section-title">
           <div><span class="catalog-kicker">Авторская лента</span>
             <h2>Произведения</h2></div>
-          <small>{{ worksLoading ? 'обновляем…' : `${workRows.length} публикаций` }}</small></div>
-        <div v-if="workRows.length" class="work-list">
-          <article v-for="work in workRows" :key="work.id" class="work-row"><span class="work-kind">{{ work.order }} · {{
-              formatWorkSection(work.sectionCode)
-            }}</span>
-            <div>
-              <RouterLink :to="buildWorkPageLocation(work)"><b>{{ work.title }}</b></RouterLink>
-              <small>{{ work.metaLine }}</small>
-              <p>{{ excerptText(work.summary || work.excerpt || work.body, 170) }}</p></div>
-            <RouterLink class="btn btn-outline" :to="buildWorkPageLocation(work)">Читать</RouterLink>
-          </article>
+          <small>{{ worksLoading ? 'обновляем…' : `${publicationCount} публикаций` }}</small></div>
+        <div v-if="groupedWorkSections.length" class="author-works-table">
+          <div class="author-works-table-head" role="row">
+            <span>Название / структура</span><span>Раздел</span><span>Рейтинг</span><span>Опубликовано</span><span aria-hidden="true"></span>
+          </div>
+          <section v-for="group in groupedWorkSections" :key="group.id" class="author-works-group" :class="{ 'is-collapsed': !isWorkGroupExpanded(group) }">
+            <button class="author-works-group-head" type="button" :aria-expanded="isWorkGroupExpanded(group)" @click="toggleWorkGroup(group)">
+              <span class="author-works-group-level">{{ group.order }}</span>
+              <span class="author-works-group-title"><b>{{ group.name }}</b><small>{{ group.description || 'Подборка произведений' }}</small></span>
+              <span class="author-works-group-count">{{ group.works.length }} {{ group.works.length === 1 ? 'произведение' : group.works.length < 5 ? 'произведения' : 'произведений' }}</span>
+              <span></span><span></span><span class="author-works-group-toggle" aria-hidden="true">⌃</span>
+            </button>
+            <div v-if="isWorkGroupExpanded(group)" class="author-works-group-items">
+              <article v-for="work in group.works" :key="work.id" class="author-works-row">
+                <div class="author-works-title"><RouterLink :to="buildWorkPageLocation(work)"><b>{{ group.order }}.{{ work.order }} · {{ work.title }}</b></RouterLink><small>{{ excerptText(work.summary || work.excerpt || work.body, 150) }}</small></div>
+                <span class="author-works-section">{{ formatWorkSection(work.sectionCode) }}</span>
+                <span class="author-works-rating">{{ Number(work.averageRating) > 0 || Number(work.ratingsCount) > 0 ? `★ ${Number(work.averageRating || 0).toFixed(1)} · ${work.commentsCount || 0}` : '—' }}</span>
+                <span class="author-works-date">{{ formatDate(work.publishedAt || work.createdAt) }}</span>
+                <RouterLink class="author-works-read" :to="buildWorkPageLocation(work)" :aria-label="`Читать: ${work.title}`">→</RouterLink>
+              </article>
+            </div>
+          </section>
         </div>
         <div v-else-if="!worksLoading" class="catalog-empty"><h2>Публикаций пока нет</h2>
           <p>Автор ещё не добавил произведения.</p></div>

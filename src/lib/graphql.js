@@ -745,3 +745,35 @@ export const DELETE_FORUM_POST_MUTATION = gql`
     }
   }
 `;
+
+
+export const MY_WORK_GROUPS_QUERY = gql`
+  ${WORK_PREVIEW_FIELDS}
+  query MyWorkGroups {
+    myWorkGroups { id name description position isCollapsed works { ...WorkPreviewFields } }
+  }
+`;
+
+export const MY_CABINET_WORKS_QUERY = gql`
+  ${WORK_PREVIEW_FIELDS}
+  query MyCabinetWorks($authorId: ID!) {
+    works(authorId: $authorId, status: null, limit: 500) { ...WorkPreviewFields }
+  }
+`;
+
+export const CREATE_MY_WORK_GROUP_MUTATION = gql`
+  mutation CreateMyWorkGroup($input: AuthorWorkGroupInput!) { createMyWorkGroup(input: $input) { id name description position works { id } } }
+`;
+export const REORDER_MY_WORK_GROUPS_MUTATION = gql`
+  mutation ReorderMyWorkGroups($groupIds: [ID!]!) { reorderMyWorkGroups(groupIds: $groupIds) { id position } }
+`;
+export const SET_MY_WORK_GROUP_ITEMS_MUTATION = gql`
+  mutation SetMyWorkGroupItems($groupId: ID!, $workIds: [ID!]!) { setMyWorkGroupItems(groupId: $groupId, workIds: $workIds) { id works { id } } }
+`;
+export const SET_MY_WORK_GROUP_COLLAPSED_MUTATION = gql`
+  mutation SetMyWorkGroupCollapsed($groupId: ID!, $isCollapsed: Boolean!) { setMyWorkGroupCollapsed(groupId: $groupId, isCollapsed: $isCollapsed) { id isCollapsed } }
+`;
+export const AUTHOR_WORK_GROUPS_QUERY = gql`
+  ${WORK_PREVIEW_FIELDS}
+  query AuthorWorkGroups($authorId: ID!) { authorWorkGroups(authorId: $authorId) { id name description position isCollapsed works { ...WorkPreviewFields } } }
+`;
